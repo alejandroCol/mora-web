@@ -14,12 +14,12 @@ export function Reserve() {
 
   return (
     <section id="reservar" className="hero-wash border-t border-line">
-      <div className="mx-auto grid max-w-6xl items-center gap-10 px-6 py-16 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
-        <div className="h-[42vh] min-h-[280px] lg:h-[58vh]">
+      <div className="mx-auto grid max-w-6xl items-center gap-3 px-6 pb-0 pt-14 sm:gap-8 sm:py-16 lg:grid-cols-[1.05fr_0.95fr] lg:gap-10 lg:py-16">
+        <div className="h-[34vh] min-h-[220px] sm:h-[42vh] lg:h-[56vh]">
           <RingCanvas
             configure
             finishId={finishId}
-            scale={0.9}
+            scale={0.86}
             className="h-full w-full"
           />
         </div>

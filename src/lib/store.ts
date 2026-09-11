@@ -62,7 +62,7 @@ export const useMoraStore = create<Store>()(
   persist(
     (set, get) => ({
       selection: {
-        modelId: "cera",
+        modelId: "aero",
         finishId: "white",
         size: 8,
       },
@@ -106,10 +106,16 @@ export const useMoraStore = create<Store>()(
     }),
     {
       name: "mora-atelier",
-      version: 2,
+      version: 4,
       migrate: (persisted) => {
         const data = persisted as { selection?: { modelId?: string } };
-        if (data.selection?.modelId === "aura") data.selection.modelId = "cera";
+        if (
+          data.selection?.modelId === "aura" ||
+          data.selection?.modelId === "cera" ||
+          data.selection?.modelId === "alba"
+        ) {
+          data.selection.modelId = "aero";
+        }
         if (data.selection?.modelId === "pulse") data.selection.modelId = "titan";
         return data as never;
       },

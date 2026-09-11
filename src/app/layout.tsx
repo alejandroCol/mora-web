@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import { FirebaseAnalytics } from "@/components/FirebaseAnalytics";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -17,17 +17,23 @@ const display = Fraunces({
   axes: ["opsz", "SOFT", "WONK"],
 });
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export const metadata: Metadata = {
   title: "Mora — Un anillo. Un estado.",
   description:
-    "Smart ring de lujo silencioso. Cera en cerámica y Titan en titanio.",
+    "Smart ring de lujo silencioso. Aero en cerámica y Titan en titanio.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${sans.variable} ${display.variable} h-full antialiased`}
+      className={`${sans.variable} ${display.variable} h-full scroll-smooth antialiased`}
     >
       <body className="flex min-h-full flex-col bg-paper text-ink">
         <FirebaseAnalytics />

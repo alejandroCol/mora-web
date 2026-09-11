@@ -4,34 +4,37 @@ import { useLayoutEffect, useMemo, useRef } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
-const COUNT = 10000;
+export const PARTICLE_COUNT = 36000;
 
 function paintColors(colors: Float32Array, tint?: string) {
-  const ink = new THREE.Color("#2a2640");
-  const mist = new THREE.Color("#b7b0d4");
-  const bloom = new THREE.Color("#ddd8f0");
-  const accent = tint ? new THREE.Color(tint) : null;
+  const base = new THREE.Color(tint ?? "#f3eee6");
+  const highlight = base.clone().lerp(new THREE.Color("#ffffff"), 0.62);
+  const shade = base.clone().lerp(new THREE.Color("#ffffff"), 0.18);
+  const mix = new THREE.Color();
 
-  for (let i = 0; i < COUNT; i += 1) {
+  for (let i = 0; i < PARTICLE_COUNT; i += 1) {
     const tone = Math.random();
-    const color =
-      tone < 0.45
-        ? ink.clone().lerp(mist, tone / 0.45)
-        : mist.clone().lerp(bloom, (tone - 0.45) / 0.55);
-    if (accent) color.lerp(accent, 0.45);
-    colors[i * 3] = color.r;
-    colors[i * 3 + 1] = color.g;
-    colors[i * 3 + 2] = color.b;
+    if (tone < 0.55) mix.copy(shade).lerp(base, tone / 0.55);
+    else mix.copy(base).lerp(highlight, (tone - 0.55) / 0.45);
+    colors[i * 3] = mix.r;
+    colors[i * 3 + 1] = mix.g;
+    colors[i * 3 + 2] = mix.b;
   }
 }
 
 function scatterFrom(target: Float32Array) {
   const start = new Float32Array(target.length);
   for (let i = 0; i < target.length; i += 3) {
-    const scatter = 1.85 + Math.random() * 1.6;
-    start[i] = target[i] * scatter + (Math.random() - 0.5) * 1.2;
-    start[i + 1] = target[i + 1] * scatter + (Math.random() - 0.5) * 0.9;
-    start[i + 2] = target[i + 2] * scatter + (Math.random() - 0.5) * 1.2;
+    const tx = target[i];
+    const ty = target[i + 1];
+    const tz = target[i + 2];
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const radius = 0.04 + Math.random() * 0.16;
+    const expand = 1.02 + Math.random() * 0.12;
+    start[i] = tx * expand + radius * Math.sin(phi) * Math.cos(theta);
+    start[i + 1] = ty * expand + radius * Math.sin(phi) * Math.sin(theta);
+    start[i + 2] = tz * expand + radius * Math.cos(phi);
   }
   return start;
 }
@@ -41,6 +44,7 @@ type ParticleRingProps = {
   fading?: boolean;
   replay?: number;
   tint?: string;
+  onProgress?: (ease: number) => void;
   onAssembled?: () => void;
 };
 
@@ -49,18 +53,23 @@ export function ParticleRing({
   fading = false,
   replay = 0,
   tint,
+  onProgress,
   onAssembled,
 }: ParticleRingProps) {
   const material = useRef<THREE.PointsMaterial>(null);
   const assembled = useRef(false);
   const progress = useRef(0);
   const fade = useRef(1);
+  const onProgressRef = useRef(onProgress);
+  const onAssembledRef = useRef(onAssembled);
+  onProgressRef.current = onProgress;
+  onAssembledRef.current = onAssembled;
 
   const { positions, start, colors } = useMemo(() => {
     void replay;
     const start = scatterFrom(targets);
     const positions = new Float32Array(start);
-    const colors = new Float32Array(COUNT * 3);
+    const colors = new Float32Array(PARTICLE_COUNT * 3);
     paintColors(colors, tint);
     return { positions, start, colors };
   }, [targets, replay, tint]);
@@ -79,28 +88,32 @@ export function ParticleRing({
   }, [replay]);
 
   useFrame((_, delta) => {
-    progress.current = Math.min(1, progress.current + delta * 0.42);
+    progress.current = Math.min(1, progress.current + delta * 0.62);
     const ease = 1 - (1 - progress.current) ** 3;
-    const attribute = geometry.getAttribute("position") as THREE.BufferAttribute;
-    const array = attribute.array as Float32Array;
+    onProgressRef.current?.(ease);
 
-    for (let i = 0; i < COUNT; i += 1) {
-      const i3 = i * 3;
-      array[i3] = start[i3] + (targets[i3] - start[i3]) * ease;
-      array[i3 + 1] = start[i3 + 1] + (targets[i3 + 1] - start[i3 + 1]) * ease;
-      array[i3 + 2] = start[i3 + 2] + (targets[i3 + 2] - start[i3 + 2]) * ease;
-    }
-    attribute.needsUpdate = true;
-
-    if (progress.current >= 1 && !assembled.current) {
+    if (!assembled.current && ease >= 0.88) {
       assembled.current = true;
-      onAssembled?.();
+      onAssembledRef.current?.();
     }
 
-    fade.current = THREE.MathUtils.lerp(fade.current, fading ? 0 : 1, 0.08);
+    if (progress.current < 1) {
+      const attribute = geometry.getAttribute("position") as THREE.BufferAttribute;
+      const array = attribute.array as Float32Array;
+
+      for (let i = 0; i < PARTICLE_COUNT; i += 1) {
+        const i3 = i * 3;
+        array[i3] = start[i3] + (targets[i3] - start[i3]) * ease;
+        array[i3 + 1] = start[i3 + 1] + (targets[i3 + 1] - start[i3 + 1]) * ease;
+        array[i3 + 2] = start[i3 + 2] + (targets[i3 + 2] - start[i3 + 2]) * ease;
+      }
+      attribute.needsUpdate = true;
+    }
+
+    fade.current = THREE.MathUtils.damp(fade.current, fading ? 0 : 1, fading ? 14 : 8, delta);
     if (material.current) {
-      material.current.opacity = fade.current * 0.9;
-      material.current.size = 0.011 + (1 - ease) * 0.01;
+      material.current.opacity = fade.current * 0.92;
+      material.current.size = 0.0075 + (1 - ease) * 0.008;
     }
   });
 
@@ -109,7 +122,7 @@ export function ParticleRing({
       <pointsMaterial
         ref={material}
         vertexColors
-        size={0.013}
+        size={0.008}
         sizeAttenuation
         transparent
         depthWrite={false}
@@ -119,7 +132,7 @@ export function ParticleRing({
   );
 }
 
-export function sampleMesh(root: THREE.Object3D, count = COUNT) {
+export function sampleMesh(root: THREE.Object3D, count = PARTICLE_COUNT) {
   const meshes: THREE.Mesh[] = [];
   root.updateWorldMatrix(true, true);
   root.traverse((child) => {

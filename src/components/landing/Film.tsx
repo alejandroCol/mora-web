@@ -16,7 +16,7 @@ const frames = [
   {
     kicker: "03",
     title: "Dos materias",
-    body: "Cera o Titan. El mismo silencio. Otra piel.",
+    body: "Aero o Titan. El mismo silencio. Otra piel.",
   },
 ];
 
@@ -55,10 +55,10 @@ export function Film() {
           className="frame-in mx-auto max-w-3xl text-center"
         >
           <p className="kicker">{frame.kicker}</p>
-          <h2 className="title-film mt-7 text-[clamp(3.6rem,11vw,8.4rem)] text-ink">
+          <h2 className="title-film mt-5 text-[clamp(3rem,14vw,8.4rem)] text-ink sm:mt-7">
             {frame.title}
           </h2>
-          <p className="mx-auto mt-8 max-w-sm text-[16px] leading-8 text-soft">
+          <p className="mx-auto mt-5 max-w-sm text-[15px] leading-7 text-soft sm:mt-8 sm:text-[16px] sm:leading-8">
             {frame.body}
           </p>
         </div>

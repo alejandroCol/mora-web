@@ -12,7 +12,7 @@ export function Atelier() {
         {catalog.map((item, index) => (
           <article
             key={item.id}
-            className={`flex min-h-dvh min-w-full snap-center flex-col justify-end px-8 pb-20 pt-28 sm:px-16 ${
+            className={`flex min-h-dvh min-w-full snap-center flex-col justify-end px-6 pb-16 pt-24 sm:px-16 sm:pb-20 sm:pt-28 ${
               index === 0 ? "bg-[#f7f5fb]" : "bg-[#eef1f7]"
             }`}
           >
@@ -22,15 +22,15 @@ export function Atelier() {
             <h2 className="title-name mt-5 text-[clamp(4.4rem,16vw,10rem)] text-ink">
               {item.name}
             </h2>
-            <p className="mt-8 max-w-md text-[16px] leading-8 text-soft">
+            <p className="mt-5 max-w-md text-[15px] leading-7 text-soft sm:mt-8 sm:text-[16px] sm:leading-8">
               {item.promise}
             </p>
-            <ul className="mt-10 max-w-sm space-y-2 text-[15px] text-ink/75">
+            <ul className="mt-6 max-w-sm space-y-2 text-[14px] text-ink/75 sm:mt-10 sm:text-[15px]">
               {item.details.map((line) => (
                 <li key={line}>{line}</li>
               ))}
             </ul>
-            <div className="mt-12 flex items-center justify-between gap-6">
+            <div className="mt-8 flex items-center justify-between gap-6 sm:mt-12">
               <p className="text-[15px] text-ink">{formatMoney(item.price)}</p>
               <a
                 href="#reservar"
@@ -40,8 +40,8 @@ export function Atelier() {
                 Quedármelo
               </a>
             </div>
-            <p className="mt-16 text-[13px] text-soft">
-              {index === 0 ? "Desliza hacia Titan →" : "← Cera"}
+            <p className="mt-10 text-[13px] text-soft sm:mt-16">
+              {index === 0 ? "Desliza hacia Titan →" : "← Aero"}
             </p>
           </article>
         ))}

@@ -12,15 +12,15 @@ function Confirmation() {
   const ref = params.get("ref") ?? lastOrder?.id;
   const order = lastOrder?.id === ref ? lastOrder : lastOrder;
   const model =
-    order && products[order.modelId] ? products[order.modelId] : products.cera;
+    order && products[order.modelId] ? products[order.modelId] : products.aero;
   const finish =
     order && finishes[order.finishId] ? finishes[order.finishId] : finishes.white;
 
   return (
-    <div className="hero-wash grid min-h-dvh place-items-center px-6 pt-16">
+    <div className="hero-wash grid min-h-dvh place-items-center px-6 pt-16 pb-[max(2rem,env(safe-area-inset-bottom))]">
       <div className="max-w-lg text-center">
         <p className="kicker">{ref ?? "Mora"}</p>
-        <h1 className="title-film mt-6 text-[clamp(3rem,8vw,5.5rem)] text-ink">
+        <h1 className="title-film mt-5 text-[clamp(2.6rem,14vw,5.5rem)] text-ink sm:mt-6">
           Reservado.
         </h1>
         <p className="mt-6 text-sm leading-7 text-soft">

@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Center, ContactShadows, Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { finishes, type FinishId } from "@/lib/catalog";
+import { finishes, type Finish, type FinishId } from "@/lib/catalog";
 import { ParticleRing, sampleMesh } from "./ParticleRing";
 import { RING_POSE } from "./pose";
 
@@ -12,33 +12,20 @@ const MODEL_PATH = "/models/mora-superficie.glb";
 
 useGLTF.preload(MODEL_PATH);
 
-function radialExtent(mesh: THREE.Mesh) {
+function outwardShare(mesh: THREE.Mesh) {
   const pos = mesh.geometry.attributes.position;
-  let max = 0;
+  const nrm = mesh.geometry.attributes.normal;
+  if (!nrm) return 0;
+  let outward = 0;
   for (let i = 0; i < pos.count; i += 1) {
-    const r = Math.hypot(pos.getX(i), pos.getZ(i));
-    if (r > max) max = r;
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    const radius = Math.hypot(x, z);
+    const radial =
+      radius > 1e-6 ? (nrm.getX(i) * x + nrm.getZ(i) * z) / radius : 0;
+    if (radial > 0.12 || Math.abs(nrm.getY(i)) > 0.55) outward += 1;
   }
-  return max;
-}
-
-function stampOuterMask(geometry: THREE.BufferGeometry) {
-  const pos = geometry.attributes.position;
-  let rMax = 0;
-  for (let i = 0; i < pos.count; i += 1) {
-    rMax = Math.max(rMax, Math.hypot(pos.getX(i), pos.getZ(i)));
-  }
-  const inner = rMax * 0.74;
-  const outer = rMax * 0.88;
-  const colors = new Float32Array(pos.count * 3);
-  for (let i = 0; i < pos.count; i += 1) {
-    const r = Math.hypot(pos.getX(i), pos.getZ(i));
-    const t = THREE.MathUtils.smoothstep(inner, outer, r);
-    colors[i * 3] = t;
-    colors[i * 3 + 1] = t;
-    colors[i * 3 + 2] = t;
-  }
-  geometry.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+  return outward / pos.count;
 }
 
 function collectSurfaceMeshes(root: THREE.Object3D) {
@@ -59,10 +46,34 @@ function collectSurfaceMeshes(root: THREE.Object3D) {
   });
   if (named.length) return named;
 
-  const shells = meshes
-    .filter((mesh) => mesh.geometry.attributes.position.count > 8000)
-    .sort((a, b) => radialExtent(b) - radialExtent(a));
-  return shells.slice(0, 1);
+  return meshes.filter(
+    (mesh) =>
+      mesh.geometry.attributes.position.count > 8000 &&
+      outwardShare(mesh) > 0.85,
+  );
+}
+
+function applyFinish(
+  materials: THREE.MeshPhysicalMaterial[],
+  next: Finish,
+) {
+  const gold = next.id === "gold";
+  const silver = next.id === "silver";
+  const matte = next.id === "black";
+  for (const material of materials) {
+    material.color.set(next.color);
+    material.metalness = next.metalness;
+    material.roughness = next.roughness;
+    material.clearcoat = next.clearcoat;
+    material.clearcoatRoughness = gold ? 0.2 : silver ? 0.08 : 0.9;
+    material.envMapIntensity = next.envMapIntensity;
+    material.emissive.set(next.emissive);
+    material.emissiveIntensity = next.emissiveIntensity;
+    material.sheen = gold ? 0.42 : silver ? 0.22 : 0;
+    material.sheenColor.set(gold ? "#F6DEAA" : "#f4f8ff");
+    material.specularIntensity = gold || silver ? 1 : matte ? 0.12 : 0.45;
+    material.vertexColors = false;
+  }
 }
 
 type ConfigureSceneProps = {
@@ -75,16 +86,20 @@ export function ConfigureScene({ finishId, scale = 0.9 }: ConfigureSceneProps) {
   const group = useRef<THREE.Group>(null);
   const surface = useRef<THREE.MeshPhysicalMaterial[]>([]);
   const lastFinish = useRef(finishId);
+  const burstTimer = useRef<number>(0);
   const cloned = useMemo(() => scene.clone(true), [scene]);
   const targets = useMemo(() => {
     cloned.updateWorldMatrix(true, true);
     return sampleMesh(cloned);
   }, [cloned]);
-  const finish = finishes[finishId];
-  const target = useMemo(
-    () => new THREE.Color(finish.color),
-    [finish.color],
-  );
+  const [appliedId, setAppliedId] = useState(finishId);
+  const applied = finishes[appliedId];
+  const pending = finishes[finishId];
+  const pendingRef = useRef(pending);
+  const finishIdRef = useRef(finishId);
+  const revealed = useRef(false);
+  pendingRef.current = pending;
+  finishIdRef.current = finishId;
   const [replay, setReplay] = useState(0);
   const [bursting, setBursting] = useState(false);
   const [fading, setFading] = useState(false);
@@ -97,53 +112,62 @@ export function ConfigureScene({ finishId, scale = 0.9 }: ConfigureSceneProps) {
     });
 
     const shells = collectSurfaceMeshes(cloned);
-    if (surface.current.length === 0) {
-      surface.current = shells.map((mesh) => {
-        stampOuterMask(mesh.geometry);
-        const material = new THREE.MeshPhysicalMaterial({
-          color: finish.color,
-          metalness: finish.metalness,
-          roughness: finish.roughness,
-          clearcoat: finish.clearcoat,
-          clearcoatRoughness: 0.18,
-          envMapIntensity: 1.4,
-          opacity: 1,
-          vertexColors: true,
-          sheen: finish.metalness < 0.5 ? 0.16 : 0,
-          sheenColor: new THREE.Color("#e8e4f2"),
-        });
-        mesh.material = material;
-        return material;
+    surface.current = shells.map((mesh) => {
+      mesh.geometry.deleteAttribute("color");
+      const material = new THREE.MeshPhysicalMaterial({
+        color: applied.color,
+        metalness: applied.metalness,
+        roughness: applied.roughness,
+        clearcoat: applied.clearcoat,
+        clearcoatRoughness: 0.18,
+        envMapIntensity: applied.envMapIntensity,
+        emissive: new THREE.Color(applied.emissive),
+        emissiveIntensity: applied.emissiveIntensity,
+        opacity: 1,
+        vertexColors: false,
+        sheen: applied.id === "gold" ? 0.42 : 0.12,
+        sheenColor: new THREE.Color(
+          applied.id === "gold" ? "#F6DEAA" : "#ffffff",
+        ),
       });
-    }
-  }, [cloned, finish]);
+      mesh.material = material;
+      return material;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- cloned scene only
+  }, [cloned]);
 
   useEffect(() => {
     if (lastFinish.current === finishId) return;
     lastFinish.current = finishId;
+    window.clearTimeout(burstTimer.current);
+    revealed.current = false;
     setFading(false);
     setBursting(true);
     setReplay((value) => value + 1);
   }, [finishId]);
 
   useLayoutEffect(() => {
-    const cover = bursting && !fading ? 0.14 : 1;
+    if (!bursting || fading) return;
     /* eslint-disable react-hooks/immutability -- Three.js materials */
+    applyFinish(surface.current, applied);
     for (const material of surface.current) {
-      material.opacity = cover;
-      material.transparent = cover < 1;
-      material.metalness = finish.metalness;
-      material.roughness = finish.roughness;
-      material.clearcoat = finish.clearcoat;
+      material.opacity = 0.08;
+      material.transparent = true;
     }
     /* eslint-enable react-hooks/immutability */
-  }, [bursting, fading, finish]);
+  }, [applied, bursting, fading, replay]);
+
+  const revealPending = (ease: number) => {
+    const t = THREE.MathUtils.smoothstep(0.62, 0.88, ease);
+    if (t <= 0 || revealed.current) return;
+    applyFinish(surface.current, pendingRef.current);
+    for (const material of surface.current) {
+      material.opacity = 0.08 + t * 0.92;
+      material.transparent = t < 1;
+    }
+  };
 
   useFrame((state, delta) => {
-    for (const material of surface.current) {
-      material.color.lerp(target, bursting && !fading ? 0.02 : 0.12);
-    }
-
     if (!group.current) return;
     group.current.rotation.y += delta * RING_POSE.spin;
     group.current.position.y =
@@ -152,16 +176,21 @@ export function ConfigureScene({ finishId, scale = 0.9 }: ConfigureSceneProps) {
 
   return (
     <>
-      <ambientLight intensity={0.5} />
+      <ambientLight intensity={0.62} />
       <directionalLight
         position={[2.6, 3.4, 2.2]}
-        intensity={1.05}
-        color="#fff8f2"
+        intensity={1.2}
+        color="#fff6ea"
       />
       <directionalLight
         position={[-2.4, 1.1, -1.6]}
-        intensity={0.48}
+        intensity={0.42}
         color="#dce6f6"
+      />
+      <directionalLight
+        position={[0.2, -1.6, 1.4]}
+        intensity={0.28}
+        color="#f0d7a4"
       />
       <group ref={group}>
         <Center>
@@ -170,14 +199,23 @@ export function ConfigureScene({ finishId, scale = 0.9 }: ConfigureSceneProps) {
               <ParticleRing
                 targets={targets}
                 replay={replay}
-                tint={finish.color}
+                tint={pending.color}
                 fading={fading}
+                onProgress={revealPending}
                 onAssembled={() => {
+                  revealed.current = true;
+                  applyFinish(surface.current, pendingRef.current);
                   for (const material of surface.current) {
-                    material.color.set(finish.color);
+                    material.opacity = 1;
+                    material.transparent = false;
                   }
+                  setAppliedId(finishIdRef.current);
                   setFading(true);
-                  window.setTimeout(() => setBursting(false), 700);
+                  window.clearTimeout(burstTimer.current);
+                  burstTimer.current = window.setTimeout(
+                    () => setBursting(false),
+                    420,
+                  );
                 }}
               />
             ) : null}
@@ -193,7 +231,7 @@ export function ConfigureScene({ finishId, scale = 0.9 }: ConfigureSceneProps) {
         far={2.2}
         color="#1c1830"
       />
-      <Environment preset="studio" environmentIntensity={0.68} />
+      <Environment preset="studio" environmentIntensity={0.92} />
     </>
   );
 }

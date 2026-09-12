@@ -16,7 +16,8 @@ const RingCanvas = dynamic(
 );
 
 const DESKTOP_SCALE = 0.756;
-const MOBILE_SCALE = DESKTOP_SCALE * 0.8;
+/** ~2× el tamaño móvil anterior (0.8× desktop en caja 52vw). */
+const MOBILE_SCALE = DESKTOP_SCALE * 1.6;
 
 export function Hero() {
   const [mobile, setMobile] = useState(false);
@@ -33,7 +34,7 @@ export function Hero() {
     <section className="hero-wash relative flex min-h-dvh flex-col overflow-hidden">
       {mobile ? (
         <div className="relative flex min-h-0 flex-1 items-center justify-center pt-[calc(3.5rem+env(safe-area-inset-top))]">
-          <div className="mx-auto h-[min(52vw,22rem)] w-[min(52vw,22rem)] translate-x-[2vw]">
+          <div className="mx-auto h-[min(90vw,36rem)] w-[min(90vw,36rem)] translate-x-[2vw]">
             <RingCanvas
               original
               intro

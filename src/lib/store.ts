@@ -9,6 +9,9 @@ import {
   type FinishId,
   type ModelId,
 } from "./catalog";
+import { cartLineKey } from "@/commerce/sku";
+import { cartCount, subtotalOf } from "@/commerce/cartMath";
+import type { CartLine, CustomerSnapshot } from "@/commerce/types";
 
 export type Selection = {
   modelId: ModelId;
@@ -16,41 +19,43 @@ export type Selection = {
   size: number;
 };
 
-export type OrderDraft = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  city: string;
+export type CheckoutDraft = CustomerSnapshot & {
+  departamento: string;
+  ciudad: string;
   address: string;
+  referencia: string;
   notes: string;
 };
 
-export type PlacedOrder = Selection &
-  OrderDraft & {
-    id: string;
-    placedAt: string;
-    total: number;
-  };
-
 type Store = {
   selection: Selection;
-  draft: OrderDraft;
-  lastOrder: PlacedOrder | null;
+  cart: CartLine[];
+  cartOpen: boolean;
+  draft: CheckoutDraft;
   setModel: (modelId: ModelId) => void;
   setFinish: (finishId: FinishId) => void;
   setSize: (size: number) => void;
-  setDraft: (patch: Partial<OrderDraft>) => void;
-  placeOrder: () => PlacedOrder;
+  setDraft: (patch: Partial<CheckoutDraft>) => void;
+  addSelectionToCart: (qty?: number) => void;
+  setQty: (key: string, qty: number) => void;
+  removeLine: (key: string) => void;
+  clearCart: () => void;
+  openCart: () => void;
+  closeCart: () => void;
+  toggleCart: () => void;
 };
 
-const emptyDraft: OrderDraft = {
+const emptyDraft: CheckoutDraft = {
   firstName: "",
   lastName: "",
   email: "",
   phone: "",
-  city: "",
+  documentType: "CC",
+  documentNumber: "",
+  departamento: "",
+  ciudad: "",
   address: "",
+  referencia: "",
   notes: "",
 };
 
@@ -66,8 +71,9 @@ export const useMoraStore = create<Store>()(
         finishId: "white",
         size: 8,
       },
+      cart: [],
+      cartOpen: false,
       draft: emptyDraft,
-      lastOrder: null,
       setModel: (modelId) =>
         set((state) => {
           const nextFinish = products[modelId].finishes.includes(
@@ -91,24 +97,60 @@ export const useMoraStore = create<Store>()(
         })),
       setDraft: (patch) =>
         set((state) => ({ draft: { ...state.draft, ...patch } })),
-      placeOrder: () => {
-        const { selection, draft } = get();
-        const order: PlacedOrder = {
-          ...selection,
-          ...draft,
-          id: `MORA-${Date.now().toString(36).toUpperCase()}`,
-          placedAt: new Date().toISOString(),
-          total: products[selection.modelId].price,
-        };
-        set({ lastOrder: order, draft: emptyDraft });
-        return order;
+      addSelectionToCart: (qty = 1) => {
+        const { selection } = get();
+        const key = cartLineKey(selection.modelId, selection.finishId, selection.size);
+        set((state) => {
+          const existing = state.cart.find((line) => line.key === key);
+          const cart = existing
+            ? state.cart.map((line) =>
+                line.key === key ? { ...line, qty: line.qty + qty } : line,
+              )
+            : [
+                ...state.cart,
+                {
+                  key,
+                  modelId: selection.modelId,
+                  finishId: selection.finishId,
+                  size: selection.size,
+                  qty,
+                },
+              ];
+          return { cart, cartOpen: true };
+        });
       },
+      setQty: (key, qty) =>
+        set((state) => ({
+          cart:
+            qty <= 0
+              ? state.cart.filter((line) => line.key !== key)
+              : state.cart.map((line) =>
+                  line.key === key ? { ...line, qty } : line,
+                ),
+        })),
+      removeLine: (key) =>
+        set((state) => ({
+          cart: state.cart.filter((line) => line.key !== key),
+        })),
+      clearCart: () => set({ cart: [] }),
+      openCart: () => set({ cartOpen: true }),
+      closeCart: () => set({ cartOpen: false }),
+      toggleCart: () => set((state) => ({ cartOpen: !state.cartOpen })),
     }),
     {
       name: "mora-atelier",
-      version: 4,
+      version: 5,
+      partialize: (state) => ({
+        selection: state.selection,
+        cart: state.cart,
+        draft: state.draft,
+      }),
       migrate: (persisted) => {
-        const data = persisted as { selection?: { modelId?: string } };
+        const data = persisted as {
+          selection?: { modelId?: string };
+          cart?: CartLine[];
+          draft?: CheckoutDraft;
+        };
         if (
           data.selection?.modelId === "aura" ||
           data.selection?.modelId === "cera" ||
@@ -117,7 +159,11 @@ export const useMoraStore = create<Store>()(
           data.selection.modelId = "aero";
         }
         if (data.selection?.modelId === "pulse") data.selection.modelId = "titan";
-        return data as never;
+        return {
+          selection: data.selection,
+          cart: data.cart ?? [],
+          draft: { ...emptyDraft, ...data.draft },
+        } as never;
       },
     },
   ),
@@ -127,6 +173,14 @@ export function selectionLabel(selection: Selection) {
   const model = products[selection.modelId];
   const finish = finishes[selection.finishId];
   return `Mora ${model.name} · ${finish.title} · #${selection.size}`;
+}
+
+export function useCartCount() {
+  return useMoraStore((state) => cartCount(state.cart));
+}
+
+export function useCartSubtotal() {
+  return useMoraStore((state) => subtotalOf(state.cart));
 }
 
 export { catalog, finishes, products };

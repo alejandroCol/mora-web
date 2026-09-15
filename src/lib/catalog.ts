@@ -126,6 +126,19 @@ export const products: Record<ModelId, RingProduct> = {
 
 export const catalog = [products.aero, products.titan];
 
+export const DEFAULT_GALLERY_SRC = "/gallery/rings.png";
+
+export function defaultGalleryImage(modelId: ModelId) {
+  return {
+    id: `default-${modelId}`,
+    modelId,
+    src: DEFAULT_GALLERY_SRC,
+    sort: 0,
+    createdAt: 0,
+    system: true as const,
+  };
+}
+
 export function formatMoney(value: number) {
   return new Intl.NumberFormat("es-CO", {
     style: "currency",

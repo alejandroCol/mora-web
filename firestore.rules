@@ -1,0 +1,72 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isStaff() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/staff/$(request.auth.uid));
+    }
+
+    function staffRole() {
+      return get(/databases/$(database)/documents/staff/$(request.auth.uid)).data.role;
+    }
+
+    function isSuperadmin() {
+      return isStaff() && staffRole() == 'superadmin';
+    }
+
+    match /staff/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || isSuperadmin());
+      allow create: if request.auth != null && (
+        request.auth.uid == uid
+          && request.resource.data.email == request.auth.token.email
+          && request.resource.data.role == 'superadmin'
+        || isSuperadmin()
+      );
+      allow update: if isSuperadmin();
+      allow delete: if false;
+    }
+
+    match /settings/{doc} {
+      allow read, write: if doc == "growth" ? isSuperadmin() : isStaff();
+    }
+
+    match /leads/{id} {
+      allow read, write: if isStaff();
+    }
+
+    match /whatsappConversations/{id} {
+      allow read, write: if isStaff();
+      match /messages/{mid} {
+        allow read, write: if isStaff();
+      }
+    }
+
+    match /inventory/{sku} {
+      allow read, write: if isStaff();
+    }
+
+    match /orders/{id} {
+      allow read, write: if isStaff();
+    }
+
+    match /orderNumbers/{n} {
+      allow read, write: if isStaff();
+    }
+
+    match /counters/{id} {
+      allow read, write: if isStaff();
+    }
+
+    match /statsDaily/{day} {
+      allow read, write: if isStaff();
+    }
+
+    match /gallery/{id} {
+      allow read, write: if isStaff();
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

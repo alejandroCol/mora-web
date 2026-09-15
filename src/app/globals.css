@@ -205,3 +205,111 @@ body {
   color: var(--soft);
   opacity: 0.45;
 }
+
+.elegir-nudge {
+  display: inline-block;
+  animation: elegir-nudge 3s ease-in-out infinite;
+}
+
+@keyframes elegir-nudge {
+  0%,
+  86%,
+  100% {
+    transform: translateY(0);
+  }
+  90% {
+    transform: translateY(-5px);
+  }
+  94% {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .elegir-nudge {
+    animation: none;
+  }
+}
+
+.gallery-room {
+  background:
+    radial-gradient(ellipse 70% 55% at 42% 48%, #ffffff 0%, transparent 68%),
+    radial-gradient(ellipse 32% 28% at 78% 18%, var(--mist) 0%, transparent 70%),
+    var(--dawn);
+}
+
+.gallery-veil {
+  animation: gallery-veil-in 0.38s ease both;
+}
+
+.gallery-veil-leave {
+  animation: gallery-veil-leave 0.5s ease both;
+}
+
+.gallery-image-in {
+  animation: gallery-image-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.gallery-panel-in {
+  animation: gallery-panel-in 0.85s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes gallery-veil-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes gallery-veil-leave {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes gallery-image-in {
+  from {
+    opacity: 0;
+    transform: scale(1.035);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes gallery-panel-in {
+  from {
+    opacity: 0;
+    transform: translateX(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-image-in,
+  .gallery-panel-in,
+  .gallery-veil,
+  .gallery-veil-leave {
+    animation: none;
+  }
+}
+
+@media print {
+  header,
+  footer,
+  nav,
+  .no-print {
+    display: none !important;
+  }
+
+  .receipt-sheet {
+    background: white !important;
+    box-shadow: none !important;
+  }
+}

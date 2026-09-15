@@ -7,11 +7,7 @@ const RingCanvas = dynamic(
   () => import("@/components/ring/RingCanvas").then((mod) => mod.RingCanvas),
   {
     ssr: false,
-    loading: () => (
-      <div className="grid h-full place-items-center">
-        <p className="mark text-xl text-ink/25">Mora</p>
-      </div>
-    ),
+    loading: () => <div className="h-full w-full" aria-hidden />,
   },
 );
 
@@ -70,10 +66,10 @@ export function Hero() {
           <span className="text-ink/55"> Un estado.</span>
         </p>
         <a
-          href="#coleccion"
-          className="pointer-events-auto text-[13px] text-soft transition-colors hover:text-ink"
+          href="#reservar"
+          className="elegir-nudge pointer-events-auto text-[13px] text-soft transition-colors hover:text-ink"
         >
-          Seguir
+          Elegir
         </a>
       </div>
     </section>

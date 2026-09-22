@@ -1,6 +1,7 @@
 import { getApp, getApps, initializeApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { getFunctions, httpsCallable, type Functions } from "firebase/functions";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -26,4 +27,14 @@ export function getFirebaseAuth(): Auth {
 
 export function getFirebaseDb(): Firestore {
   return getFirestore(getFirebaseApp());
+}
+
+export function getFirebaseFunctions(): Functions {
+  return getFunctions(getFirebaseApp(), "us-central1");
+}
+
+export async function callMoraApp<T>(name: string, data: Record<string, unknown> = {}) {
+  const fn = httpsCallable<Record<string, unknown>, T>(getFirebaseFunctions(), name);
+  const res = await fn(data);
+  return res.data;
 }

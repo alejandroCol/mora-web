@@ -65,6 +65,62 @@ service cloud.firestore {
       allow read, write: if isStaff();
     }
 
+    // Plano producto (Círculo). Staff NO lee salud.
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    match /users/{uid} {
+      allow read, write: if isOwner(uid);
+    }
+
+    match /rings/{id} {
+      allow read: if signedIn() && resource.data.ownerUid == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /daySummaries/{id} {
+      allow read: if signedIn() && resource.data.uid == request.auth.uid;
+      allow write: if false;
+    }
+
+    match /circles/{id} {
+      allow read: if signedIn() && (
+        resource.data.ownerUid == request.auth.uid
+        || exists(/databases/$(database)/documents/circles/$(id)/memberships/$(request.auth.uid))
+      );
+      allow write: if false;
+      match /memberships/{uid} {
+        allow read: if signedIn() && (
+          uid == request.auth.uid
+          || get(/databases/$(database)/documents/circles/$(id)).data.ownerUid == request.auth.uid
+          || exists(/databases/$(database)/documents/circles/$(id)/memberships/$(request.auth.uid))
+        );
+        allow write: if false;
+      }
+    }
+
+    match /invites/{code} {
+      allow read, write: if false;
+    }
+
+    match /emailInvites/{id} {
+      allow read, write: if false;
+    }
+
+    match /userCircles/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false;
+      match /items/{circleId} {
+        allow read: if isOwner(uid);
+        allow write: if false;
+      }
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

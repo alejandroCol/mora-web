@@ -41,3 +41,11 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: RESEND_API_KEY
+    secret: RESEND_API_KEY
+    availability:
+      - RUNTIME
+  - variable: RESEND_FROM
+    value: "Mora <hola@mora.ring>"
+    availability:
+      - RUNTIME

@@ -9,7 +9,9 @@ import { SiteHeader } from "@/components/SiteHeader";
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const isAdmin =
-    pathname.startsWith("/superadmin") || pathname.startsWith("/acceso");
+    pathname.startsWith("/superadmin") ||
+    pathname.startsWith("/acceso") ||
+    pathname.startsWith("/circulo");
   const isGallery = pathname.startsWith("/galeria");
 
   if (isAdmin) {

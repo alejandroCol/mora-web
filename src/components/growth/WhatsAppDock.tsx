@@ -21,7 +21,12 @@ export function WhatsAppDock() {
       .catch(() => undefined);
   }, []);
 
-  if (pathname.startsWith("/superadmin") || pathname.startsWith("/acceso")) return null;
+  if (
+    pathname.startsWith("/superadmin") ||
+    pathname.startsWith("/acceso") ||
+    pathname.startsWith("/circulo")
+  )
+    return null;
   if (!config?.whatsappDisplayNumber) return null;
 
   const prefill =

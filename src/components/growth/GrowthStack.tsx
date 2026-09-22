@@ -67,6 +67,7 @@ export function GrowthStack() {
   }, [pathname]);
 
   useEffect(() => {
+    if (pathname.startsWith("/circulo") || pathname.startsWith("/superadmin")) return;
     if (!config?.pixelId) return;
     installPixel(config.pixelId);
     if (lastPath.current === pathname) return;

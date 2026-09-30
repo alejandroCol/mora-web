@@ -11,7 +11,9 @@ import { ROLE_LABEL, type StaffPermission } from "@/commerce/roles";
 import { getFirebaseAuth } from "@/lib/firebase";
 import { AdminAuthProvider, useAdminAuth } from "./AdminAuth";
 
-const NAV: { href: string; label: string; permission: StaffPermission; icon: ReactNode }[] = [
+type NavItem = { href: string; label: string; permission: StaffPermission; icon: ReactNode };
+
+const NAV: NavItem[] = [
   { href: "/superadmin/ventas", label: "Ventas", permission: "sales", icon: <BagIcon /> },
   { href: "/superadmin/presupuesto", label: "Presupuesto", permission: "budget", icon: <BookIcon /> },
   { href: "/superadmin/whatsapp", label: "WhatsApp", permission: "whatsapp", icon: <ChatIcon /> },
@@ -23,12 +25,26 @@ const NAV: { href: string; label: string; permission: StaffPermission; icon: Rea
   { href: "/superadmin/equipo", label: "Equipo", permission: "team", icon: <PeopleIcon /> },
 ];
 
+const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
+  { label: "Casa", hrefs: ["/superadmin/ventas", "/superadmin/presupuesto"] },
+  { label: "Alcance", hrefs: ["/superadmin/whatsapp", "/superadmin/campanas", "/superadmin/estadisticas"] },
+  { label: "Operación", hrefs: ["/superadmin/inventario", "/superadmin/galeria", "/superadmin/envios", "/superadmin/equipo"] },
+];
+
 function Shell({ children }: { children: ReactNode }) {
   const { user, loading, me, can } = useAdminAuth();
   const router = useRouter();
   const pathname = usePathname();
   const links = NAV.filter((item) => can(item.permission));
+  const groups = NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.hrefs
+      .map((href) => links.find((item) => item.href === href))
+      .filter((item): item is NavItem => Boolean(item)),
+  })).filter((group) => group.items.length > 0);
   const current = links.find((item) => pathname.startsWith(item.href));
+  const displayName = me?.name || me?.email || "Mora";
+  const initial = (me?.name?.trim()?.[0] || me?.email?.[0] || "M").toUpperCase();
   const collapsed = useSyncExternalStore(
     subscribeNav,
     () => window.localStorage.getItem("mora-admin-nav") === "collapsed",
@@ -93,45 +109,56 @@ function Shell({ children }: { children: ReactNode }) {
         </Link>
         <button
           type="button"
-          className="admin-icon-btn ml-auto hidden lg:grid"
-          onClick={toggleCollapsed}
-          aria-label={collapsed ? "Abrir menú" : "Cerrar menú"}
-        >
-          <ChevronIcon flipped={collapsed} />
-        </button>
-        <button
-          type="button"
-          className="admin-icon-btn ml-auto lg:hidden"
+          className="admin-icon-btn admin-close ml-auto"
           onClick={() => setMobileOpen(false)}
           aria-label="Cerrar menú"
         >
           <CloseIcon />
         </button>
       </div>
-      <p className="admin-role mt-2 px-2 text-[11px] font-medium uppercase tracking-[0.12em] text-[color:var(--admin-sidebar-muted)]">
-        {ROLE_LABEL[me.role]}
-      </p>
+      <p className="admin-role">{ROLE_LABEL[me.role]}</p>
       <nav className="admin-nav">
-        {links.map((item) => {
-          const active = pathname.startsWith(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={item.label}
-              className={`admin-nav-link ${active ? "is-active" : ""}`}
-              onClick={() => setMobileOpen(false)}
-            >
-              <span className="admin-nav-ico">{item.icon}</span>
-              <span className="admin-nav-label">{item.label}</span>
-            </Link>
-          );
-        })}
+        {groups.map((group) => (
+          <div key={group.label} className="admin-nav-group">
+            <p className="admin-nav-section">{group.label}</p>
+            {group.items.map((item) => {
+              const active = pathname.startsWith(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  title={item.label}
+                  className={`admin-nav-link ${active ? "is-active" : ""}`}
+                  onClick={() => setMobileOpen(false)}
+                >
+                  <span className="admin-nav-ico">{item.icon}</span>
+                  <span className="admin-nav-label">{item.label}</span>
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
       <div className="admin-side-foot">
-        <p>{me.name || me.email}</p>
-        <button type="button" onClick={() => void signOut(getFirebaseAuth())} className="admin-ghost mt-2">
-          <span className="admin-nav-label">Salir</span>
+        <div className="admin-user">
+          <span className="admin-avatar" aria-hidden>
+            {initial}
+          </span>
+          <div className="admin-user-copy">
+            <p>{displayName}</p>
+            <button type="button" onClick={() => void signOut(getFirebaseAuth())} className="admin-ghost">
+              Salir
+            </button>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="admin-collapse"
+          onClick={toggleCollapsed}
+          aria-label={collapsed ? "Abrir menú" : "Contraer menú"}
+          title={collapsed ? "Abrir" : "Contraer"}
+        >
+          <CollapseIcon flipped={collapsed} />
         </button>
       </div>
     </aside>
@@ -196,19 +223,14 @@ function CloseIcon() {
   );
 }
 
-function ChevronIcon({ flipped }: { flipped: boolean }) {
+function CollapseIcon({ flipped }: { flipped: boolean }) {
   return (
-    <svg
-      viewBox="0 0 24 24"
-      width="16"
-      height="16"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      aria-hidden
-      style={{ transform: flipped ? "rotate(180deg)" : undefined }}
-    >
-      <path d="M14 6 8 12l6 6" strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+      {flipped ? (
+        <path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+      ) : (
+        <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+      )}
     </svg>
   );
 }

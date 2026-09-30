@@ -43,6 +43,14 @@ function asString(value: unknown, fallback = "") {
   return typeof value === "string" ? value : fallback;
 }
 
+function firestoreDoc<T extends Record<string, unknown>>(value: T) {
+  const out: Record<string, unknown> = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (item !== undefined) out[key] = item;
+  }
+  return out as T;
+}
+
 function asIsoDate(value: unknown, fallback = todayISO()) {
   const raw = asString(value, fallback).slice(0, 10);
   return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : fallback;
@@ -234,7 +242,7 @@ export async function createExpense(
   actorUid: string,
 ): Promise<FinanceExpense> {
   const now = Date.now();
-  const record: FinanceExpense = {
+  const record = firestoreDoc({
     id: randomUUID(),
     date: asIsoDate(input.date),
     category: isExpenseCategory(input.category) ? input.category : "other",
@@ -243,13 +251,16 @@ export async function createExpense(
     amountCop: asCop(input.amountCop),
     notes: asString(input.notes),
     attachmentIds: Array.isArray(input.attachmentIds) ? input.attachmentIds : [],
-    relatedOrderId: input.relatedOrderId,
+    relatedOrderId:
+      typeof input.relatedOrderId === "string" && input.relatedOrderId
+        ? input.relatedOrderId
+        : undefined,
     createdAt: now,
     updatedAt: now,
     createdBy: actorUid,
-  };
+  });
   await expensesCol().doc(record.id).set(record);
-  return record;
+  return record as FinanceExpense;
 }
 
 export async function updateExpense(
@@ -262,7 +273,9 @@ export async function updateExpense(
   if (!current) {
     throw Object.assign(new Error("Gasto no encontrado."), { status: 404 });
   }
-  const next: FinanceExpense = {
+  const relatedOrderId =
+    input.relatedOrderId !== undefined ? input.relatedOrderId : current.relatedOrderId;
+  const next = firestoreDoc({
     ...current,
     date: input.date !== undefined ? asIsoDate(input.date, current.date) : current.date,
     category: input.category !== undefined && isExpenseCategory(input.category) ? input.category : current.category,
@@ -271,11 +284,11 @@ export async function updateExpense(
     amountCop: input.amountCop !== undefined ? asCop(input.amountCop) : current.amountCop,
     notes: input.notes !== undefined ? asString(input.notes) : current.notes,
     attachmentIds: Array.isArray(input.attachmentIds) ? input.attachmentIds : current.attachmentIds,
-    relatedOrderId: input.relatedOrderId !== undefined ? input.relatedOrderId : current.relatedOrderId,
+    relatedOrderId: relatedOrderId || undefined,
     updatedAt: Date.now(),
-  };
+  });
   await ref.set(next, { merge: true });
-  return next;
+  return next as FinanceExpense;
 }
 
 export async function deleteExpense(id: string) {
@@ -314,7 +327,7 @@ export async function createLoan(input: LoanDraft, actorUid: string): Promise<Fi
     updatedAt: now,
     createdBy: actorUid,
   };
-  await loansCol().doc(record.id).set(record);
+  await loansCol().doc(record.id).set(firestoreDoc({ ...record }));
   return record;
 }
 
@@ -347,7 +360,7 @@ export async function updateLoan(id: string, input: Partial<LoanDraft>): Promise
     installments: buildLoanSchedule(nextDraft),
     updatedAt: Date.now(),
   };
-  await ref.set(next);
+  await ref.set(firestoreDoc({ ...next }));
   return next;
 }
 
@@ -371,7 +384,7 @@ export async function setLoanInstallmentPaid(input: {
     throw Object.assign(new Error("Esa cuota no existe."), { status: 404 });
   }
   const next: FinanceLoan = { ...current, installments, updatedAt: Date.now() };
-  await ref.set(next);
+  await ref.set(firestoreDoc({ ...next }));
   return next;
 }
 
@@ -393,7 +406,7 @@ export async function createOrder(
     updatedAt: now,
     createdBy: actorUid,
   };
-  await ordersCol().doc(record.id).set(record);
+  await ordersCol().doc(record.id).set(firestoreDoc({ ...record }));
   return record;
 }
 
@@ -425,7 +438,7 @@ export async function updateOrder(
       : current.recordedExpenseIds,
     updatedAt: Date.now(),
   };
-  await ref.set(next);
+  await ref.set(firestoreDoc({ ...next }));
   return next;
 }
 
@@ -536,13 +549,13 @@ export async function saveAttachment(input: {
     name: input.name.trim() || (mime === "application/pdf" ? "factura.pdf" : "soporte.jpg"),
     mime,
     size: parsed.buffer.length,
-    expenseId: input.expenseId,
+    expenseId: input.expenseId || undefined,
     createdAt: now,
     createdBy: input.actorUid,
     stored,
     ...(stored === "inline" ? { data: input.data } : {}),
   };
-  await filesCol().doc(id).set(record);
+  await filesCol().doc(id).set(firestoreDoc(record));
   if (input.expenseId) {
     const expense = asExpense(input.expenseId, (await expensesCol().doc(input.expenseId).get()).data());
     if (expense && !expense.attachmentIds.includes(id)) {

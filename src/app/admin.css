@@ -1,0 +1,375 @@
+/*
+ * Mora admin — isolated from the storefront.
+ * Only imported by /superadmin and /acceso. Tokens live on .mora-admin
+ * so a future admin restyle cannot leak into the ecommerce styles.
+ */
+
+.mora-admin {
+  --admin-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+  --admin-bg: #f2f2f7;
+  --admin-canvas: #f2f2f7;
+  --admin-sidebar: #d8e0ea;
+  --admin-sidebar-ink: #1c2a3a;
+  --admin-sidebar-muted: #5b6b7c;
+  --admin-card: #ffffff;
+  --admin-field: #e8eaef;
+  --admin-line: rgba(28, 42, 58, 0.08);
+  --admin-ink: #1c1c1e;
+  --admin-muted: #6c6c70;
+  --admin-faint: #8e8e93;
+  --admin-accent: #007aff;
+  --admin-accent-soft: rgba(0, 122, 255, 0.12);
+  --admin-danger: #ff3b30;
+  --admin-ok: #34c759;
+  --admin-shadow: 0 1px 0 rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+  --admin-radius: 1.15rem;
+  --admin-topbar: 3.5rem;
+  --admin-sidebar-w: 16.5rem;
+  --admin-sidebar-collapsed: 4.75rem;
+
+  color: var(--admin-ink);
+  background: var(--admin-bg);
+  font-family: var(--admin-font);
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.011em;
+  color-scheme: light;
+}
+
+.mora-admin,
+.mora-admin * {
+  border-color: var(--admin-line);
+}
+
+.mora-admin .font-display {
+  font-family: var(--admin-font) !important;
+  font-weight: 590;
+  letter-spacing: -0.03em;
+  font-variation-settings: normal;
+}
+
+.mora-admin .h-full.rounded-full.bg-white,
+.mora-admin .rounded-t-md.bg-white\/80 {
+  background: var(--admin-accent) !important;
+}
+
+.mora-admin .bg-\[\#0e0d14\],
+.mora-admin .bg-\[\#16141f\] {
+  background-color: var(--admin-card) !important;
+}
+
+.mora-admin .text-\[\#f4f1ea\] {
+  color: var(--admin-ink) !important;
+}
+
+.mora-admin .text-white,
+.mora-admin .text-white\/70,
+.mora-admin .text-white\/75 {
+  color: var(--admin-ink) !important;
+}
+
+.mora-admin button.bg-\[color\:var\(--admin-accent\)\],
+.mora-admin button.bg-\[color\:var\(--admin-accent\)\] .text-white {
+  color: #fff !important;
+}
+
+.mora-admin .text-white\/60,
+.mora-admin .text-white\/55,
+.mora-admin .text-white\/50,
+.mora-admin .text-white\/45 {
+  color: var(--admin-muted) !important;
+}
+
+.mora-admin .text-white\/40,
+.mora-admin .text-white\/35,
+.mora-admin .text-white\/30,
+.mora-admin .text-white\/28 {
+  color: var(--admin-faint) !important;
+}
+
+.mora-admin .placeholder\:text-white\/25::placeholder,
+.mora-admin .placeholder\:text-white\/35::placeholder {
+  color: var(--admin-faint) !important;
+}
+
+.mora-admin .hover\:text-white:hover {
+  color: var(--admin-ink) !important;
+}
+
+.mora-admin .bg-white\/\[0\.04\],
+.mora-admin .bg-white\/\[0\.05\] {
+  background: var(--admin-card) !important;
+  box-shadow: var(--admin-shadow);
+}
+
+.mora-admin .bg-white\/8,
+.mora-admin .bg-white\/6 {
+  background: var(--admin-field) !important;
+}
+
+.mora-admin .border-white\/8 {
+  border-color: var(--admin-line) !important;
+}
+
+.mora-admin .bg-white\/\[0\.04\] .bg-white\/8,
+.mora-admin .bg-white\/\[0\.05\] .bg-white\/8 {
+  box-shadow: none;
+}
+
+.mora-admin button.bg-white.text-\[\#0e0d14\],
+.mora-admin button.bg-white.text-\[\#16141f\],
+.mora-admin a.bg-white.text-\[\#0e0d14\] {
+  background: var(--admin-accent) !important;
+  color: #fff !important;
+}
+
+.mora-admin .text-red-300 {
+  color: var(--admin-danger) !important;
+}
+
+.mora-admin .bg-red-300\/15 {
+  background: rgba(255, 59, 48, 0.12) !important;
+}
+
+.mora-admin .text-red-200 {
+  color: #c41c16 !important;
+}
+
+.mora-admin .bg-emerald-300\/15,
+.mora-admin .bg-emerald-300\/10 {
+  background: rgba(52, 199, 89, 0.14) !important;
+}
+
+.mora-admin .text-emerald-200,
+.mora-admin .text-emerald-100 {
+  color: #1f7a38 !important;
+}
+
+.mora-admin input,
+.mora-admin select,
+.mora-admin textarea {
+  color: var(--admin-ink);
+}
+
+.mora-admin select option {
+  color: #1c1c1e;
+  background: #fff;
+}
+
+.admin-app {
+  min-height: 100dvh;
+  background: var(--admin-bg);
+  color: var(--admin-ink);
+}
+
+.admin-shell {
+  display: flex;
+  min-height: 100dvh;
+}
+
+.admin-sidebar {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 40;
+  display: flex;
+  width: min(var(--admin-sidebar-w), 88vw);
+  flex-direction: column;
+  background: var(--admin-sidebar);
+  color: var(--admin-sidebar-ink);
+  padding: calc(0.85rem + env(safe-area-inset-top)) 0.85rem
+    calc(0.95rem + env(safe-area-inset-bottom));
+  transform: translateX(-105%);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), width 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.admin-sidebar.is-open {
+  transform: none;
+}
+
+.admin-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(16, 24, 40, 0.28);
+  backdrop-filter: blur(8px);
+}
+
+.admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: 2.4rem;
+  padding: 0 0.45rem;
+}
+
+.admin-nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin-top: 1.4rem;
+  overflow: auto;
+}
+
+.admin-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.6rem;
+  border-radius: 0.85rem;
+  padding: 0.45rem 0.7rem;
+  color: var(--admin-sidebar-muted);
+  font-size: 0.9375rem;
+  font-weight: 510;
+}
+
+.admin-nav-link:hover {
+  background: rgba(255, 255, 255, 0.45);
+  color: var(--admin-sidebar-ink);
+}
+
+.admin-nav-link.is-active {
+  background: #fff;
+  color: var(--admin-accent);
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+.admin-nav-ico {
+  display: grid;
+  width: 1.35rem;
+  flex-shrink: 0;
+  place-items: center;
+}
+
+.admin-nav-ico svg {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+
+.admin-side-foot {
+  padding: 0.7rem 0.55rem 0;
+}
+
+.admin-side-foot p {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  color: var(--admin-sidebar-muted);
+}
+
+.admin-icon-btn {
+  display: grid;
+  height: 2.4rem;
+  width: 2.4rem;
+  place-items: center;
+  border-radius: 0.8rem;
+  color: var(--admin-sidebar-ink);
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.admin-icon-btn:hover {
+  background: #fff;
+}
+
+.admin-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: calc(var(--admin-topbar) + env(safe-area-inset-top));
+  padding: env(safe-area-inset-top) 0.9rem 0;
+  background: color-mix(in srgb, var(--admin-bg) 86%, transparent);
+  backdrop-filter: saturate(1.4) blur(16px);
+}
+
+.admin-topbar-inner {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.65rem;
+  min-height: var(--admin-topbar);
+}
+
+.admin-topbar h1 {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.05rem;
+  font-weight: 590;
+}
+
+.admin-main {
+  min-width: 0;
+  flex: 1;
+  padding: 1.1rem 1rem 2rem;
+  overflow-x: clip;
+}
+
+.admin-ghost {
+  border: 0;
+  background: transparent;
+  color: var(--admin-muted);
+  font-size: 0.8125rem;
+}
+
+@media (min-width: 1024px) {
+  .admin-sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    height: 100dvh;
+    width: var(--admin-sidebar-w);
+    transform: none;
+    padding-top: 1.15rem;
+  }
+
+  .admin-sidebar.is-collapsed {
+    width: var(--admin-sidebar-collapsed);
+    padding-left: 0.55rem;
+    padding-right: 0.55rem;
+  }
+
+  .admin-sidebar.is-collapsed .admin-nav-label,
+  .admin-sidebar.is-collapsed .admin-role,
+  .admin-sidebar.is-collapsed .admin-side-foot p,
+  .admin-sidebar.is-collapsed .admin-wordmark {
+    display: none;
+  }
+
+  .admin-sidebar.is-collapsed .admin-nav-link {
+    justify-content: center;
+    padding-left: 0;
+    padding-right: 0;
+  }
+
+  .admin-backdrop,
+  .admin-topbar {
+    display: none;
+  }
+
+  .admin-main {
+    padding: 2rem 1.75rem 3rem;
+  }
+
+  .admin-shell {
+    max-width: 1480px;
+    margin: 0 auto;
+  }
+}
+
+@media (max-width: 639px) {
+  .admin-main {
+    padding-left: 0.85rem;
+    padding-right: 0.85rem;
+  }
+
+  .mora-admin .font-display {
+    font-size: clamp(1.65rem, 7vw, 2.25rem) !important;
+  }
+}

@@ -42,8 +42,19 @@ function getAdminApp(): App {
   });
 }
 
+let ignoreUndefinedApplied = false;
+
 export function adminDb() {
-  return getFirestore(getAdminApp());
+  const db = getFirestore(getAdminApp());
+  if (!ignoreUndefinedApplied) {
+    try {
+      db.settings({ ignoreUndefinedProperties: true });
+    } catch {
+      /* settings only once per app */
+    }
+    ignoreUndefinedApplied = true;
+  }
+  return db;
 }
 
 export function adminAuth() {

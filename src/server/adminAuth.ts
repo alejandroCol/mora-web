@@ -372,8 +372,19 @@ export async function updateStaffMember(input: {
   return next;
 }
 
-export function jsonError(error: unknown) {
+function publicErrorMessage(error: unknown) {
   const message = error instanceof Error ? error.message : "Error inesperado.";
+  if (/default credentials|application-default|Could not load the default credentials/i.test(message)) {
+    return "No se pudo abrir el libro. Falta la conexión con Firebase.";
+  }
+  if (/not a valid Firestore document|Cannot use "undefined" as a Firestore value/i.test(message)) {
+    return "No se pudo guardar. Revisa los campos e inténtalo de nuevo.";
+  }
+  return message;
+}
+
+export function jsonError(error: unknown) {
+  const message = publicErrorMessage(error);
   const status =
     typeof error === "object" && error && "status" in error
       ? Number((error as { status?: number }).status) || 400

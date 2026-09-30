@@ -41,11 +41,42 @@ function staffFromToken(uid: string, email: string): StaffRecord {
   return {
     uid,
     email,
-    name: "Super admin",
-    role: "superadmin",
+    name: "Founder",
+    role: "founder",
     active: true,
     createdAt: Date.now(),
   };
+}
+
+function isBootstrapEmail(email: string) {
+  return Boolean(email) && email === bootstrapAdminEmail();
+}
+
+async function persistFounder(staff: StaffRecord): Promise<StaffRecord> {
+  const next: StaffRecord = {
+    ...staff,
+    role: "founder",
+    active: true,
+    name: staff.name || "Founder",
+    updatedAt: Date.now(),
+  };
+  try {
+    await writeStaffAuth({
+      uid: next.uid,
+      email: next.email,
+      role: "founder",
+      active: true,
+    });
+    await staffDoc(next.uid).set(next, { merge: true });
+  } catch {
+    /* still founder for this request */
+  }
+  return next;
+}
+
+async function asFounderIfBootstrap(staff: StaffRecord): Promise<StaffRecord> {
+  if (!isBootstrapEmail(staff.email) || staff.role === "founder") return staff;
+  return persistFounder(staff);
 }
 
 export async function requireStaff(request: Request): Promise<StaffProfile> {
@@ -60,8 +91,8 @@ export async function requireStaff(request: Request): Promise<StaffProfile> {
     const snap = await staffDoc(decoded.uid).get();
     const email = (decoded.email ?? "").toLowerCase();
     if (!snap.exists) {
-      if (email && email === bootstrapAdminEmail()) {
-        return staffFromToken(decoded.uid, email);
+      if (isBootstrapEmail(email)) {
+        return persistFounder(staffFromToken(decoded.uid, email));
       }
       throw Object.assign(new Error("No tienes acceso."), { status: 403 });
     }
@@ -70,7 +101,7 @@ export async function requireStaff(request: Request): Promise<StaffProfile> {
       throw Object.assign(new Error("Esta cuenta está desactivada."), { status: 403 });
     }
     if (!staff.email) staff.email = email;
-    return staff;
+    return asFounderIfBootstrap(staff);
   } catch (error) {
     if (error && typeof error === "object" && "status" in error) throw error;
     const { lookupIdToken, firestoreGet } = await import("./identityRest");
@@ -83,7 +114,8 @@ export async function requireStaff(request: Request): Promise<StaffProfile> {
         if (!staff.active) {
           throw Object.assign(new Error("Esta cuenta está desactivada."), { status: 403 });
         }
-        return staff;
+        if (!staff.email) staff.email = email;
+        return asFounderIfBootstrap(staff);
       }
     } catch (inner) {
       if (inner && typeof inner === "object" && "status" in inner && (inner as { status: number }).status === 403) {
@@ -92,8 +124,8 @@ export async function requireStaff(request: Request): Promise<StaffProfile> {
         throw inner;
       }
     }
-    if (email && email === bootstrapAdminEmail()) {
-      return staffFromToken(user.localId, email);
+    if (isBootstrapEmail(email)) {
+      return persistFounder(staffFromToken(user.localId, email));
     }
     throw Object.assign(new Error("No tienes acceso."), { status: 403 });
   }

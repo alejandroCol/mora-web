@@ -41,14 +41,6 @@ env:
     availability:
       - BUILD
       - RUNTIME
-  # Optional. App Hosting fails the whole rollout if this is a Secret Manager
-  # binding and the secret is missing or the backend cannot read it.
-  # When you have a Resend key, set it in the App Hosting console or restore:
-  #   secret: RESEND_API_KEY
-  - variable: RESEND_API_KEY
-    value: ""
-    availability:
-      - RUNTIME
   - variable: RESEND_FROM
     value: "Mora <hola@mora.ring>"
     availability:

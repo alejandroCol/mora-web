@@ -1,5 +1,6 @@
 import { isStaffRole, type StaffRole } from "@/commerce/roles";
 import {
+  assertCanAssignRole,
   createStaffMember,
   jsonError,
   listStaff,
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     if (!isStaffRole(body.role)) {
       return Response.json({ ok: false, error: "Elige un rol." }, { status: 400 });
     }
+    await assertCanAssignRole(actor, body.role);
     const member = await createStaffMember({
       email: body.email,
       password: body.password,

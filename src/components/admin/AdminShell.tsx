@@ -16,6 +16,7 @@ import { AdminAuthProvider, useAdminAuth } from "./AdminAuth";
 
 const NAV: { href: string; label: string; permission: StaffPermission }[] = [
   { href: "/superadmin/ventas", label: "Ventas", permission: "sales" },
+  { href: "/superadmin/presupuesto", label: "Presupuesto", permission: "budget" },
   { href: "/superadmin/whatsapp", label: "WhatsApp", permission: "whatsapp" },
   { href: "/superadmin/campanas", label: "Campañas", permission: "growth" },
   { href: "/superadmin/estadisticas", label: "Estadísticas", permission: "stats" },
@@ -46,7 +47,7 @@ function Shell({ children }: { children: ReactNode }) {
   if (loading || !user) {
     return (
       <div className="grid min-h-dvh place-items-center bg-[#0e0d14]">
-        <BrandLoader label="Abriendo el atelier" />
+        <BrandLoader label="Entrando" />
       </div>
     );
   }

@@ -14,20 +14,44 @@ service cloud.firestore {
       return isStaff() && staffRole() == 'superadmin';
     }
 
+    function isFounder() {
+      return isStaff() && staffRole() == 'founder';
+    }
+
+    function isPrivileged() {
+      return isSuperadmin() || isFounder();
+    }
+
     match /staff/{uid} {
-      allow read: if request.auth != null && (request.auth.uid == uid || isSuperadmin());
+      allow read: if request.auth != null && (request.auth.uid == uid || isPrivileged());
       allow create: if request.auth != null && (
         request.auth.uid == uid
           && request.resource.data.email == request.auth.token.email
-          && request.resource.data.role == 'superadmin'
-        || isSuperadmin()
+          && (request.resource.data.role == 'superadmin' || request.resource.data.role == 'founder')
+        || isPrivileged()
       );
-      allow update: if isSuperadmin();
+      allow update: if isPrivileged();
       allow delete: if false;
     }
 
     match /settings/{doc} {
-      allow read, write: if doc == "growth" ? isSuperadmin() : isStaff();
+      allow read, write: if doc == "growth" ? isPrivileged() : isStaff();
+    }
+
+    match /financeExpenses/{id} {
+      allow read, write: if isFounder();
+    }
+
+    match /financeLoans/{id} {
+      allow read, write: if isFounder();
+    }
+
+    match /financeOrders/{id} {
+      allow read, write: if isFounder();
+    }
+
+    match /financeAttachments/{id} {
+      allow read, write: if isFounder();
     }
 
     match /leads/{id} {

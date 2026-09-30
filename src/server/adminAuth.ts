@@ -1,6 +1,7 @@
 import type { DocumentData } from "firebase-admin/firestore";
 import { COLLECTIONS } from "@/commerce/paths";
 import {
+  canAssignRole,
   isStaffRole,
   roleHasPermission,
   type StaffPermission,
@@ -62,7 +63,7 @@ export async function requireStaff(request: Request): Promise<StaffProfile> {
       if (email && email === bootstrapAdminEmail()) {
         return staffFromToken(decoded.uid, email);
       }
-      throw Object.assign(new Error("No tienes acceso al atelier."), { status: 403 });
+      throw Object.assign(new Error("No tienes acceso."), { status: 403 });
     }
     const staff = asStaff(decoded.uid, snap.data());
     if (!staff.active) {
@@ -94,7 +95,7 @@ export async function requireStaff(request: Request): Promise<StaffProfile> {
     if (email && email === bootstrapAdminEmail()) {
       return staffFromToken(user.localId, email);
     }
-    throw Object.assign(new Error("No tienes acceso al atelier."), { status: 403 });
+    throw Object.assign(new Error("No tienes acceso."), { status: 403 });
   }
 }
 
@@ -121,14 +122,26 @@ export async function listStaff(): Promise<StaffRecord[]> {
     .sort((a, b) => a.createdAt - b.createdAt);
 }
 
-async function superadminCount(exceptUid?: string) {
-  const team = await listStaff();
+function activeOf(team: StaffRecord[], role: StaffRole, exceptUid?: string) {
   return team.filter(
-    (member) =>
-      member.role === "superadmin" &&
-      member.active &&
-      member.uid !== exceptUid,
+    (member) => member.role === role && member.active && member.uid !== exceptUid,
   ).length;
+}
+
+export async function assertCanAssignRole(actor: StaffRecord, role: StaffRole) {
+  const team = await listStaff();
+  const hasFounder = activeOf(team, "founder") > 0;
+  if (!canAssignRole(actor.role, role, hasFounder)) {
+    throw Object.assign(new Error("Este rol no puede asignar esa cuenta."), { status: 403 });
+  }
+}
+
+export async function assertCanMutateMember(actor: StaffRecord, current: StaffRecord) {
+  if (current.role === "founder" && actor.role !== "founder") {
+    throw Object.assign(new Error("Solo un founder puede cambiar a otro founder."), {
+      status: 403,
+    });
+  }
 }
 
 async function writeStaffAuth(input: {
@@ -158,7 +171,7 @@ export async function bootstrapStaff(input: {
     const count = await staffCount();
     if (count > 0) {
       throw Object.assign(
-        new Error("El atelier ya tiene un acceso. Entra y crea al resto del equipo."),
+        new Error("Ya hay un acceso. Entra y crea al resto del equipo."),
         { status: 409 },
       );
     }
@@ -171,13 +184,13 @@ export async function bootstrapStaff(input: {
   const user = await signUpAuthUser({
     email,
     password: input.password,
-    displayName: input.name?.trim() || "Atelier",
+    displayName: input.name?.trim() || "Mora",
   });
   const now = Date.now();
   const record: StaffRecord = {
     uid: user.uid,
     email,
-    name: input.name?.trim() || "Atelier",
+    name: input.name?.trim() || "Mora",
     role: "superadmin",
     active: true,
     createdAt: now,
@@ -279,9 +292,17 @@ export async function updateStaffMember(input: {
   const nextRole = input.role ?? current.role;
   const nextActive = input.active ?? current.active;
 
+  const team = await listStaff();
+  if (current.role === "founder" && (nextRole !== "founder" || nextActive === false)) {
+    if (activeOf(team, "founder", input.uid) < 1) {
+      throw Object.assign(new Error("Debe quedar al menos un founder activo."), {
+        status: 400,
+      });
+    }
+  }
   if (current.role === "superadmin" && (nextRole !== "superadmin" || nextActive === false)) {
-    const remaining = await superadminCount(input.uid);
-    if (remaining < 1) {
+    const founders = activeOf(team, "founder");
+    if (founders < 1 && activeOf(team, "superadmin", input.uid) < 1) {
       throw Object.assign(new Error("Debe quedar al menos un super admin activo."), {
         status: 400,
       });

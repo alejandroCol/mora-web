@@ -221,7 +221,7 @@ export function ManualSaleForm({
             checked={pickup}
             onChange={(event) => setPickup(event.target.checked)}
           />
-          Entrega en el atelier / sin envío
+          Recoger / sin envío
         </label>
 
         {!pickup ? (

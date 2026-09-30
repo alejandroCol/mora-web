@@ -1,6 +1,9 @@
 import { isStaffRole, type StaffRole } from "@/commerce/roles";
 import {
+  assertCanAssignRole,
+  assertCanMutateMember,
   jsonError,
+  listStaff,
   requirePermission,
   updateStaffMember,
 } from "@/server/adminAuth";
@@ -20,6 +23,9 @@ export async function PATCH(request: Request, ctx: Ctx) {
     if (body.role !== undefined && !isStaffRole(body.role)) {
       return Response.json({ ok: false, error: "Rol inválido." }, { status: 400 });
     }
+    const current = (await listStaff()).find((member) => member.uid === uid);
+    if (current) await assertCanMutateMember(actor, current);
+    if (body.role !== undefined) await assertCanAssignRole(actor, body.role);
     const member = await updateStaffMember({
       uid,
       actorUid: actor.uid,

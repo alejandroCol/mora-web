@@ -41,7 +41,7 @@ export function StatsView() {
   return (
     <div>
       <p className="text-[11px] uppercase tracking-[0.16em] text-white/35">Estadísticas</p>
-      <h1 className="mt-2 font-display text-4xl tracking-[-0.05em]">El atelier, en números.</h1>
+      <h1 className="mt-2 font-display text-4xl tracking-[-0.05em]">En números.</h1>
       <p className="mt-2 text-sm text-white/45">Últimos {stats.days} días, separado por medio de pago.</p>
 
       <div className="mt-10 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

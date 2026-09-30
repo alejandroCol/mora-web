@@ -9,6 +9,10 @@ export const COLLECTIONS = {
   gallery: "gallery",
   leads: "leads",
   whatsappConversations: "whatsappConversations",
+  financeExpenses: "financeExpenses",
+  financeLoans: "financeLoans",
+  financeOrders: "financeOrders",
+  financeAttachments: "financeAttachments",
 } as const;
 
 export const DOCS = {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  canAssignRole,
   ROLE_BLURB,
   ROLE_LABEL,
   STAFF_ROLES,
@@ -20,6 +21,10 @@ export function EquipoView() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<StaffRole>("vendedor");
+  const hasFounder = team.some((member) => member.role === "founder" && member.active);
+  const assignable = STAFF_ROLES.filter((item) =>
+    me ? canAssignRole(me.role, item, hasFounder) : false,
+  );
 
   const load = useCallback(async () => {
     const res = await authorizedFetch("/api/admin/team");
@@ -79,8 +84,8 @@ export function EquipoView() {
           <p className="text-[11px] uppercase tracking-[0.16em] text-white/35">Equipo</p>
           <h1 className="mt-2 font-display text-4xl tracking-[-0.05em]">Quién entra.</h1>
           <p className="mt-2 max-w-lg text-sm leading-6 text-white/45">
-            Tú registras al resto. Un vendedor ve ventas, registra cobros a mano y despacha.
-            El super admin ve todo.
+            Tú registras al resto. Un vendedor ve ventas y despacha. El super admin ve
+            operación. El founder ve eso y el presupuesto de la casa.
           </p>
         </div>
         <button
@@ -115,17 +120,23 @@ export function EquipoView() {
             <div className="mt-4 flex flex-wrap items-center gap-2 sm:mt-0">
               <select
                 value={member.role}
-                disabled={busy}
+                disabled={
+                  busy ||
+                  (member.role === "founder" && me?.role !== "founder") ||
+                  (assignable.length === 0 && member.role !== me?.role)
+                }
                 onChange={(event) =>
                   void patch(member.uid, { role: event.target.value as StaffRole })
                 }
                 className="h-10 rounded-full bg-white/8 px-3 text-[13px]"
               >
-                {STAFF_ROLES.map((item) => (
-                  <option key={item} value={item}>
-                    {ROLE_LABEL[item]}
-                  </option>
-                ))}
+                {(assignable.includes(member.role) ? assignable : [member.role, ...assignable]).map(
+                  (item) => (
+                    <option key={item} value={item}>
+                      {ROLE_LABEL[item]}
+                    </option>
+                  ),
+                )}
               </select>
               <button
                 type="button"
@@ -204,7 +215,7 @@ export function EquipoView() {
             </label>
 
             <div className="mt-5 flex flex-wrap gap-2">
-              {STAFF_ROLES.map((item) => (
+              {assignable.map((item) => (
                 <button
                   key={item}
                   type="button"

@@ -50,12 +50,10 @@ export function AccesoForm() {
     <div className="grid min-h-dvh place-items-center bg-[#0e0d14] px-6 text-[#f4f1ea]">
       <form onSubmit={onSubmit} className="w-full max-w-sm">
         <BrandLogo variant="wordmark" className="h-8 w-auto object-contain" />
-        <p className="mt-8 text-[11px] uppercase tracking-[0.18em] text-white/35">Acceso</p>
-        <h1 className="mt-3 font-display text-4xl tracking-[-0.05em]">Atelier.</h1>
-        <p className="mt-3 text-sm text-white/45">
+        <p className="mt-10 text-sm text-white/45">
           {needsSetup
-            ? "Primera vez: regístrate como super admin con el secreto de instalación. Después podrás crear vendedores desde Equipo."
-            : "El super admin crea al resto del equipo. Entra con tu correo."}
+            ? "Primera vez: regístrate con el secreto de instalación. Después, desde Equipo, puedes nombrarte founder y crear al resto."
+            : "Entra con el correo que te registraron. El founder ve el presupuesto."}
         </p>
         {needsSetup ? (
           <label className="mt-8 block text-[11px] uppercase tracking-[0.12em] text-white/40">
@@ -107,7 +105,7 @@ export function AccesoForm() {
           disabled={busy}
           className="mt-8 h-12 w-full rounded-full bg-white text-[14px] text-[#0e0d14] disabled:opacity-50"
         >
-          {busy ? "Entrando…" : needsSetup ? "Activar atelier" : "Entrar"}
+          {busy ? "Entrando…" : needsSetup ? "Crear acceso" : "Entrar"}
         </button>
       </form>
     </div>

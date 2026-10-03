@@ -66,10 +66,27 @@ export function Encuesta() {
     setPicks([...picks, id]);
   }
 
+  function submitBlocker(): string | null {
+    if (!gender) return "Te falta seleccionar el género.";
+    const missing = 3 - picks.length;
+    if (missing === 3) return "Te faltan los tres colores del podio.";
+    if (missing === 2) return "Te faltan dos colores más en el podio.";
+    if (missing === 1) return "Te falta un color más en el podio.";
+    return null;
+  }
+
   async function submit() {
-    if (!gender || picks.length !== 3 || pending) return;
+    if (pending) return;
+    const blocker = submitBlocker();
+    if (blocker) {
+      setError(null);
+      setNotice(blocker);
+      return;
+    }
+    if (!gender || picks.length !== 3) return;
     setPending(true);
     setError(null);
+    setNotice(null);
     const id = voterId || crypto.randomUUID();
     try {
       const res = await fetch("/api/encuesta", {
@@ -116,7 +133,6 @@ export function Encuesta() {
     );
   }
 
-  const ready = Boolean(gender) && picks.length === 3;
   const hint = !gender
     ? "Marca si eres hombre o mujer."
     : picks.length === 0
@@ -147,13 +163,19 @@ export function Encuesta() {
       >
         <GenderButton
           selected={gender === "mujer"}
-          onClick={() => setGender("mujer")}
+          onClick={() => {
+            setNotice(null);
+            setGender("mujer");
+          }}
         >
           Soy mujer
         </GenderButton>
         <GenderButton
           selected={gender === "hombre"}
-          onClick={() => setGender("hombre")}
+          onClick={() => {
+            setNotice(null);
+            setGender("hombre");
+          }}
         >
           Soy hombre
         </GenderButton>
@@ -203,7 +225,7 @@ export function Encuesta() {
           ) : null}
           <button
             type="button"
-            disabled={!ready || pending}
+            disabled={pending}
             onClick={() => void submit()}
             className="mt-2 h-12 w-full cursor-pointer rounded-full bg-ink text-[15px] font-medium text-white disabled:cursor-default disabled:opacity-35"
           >

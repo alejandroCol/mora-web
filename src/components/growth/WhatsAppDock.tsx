@@ -24,7 +24,8 @@ export function WhatsAppDock() {
   if (
     pathname.startsWith("/superadmin") ||
     pathname.startsWith("/acceso") ||
-    pathname.startsWith("/circulo")
+    pathname.startsWith("/circulo") ||
+    pathname.startsWith("/encuesta")
   )
     return null;
   if (!config?.whatsappDisplayNumber) return null;

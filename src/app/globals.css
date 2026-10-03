@@ -56,6 +56,21 @@ html {
   }
 }
 
+.podium-pop {
+  animation: podium-pop 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes podium-pop {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 body {
   background: var(--paper);
   color: var(--ink);

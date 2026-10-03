@@ -47,3 +47,6 @@ next-env.d.ts
 
 # local brand tooling
 .tools-pillow
+
+# votos de /encuesta
+/data/encuesta.json

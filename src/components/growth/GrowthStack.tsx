@@ -54,20 +54,26 @@ export function GrowthStack() {
   const lastPath = useRef("");
 
   useEffect(() => {
+    if (pathname.startsWith("/encuesta")) return;
     void fetch("/api/growth/config")
       .then((res) => res.json())
       .then((data: { config?: PublicGrowthConfig }) => {
         if (data.config) setConfig(data.config);
       })
       .catch(() => undefined);
-  }, []);
+  }, [pathname]);
 
   useEffect(() => {
     captureAttribution();
   }, [pathname]);
 
   useEffect(() => {
-    if (pathname.startsWith("/circulo") || pathname.startsWith("/superadmin")) return;
+    if (
+      pathname.startsWith("/circulo") ||
+      pathname.startsWith("/superadmin") ||
+      pathname.startsWith("/encuesta")
+    )
+      return;
     if (!config?.pixelId) return;
     installPixel(config.pixelId);
     if (lastPath.current === pathname) return;

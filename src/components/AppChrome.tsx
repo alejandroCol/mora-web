@@ -11,7 +11,8 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const isAdmin =
     pathname.startsWith("/superadmin") ||
     pathname.startsWith("/acceso") ||
-    pathname.startsWith("/circulo");
+    pathname.startsWith("/circulo") ||
+    pathname.startsWith("/encuesta");
   const isGallery = pathname.startsWith("/galeria");
 
   if (isAdmin) {

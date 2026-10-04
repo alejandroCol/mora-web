@@ -89,6 +89,10 @@ service cloud.firestore {
       allow read, write: if isStaff();
     }
 
+    match /encuestaVotes/{id} {
+      allow read, write: if false;
+    }
+
     // Plano producto (Círculo). Staff NO lee salud.
     function signedIn() {
       return request.auth != null;

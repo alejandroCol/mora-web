@@ -13,6 +13,7 @@ export const COLLECTIONS = {
   financeLoans: "financeLoans",
   financeOrders: "financeOrders",
   financeAttachments: "financeAttachments",
+  encuestaVotes: "encuestaVotes",
 } as const;
 
 export const DOCS = {

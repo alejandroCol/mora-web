@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { DocumentData } from "firebase-admin/firestore";
+import { COLLECTIONS } from "@/commerce/paths";
 import {
   RINGS,
   isGender,
@@ -8,6 +10,7 @@ import {
   type Gender,
   type RingId,
 } from "@/lib/encuesta";
+import { adminDb } from "@/lib/firebaseAdmin";
 
 export type Vote = {
   id: string;
@@ -47,6 +50,10 @@ function locked<T>(task: () => Promise<T>): Promise<T> {
   return run;
 }
 
+function votesCol() {
+  return adminDb().collection(COLLECTIONS.encuestaVotes);
+}
+
 function isVote(value: unknown): value is Vote {
   if (!value || typeof value !== "object") return false;
   const vote = value as Vote;
@@ -60,7 +67,14 @@ function isVote(value: unknown): value is Vote {
   );
 }
 
-async function readVotes(): Promise<Vote[]> {
+function voteFromDoc(id: string, data: DocumentData | undefined): Vote | null {
+  if (!data) return null;
+  return isVote({ id, gender: data.gender, picks: data.picks, at: data.at })
+    ? { id, gender: data.gender, picks: data.picks, at: data.at }
+    : null;
+}
+
+async function readVotesFile(): Promise<Vote[]> {
   try {
     const raw = await readFile(FILE, "utf8");
     const parsed = JSON.parse(raw) as { votes?: unknown[] };
@@ -71,11 +85,48 @@ async function readVotes(): Promise<Vote[]> {
   }
 }
 
-async function writeVotes(votes: Vote[]) {
+async function writeVotesFile(votes: Vote[]) {
   await mkdir(path.dirname(FILE), { recursive: true });
   const tmp = `${FILE}.${process.pid}.tmp`;
   await writeFile(tmp, JSON.stringify({ votes }, null, 2));
   await rename(tmp, FILE);
+}
+
+async function readVotesFirestore(): Promise<Vote[] | null> {
+  try {
+    const snap = await votesCol().get();
+    return snap.docs
+      .map((doc) => voteFromDoc(doc.id, doc.data()))
+      .filter((vote): vote is Vote => vote !== null);
+  } catch (error) {
+    console.error("[encuesta] no se pudo leer Firestore:", error);
+    return null;
+  }
+}
+
+async function readVotes(): Promise<Vote[]> {
+  const fromDb = await readVotesFirestore();
+  if (fromDb !== null) return fromDb;
+  return readVotesFile();
+}
+
+async function persistVote(vote: Vote) {
+  try {
+    await votesCol().doc(vote.id).set({
+      gender: vote.gender,
+      picks: vote.picks,
+      at: vote.at,
+    });
+    return;
+  } catch (error) {
+    console.error("[encuesta] no se pudo guardar en Firestore:", error);
+  }
+
+  const votes = await readVotesFile();
+  const index = votes.findIndex((row) => row.id === vote.id);
+  if (index >= 0) votes[index] = vote;
+  else votes.push(vote);
+  await writeVotesFile(votes);
 }
 
 export function parseVoteBody(body: unknown): {
@@ -106,17 +157,13 @@ export function saveVote(input: {
   picks: [RingId, RingId, RingId];
 }) {
   return locked(async () => {
-    const votes = await readVotes();
     const next: Vote = {
       id: input.voterId,
       gender: input.gender,
       picks: input.picks,
       at: new Date().toISOString(),
     };
-    const index = votes.findIndex((vote) => vote.id === input.voterId);
-    if (index >= 0) votes[index] = next;
-    else votes.push(next);
-    await writeVotes(votes);
+    await persistVote(next);
     return next;
   });
 }

@@ -25,6 +25,12 @@ export function SiteFooter() {
           <Link href="/pedido" className="hover:text-ink">
             Mi pedido
           </Link>
+          <Link href="/privacidad" className="hover:text-ink">
+            Privacidad
+          </Link>
+          <Link href="/app/eliminar-cuenta" className="hover:text-ink">
+            Borrar cuenta
+          </Link>
         </div>
       </div>
     </footer>

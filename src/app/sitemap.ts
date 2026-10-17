@@ -23,6 +23,18 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "monthly",
       priority: 0.4,
     },
+    {
+      url: siteUrl("/privacidad"),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: siteUrl("/app/eliminar-cuenta"),
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.4,
+    },
     ...catalog.map((item) => ({
       url: siteUrl(`/galeria/${item.id}`),
       lastModified: now,

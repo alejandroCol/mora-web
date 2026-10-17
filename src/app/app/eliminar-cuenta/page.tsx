@@ -4,26 +4,26 @@ import { BRAND } from "@/brand";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { siteUrl } from "@/lib/site";
 
-const CONTACT = "hola@mora.ring";
-const UPDATED = "17 de octubre de 2026";
+const CONTACT = "comunicaciones@moraring.com";
+const UPDATED = "October 17, 2026";
 
 export const metadata: Metadata = {
-  title: "Borrar tu cuenta Mora Ring",
+  title: "Delete your Mora Ring account",
   description:
-    "Cómo pedir que borremos tu cuenta de Mora Ring y los datos del Círculo. Qué se elimina, qué se queda en el teléfono y cuánto tarda.",
+    "How to request deletion of your Mora Ring account and Círculo cloud data. What we remove, what stays on your phone, and how long it takes.",
   alternates: { canonical: "/app/eliminar-cuenta" },
   openGraph: {
-    title: `Borrar tu cuenta — ${BRAND.name}`,
-    description: "Pasos para borrar tu cuenta de Mora Ring y los datos asociados en la nube.",
+    title: `Delete your account — ${BRAND.name}`,
+    description: "Steps to delete your Mora Ring account and associated cloud data.",
     url: siteUrl("/app/eliminar-cuenta"),
-    locale: "es_CO",
+    locale: "en_US",
   },
   robots: { index: true, follow: true },
 };
 
 export default function EliminarCuentaAppPage() {
   return (
-    <div className="relative overflow-hidden" lang="es">
+    <div className="relative overflow-hidden" lang="en">
       <div className="hero-wash border-b border-line">
         <div className="mx-auto flex max-w-3xl flex-col items-center px-6 pb-24 pt-16 text-center sm:pt-20">
           <BrandLogo variant="mark" className="h-14 w-14 object-contain drop-shadow-sm" priority />
@@ -32,95 +32,91 @@ export default function EliminarCuentaAppPage() {
             className="mt-5 h-7 w-auto max-w-[min(100%,220px)] object-contain opacity-90"
             alt=""
           />
-          <p className="kicker mt-8">Mora Ring · Cuenta</p>
+          <p className="kicker mt-8">Mora Ring · Account</p>
           <h1 className="display mt-3 text-[clamp(2.1rem,6vw,3.25rem)] leading-[1.06] text-ink">
-            Borrar tu cuenta de Mora Ring
+            Delete your Mora Ring account
           </h1>
           <p className="title-whisper mt-4 max-w-lg text-[clamp(1.05rem,2.8vw,1.25rem)] text-soft">
-            Delete your Mora Ring account and associated Círculo data.
+            Request removal of your account and associated Círculo data stored in the cloud.
           </p>
-          <p className="mt-6 text-[13px] text-soft">Actualizado · {UPDATED}</p>
+          <p className="mt-6 text-[13px] text-soft">Last updated · {UPDATED}</p>
         </div>
       </div>
 
       <article className="mx-auto max-w-2xl space-y-5 px-6 pb-28 pt-10 sm:space-y-6">
         <section className="reserve-sheet border border-line-strong/40 p-6 sm:p-8">
           <p className="text-[15px] leading-7 text-soft">
-            Esta página es para la app <strong className="font-medium text-ink">Mora Ring</strong>{" "}
-            (Android e iOS), publicada por <strong className="font-medium text-ink">Mora</strong>.
-            Sirve para pedir que borremos tu <strong className="font-medium text-ink">cuenta</strong>{" "}
-            y los datos que guardamos en la nube del Círculo.
+            This page is for the <strong className="font-medium text-ink">Mora Ring</strong> app
+            (Android and iOS), published by <strong className="font-medium text-ink">Mora</strong>.
+            Use it to request deletion of your <strong className="font-medium text-ink">account</strong>{" "}
+            and Círculo data we store in the cloud.
           </p>
         </section>
 
         <section className="reserve-sheet border border-line-strong/30 p-6 sm:p-8">
           <p className="kicker">01</p>
           <h2 className="mt-2 font-display text-[1.45rem] tracking-[-0.03em] text-ink sm:text-[1.65rem]">
-            Cómo pedir el borrado
+            How to request deletion
           </h2>
-          <p className="mt-2 text-[13px] text-soft">How to request account deletion</p>
           <ol className="mt-5 list-decimal space-y-3 pl-5 text-[15px] leading-7 text-soft">
             <li>
-              Escribe a{" "}
+              Email{" "}
               <a
-                href={`mailto:${CONTACT}?subject=${encodeURIComponent("Borrar cuenta Mora Ring")}`}
+                href={`mailto:${CONTACT}?subject=${encodeURIComponent("Delete Mora Ring account")}`}
                 className="font-medium text-ink underline decoration-bloom underline-offset-2"
               >
                 {CONTACT}
               </a>{" "}
-              con el asunto <strong className="font-medium text-ink">Borrar cuenta Mora Ring</strong>.
+              with the subject line{" "}
+              <strong className="font-medium text-ink">Delete Mora Ring account</strong>.
             </li>
-            <li>Usa el mismo correo con el que entras al Círculo.</li>
+            <li>Use the same email address you use to sign in to Círculo.</li>
             <li>
-              Confirmamos la petición y borramos la cuenta. Lo hacemos en cuanto podemos, como
-              máximo en <strong className="font-medium text-ink">30 días</strong>.
+              We confirm your request and delete the account. We process requests as soon as we can,
+              within <strong className="font-medium text-ink">30 days</strong> at most.
             </li>
           </ol>
           <p className="mt-5 text-[15px] leading-7 text-soft">
-            En iPhone, dentro de Mora Ring:{" "}
-            <strong className="font-medium text-ink">Yo → Cuenta Mora → Cerrar y borrar mi nube</strong>.
-            En Android, por ahora usa el correo de arriba.
+            On iPhone, in Mora Ring:{" "}
+            <strong className="font-medium text-ink">Me → Mora account → Close and delete my cloud</strong>.
+            On Android, use the email steps above for now.
           </p>
         </section>
 
         <section className="reserve-sheet border border-line-strong/30 p-6 sm:p-8">
           <p className="kicker">02</p>
           <h2 className="mt-2 font-display text-[1.45rem] tracking-[-0.03em] text-ink sm:text-[1.65rem]">
-            Qué borramos
+            Data we delete
           </h2>
-          <p className="mt-2 text-[13px] text-soft">Data we delete</p>
           <ul className="mt-5 list-disc space-y-2 pl-5 text-[15px] leading-7 text-soft">
-            <li>La cuenta (correo y acceso a Firebase Authentication).</li>
-            <li>Tu sitio en el Círculo e invitaciones que hayas creado.</li>
-            <li>Resúmenes del día que hayas subido (pasos, noche, marea).</li>
-            <li>Registros del anillo guardados en la nube y ligados a esa cuenta.</li>
+            <li>Your account (email and Firebase Authentication access).</li>
+            <li>Your place in Círculo and invitations you created.</li>
+            <li>Daily summaries you uploaded (steps, sleep, cycle tide summaries).</li>
+            <li>Ring records stored in the cloud and linked to that account.</li>
           </ul>
         </section>
 
         <section className="reserve-sheet border border-line-strong/30 p-6 sm:p-8">
           <p className="kicker">03</p>
           <h2 className="mt-2 font-display text-[1.45rem] tracking-[-0.03em] text-ink sm:text-[1.65rem]">
-            Qué se queda
+            Data we keep
           </h2>
-          <p className="mt-2 text-[13px] text-soft">Data we keep</p>
           <ul className="mt-5 list-disc space-y-2 pl-5 text-[15px] leading-7 text-soft">
             <li>
-              Lo que solo vive en el teléfono (ciclo, intimidad, historial completo del anillo). Eso
-              no está en nuestra nube. Para quitarlo: borra los datos de la app o desinstálala.
+              Data that lives only on your phone (cycle journal, intimacy notes, full on-device ring
+              history). That is not in our cloud. To remove it, clear app data or uninstall the app.
             </li>
+            <li>Store orders at mora.ring, if any, for as long as tax law requires.</li>
             <li>
-              Pedidos de la tienda mora.ring, si los hay, el tiempo que pida la ley fiscal.
-            </li>
-            <li>
-              Copias de seguridad técnicas, hasta <strong className="font-medium text-ink">180 días</strong>{" "}
-              después de borrar la cuenta en vivo.
+              Technical backups for up to <strong className="font-medium text-ink">180 days</strong>{" "}
+              after the live account is deleted.
             </li>
           </ul>
         </section>
 
         <footer className="reserve-sheet border border-line-strong/30 p-6 text-center sm:p-8">
           <p className="text-[14px] leading-7 text-soft">
-            ¿Dudas?{" "}
+            Questions?{" "}
             <a
               href={`mailto:${CONTACT}`}
               className="font-medium text-ink underline decoration-bloom underline-offset-2"
@@ -130,10 +126,10 @@ export default function EliminarCuentaAppPage() {
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-4 text-[13px] font-medium text-ink/70">
             <Link href="/privacidad" className="underline-offset-2 hover:text-ink hover:underline">
-              Privacidad
+              Privacy
             </Link>
             <Link href="/" className="underline-offset-2 hover:text-ink hover:underline">
-              mora.ring
+              moraring.com
             </Link>
           </div>
         </footer>

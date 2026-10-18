@@ -18,6 +18,7 @@ function fallbackLooks(modelId: ModelId): LookImage[] {
     ];
   }
   return [
+    { id: "ultra-gold-life", src: "/lifestyle/ultra-gold.jpg", alt: `${name} Oro` },
     { id: "ultra-life", src: "/lifestyle/ultra.jpg", alt: name },
     { id: "ultra-ring", src: "/gallery/rings.png", alt: name },
     { id: "ultra-silver", src: "/encuesta/plata.jpg", alt: `${name} Plata` },
@@ -37,6 +38,12 @@ function mergeLooks(modelId: ModelId, remote: GalleryImage[]): LookImage[] {
     if (seen.has(item.src)) continue;
     seen.add(item.src);
     next.push(item);
+  }
+  if (modelId === "titan") {
+    const gold = next.find((item) => item.src === "/lifestyle/ultra-gold.jpg");
+    if (gold) {
+      return [gold, ...next.filter((item) => item.src !== gold.src)];
+    }
   }
   return next;
 }
@@ -130,22 +137,20 @@ export function LookStage({
         }}
       >
         {leaving ? (
-          <figure
+          <LookSlide
             key={`leave-${leaving.id}`}
-            className={`look-slide look-leave-${dir > 0 ? "next" : "prev"}`}
-            aria-hidden
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={leaving.src} alt="" />
-          </figure>
+            src={leaving.src}
+            alt=""
+            className={`look-leave-${dir > 0 ? "next" : "prev"}`}
+            hidden
+          />
         ) : null}
-        <figure
+        <LookSlide
           key={current.id}
-          className={`look-slide look-enter-${dir > 0 ? "next" : "prev"}`}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={current.src} alt={current.alt} />
-        </figure>
+          src={current.src}
+          alt={current.alt}
+          className={`look-enter-${dir > 0 ? "next" : "prev"}`}
+        />
       </div>
 
       {images.length > 1 ? (
@@ -181,6 +186,32 @@ export function LookStage({
         </div>
       ) : null}
     </div>
+  );
+}
+
+function LookSlide({
+  src,
+  alt,
+  className,
+  hidden,
+}: {
+  src: string;
+  alt: string;
+  className: string;
+  hidden?: boolean;
+}) {
+  return (
+    <figure
+      className={`look-slide ${className}`}
+      aria-hidden={hidden || undefined}
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img className="look-bloom" src={src} alt="" />
+      <div className="look-card">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="look-photo" src={src} alt={alt} />
+      </div>
+    </figure>
   );
 }
 

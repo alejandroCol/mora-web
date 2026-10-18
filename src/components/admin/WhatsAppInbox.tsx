@@ -12,6 +12,7 @@ import { ManualSaleForm } from "./ManualSaleForm";
 const STATUS_LABEL: Record<WhatsAppConversationStatus, string> = {
   new: "Nuevo",
   interested: "Interesado",
+  quoted: "Cotizado",
   sold: "Vendido",
   closed: "Cerrado",
 };

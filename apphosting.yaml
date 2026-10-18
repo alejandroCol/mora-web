@@ -70,3 +70,25 @@ env:
     secret: BOLD_TEST_SECRET_KEY
     availability:
       - RUNTIME
+  # MATIAS (factura electrónica). Email/password/resolución van como secrets
+  # cuando lleguen las credenciales. Sin ellos la venta se cobra y no se factura.
+  - variable: MATIAS_API_BASE_URL
+    value: https://api-v2.matias-api.com/api/ubl2.1
+    availability:
+      - RUNTIME
+  - variable: MATIAS_DEFAULT_CITY_ID
+    value: "149"
+    availability:
+      - RUNTIME
+  - variable: MATIAS_DEFAULT_POSTAL_CODE
+    value: "110111"
+    availability:
+      - RUNTIME
+  - variable: MATIAS_MEANS_PAYMENT_ELECTRONIC
+    value: "49"
+    availability:
+      - RUNTIME
+  - variable: MATIAS_INVOICE_WITH_VAT
+    value: "1"
+    availability:
+      - RUNTIME

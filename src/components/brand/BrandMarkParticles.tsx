@@ -114,6 +114,7 @@ type BrandMarkParticlesProps = {
   loop?: boolean;
   className?: string;
   density?: number;
+  onSettled?: () => void;
   "aria-label"?: string;
 };
 
@@ -122,10 +123,13 @@ export function BrandMarkParticles({
   loop = false,
   className = "",
   density = 900,
+  onSettled,
   "aria-label": ariaLabel,
 }: BrandMarkParticlesProps) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const settledRef = useRef(onSettled);
+  settledRef.current = onSettled;
   const [staticLogo, setStaticLogo] = useState(false);
 
   useEffect(() => {
@@ -201,6 +205,7 @@ export function BrandMarkParticles({
 
       if (!loop && !finished && elapsed >= 1.55) {
         finished = true;
+        settledRef.current?.();
         setStaticLogo(true);
         window.cancelAnimationFrame(frame);
         return;

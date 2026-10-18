@@ -27,7 +27,9 @@ export function WhatsAppDock() {
     pathname.startsWith("/circulo") ||
     pathname.startsWith("/encuesta") ||
     pathname.startsWith("/anillo") ||
-    pathname.startsWith("/galeria")
+    pathname.startsWith("/galeria") ||
+    pathname.startsWith("/checkout") ||
+    pathname.startsWith("/pago")
   )
     return null;
   if (!config?.whatsappDisplayNumber) return null;

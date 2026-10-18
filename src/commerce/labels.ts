@@ -1,4 +1,10 @@
-import type { OrderStatus, PaymentMethod, PaymentStatus } from "./types";
+import type { OrderChannel, OrderStatus, PaymentMethod, PaymentStatus } from "./types";
+
+export const ORDER_CHANNEL_LABEL: Record<OrderChannel, string> = {
+  online: "Web",
+  manual: "Manual",
+  whatsapp: "WhatsApp",
+};
 
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   awaiting_payment: "Esperando pago",

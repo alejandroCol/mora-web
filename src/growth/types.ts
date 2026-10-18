@@ -34,6 +34,17 @@ export type GrowthEventPayload = {
 
 export type LeadSource = "whatsapp" | "checkout" | "site" | "ad";
 export type LeadStatus = "new" | "interested" | "sold" | "closed";
+export type CrmDesk = "sales" | "support";
+export type ProductInterest = "pro" | "ultra" | "both" | "unknown";
+export type SupportTopic =
+  | "size"
+  | "shipping"
+  | "warranty"
+  | "app"
+  | "ring"
+  | "payment"
+  | "other";
+export type SupportStatus = "open" | "waiting" | "resolved";
 
 export type MoraLead = {
   id: string;
@@ -47,6 +58,8 @@ export type MoraLead = {
   conversationId?: string;
   orderId?: string;
   orderNumber?: string;
+  assignedTo?: string;
+  assignedName?: string;
   createdAt: number;
   updatedAt: number;
 };
@@ -54,6 +67,7 @@ export type MoraLead = {
 export type WhatsAppConversationStatus =
   | "new"
   | "interested"
+  | "quoted"
   | "sold"
   | "closed";
 
@@ -70,6 +84,7 @@ export type WhatsAppConversation = {
   id: string;
   phone: string;
   name: string;
+  email?: string;
   lastMessage: string;
   lastDirection: "in" | "out";
   lastAt: number;
@@ -81,6 +96,17 @@ export type WhatsAppConversation = {
   leadId?: string;
   orderId?: string;
   orderNumber?: string;
+  assignedTo?: string;
+  assignedName?: string;
+  assignedAt?: number;
+  desk?: CrmDesk;
+  interest?: ProductInterest;
+  city?: string;
+  nextFollowUpAt?: number;
+  lastInboundAt?: number;
+  lastOutboundAt?: number;
+  supportStatus?: SupportStatus;
+  supportTopic?: SupportTopic;
 };
 
 export type WhatsAppMessage = {
@@ -91,6 +117,54 @@ export type WhatsAppMessage = {
   text: string;
   at: number;
   status?: string;
+  mediaId?: string;
+  mimeType?: string;
+};
+
+export type CrmNote = {
+  id: string;
+  phone: string;
+  text: string;
+  by: string;
+  byName: string;
+  at: number;
+  kind: "note" | "system";
+};
+
+export type CrmQuickReply = {
+  id: string;
+  title: string;
+  body: string;
+  desk: CrmDesk | "both";
+};
+
+export type CrmTemplate = {
+  id: string;
+  name: string;
+  language: string;
+  label: string;
+  desk: CrmDesk | "both";
+};
+
+export type CrmSettings = {
+  replies: CrmQuickReply[];
+  templates: CrmTemplate[];
+  autoClaimOnReply: boolean;
+  updatedAt: number;
+};
+
+export type CrmSeller = {
+  uid: string;
+  name: string;
+  role: string;
+};
+
+export type CrmCounts = {
+  unread: number;
+  unassigned: number;
+  followUpDue: number;
+  supportOpen: number;
+  mine: number;
 };
 
 export type GrowthSettings = {

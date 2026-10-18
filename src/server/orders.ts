@@ -32,6 +32,7 @@ import {
 } from "./email";
 import { bumpDailyStats } from "./stats";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
+import { tryEmitPaidOrderInvoice } from "@/invoices";
 import { markCartRecovered } from "./abandonedCarts";
 import { markLeadSold } from "./leads";
 import { sendMetaEvent } from "./metaCapi";
@@ -221,6 +222,14 @@ export async function createManualOrder(input: {
       orderId: order.id,
       orderNumber: order.orderNumber,
     }).catch(() => undefined);
+    const { addCrmNote } = await import("./crm");
+    await addCrmNote({
+      phone: input.conversationId,
+      text: `Venta ${order.orderNumber}`,
+      by: input.createdBy,
+      byName: "Ventas",
+      kind: "system",
+    }).catch(() => undefined);
   }
   await ref.set(
     { emails: { paidSentAt: Date.now() }, updatedAt: Date.now() },
@@ -261,6 +270,17 @@ export async function listOrders(limit = 80) {
     .limit(limit)
     .get();
   return snap.docs.map((doc) => serializeOrder(doc.id, doc.data()));
+}
+
+export async function listOrdersByPhone(phone: string, limit = 200) {
+  const digits = phone.replace(/\D/g, "");
+  if (!digits) return [];
+  const orders = await listOrders(limit);
+  return orders.filter((order) => {
+    const other = (order.customer.phone ?? "").replace(/\D/g, "");
+    if (!other) return false;
+    return other === digits || other.endsWith(digits.slice(-10)) || digits.endsWith(other.slice(-10));
+  });
 }
 
 export async function fulfillBoldPayment(input: {
@@ -398,20 +418,30 @@ async function fulfillOrderDoc(
     return { kind: "applied" as const, order: paid };
   });
 
-  if (outcome.kind !== "applied") return outcome.order;
+  if (outcome.kind !== "applied" && outcome.kind !== "duplicate") {
+    return outcome.order;
+  }
 
   const paid = outcome.order;
-  await consumeReservation(db, demandFromItems(paid.items));
-  await bumpDailyStats(paid);
-  await sendPaidCustomerEmail(paid).catch((error) =>
-    console.error("[email paid customer]", error),
-  );
-  await sendPaidStaffEmail(paid).catch(() => undefined);
-  await recordPurchase(paid);
-  await ref.set(
-    { emails: { ...(paid.emails ?? {}), paidSentAt: Date.now() } },
-    { merge: true },
-  );
+  if (outcome.kind === "applied") {
+    await consumeReservation(db, demandFromItems(paid.items));
+    await bumpDailyStats(paid);
+    await sendPaidCustomerEmail(paid).catch((error) =>
+      console.error("[email paid customer]", error),
+    );
+    await sendPaidStaffEmail(paid).catch(() => undefined);
+    await recordPurchase(paid);
+    await ref.set(
+      { emails: { ...(paid.emails ?? {}), paidSentAt: Date.now() } },
+      { merge: true },
+    );
+  }
+
+  if (paid.status === "paid" && paid.payment.status === "approved") {
+    await tryEmitPaidOrderInvoice(db, paid).catch((error) =>
+      console.error("[matias]", error),
+    );
+  }
   return paid;
 }
 

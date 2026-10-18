@@ -1,5 +1,5 @@
-import { WhatsAppInbox } from "@/components/admin/WhatsAppInbox";
+import { redirect } from "next/navigation";
 
 export default function WhatsAppPage() {
-  return <WhatsAppInbox />;
+  redirect("/superadmin/crm");
 }

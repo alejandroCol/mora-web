@@ -15,8 +15,9 @@ type NavItem = { href: string; label: string; permission: StaffPermission; icon:
 
 const NAV: NavItem[] = [
   { href: "/superadmin/ventas", label: "Ventas", permission: "sales", icon: <BagIcon /> },
+  { href: "/superadmin/carritos", label: "Carritos", permission: "sales", icon: <CartIcon /> },
   { href: "/superadmin/presupuesto", label: "Presupuesto", permission: "budget", icon: <BookIcon /> },
-  { href: "/superadmin/whatsapp", label: "WhatsApp", permission: "whatsapp", icon: <ChatIcon /> },
+  { href: "/superadmin/crm", label: "CRM", permission: "whatsapp", icon: <ChatIcon /> },
   { href: "/superadmin/campanas", label: "Campañas", permission: "growth", icon: <MegaphoneIcon /> },
   { href: "/superadmin/estadisticas", label: "Estadísticas", permission: "stats", icon: <ChartIcon /> },
   { href: "/superadmin/inventario", label: "Inventario", permission: "inventory", icon: <BoxIcon /> },
@@ -26,8 +27,8 @@ const NAV: NavItem[] = [
 ];
 
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
-  { label: "Casa", hrefs: ["/superadmin/ventas", "/superadmin/presupuesto"] },
-  { label: "Alcance", hrefs: ["/superadmin/whatsapp", "/superadmin/campanas", "/superadmin/estadisticas"] },
+  { label: "Casa", hrefs: ["/superadmin/ventas", "/superadmin/carritos", "/superadmin/presupuesto"] },
+  { label: "Alcance", hrefs: ["/superadmin/crm", "/superadmin/campanas", "/superadmin/estadisticas"] },
   { label: "Operación", hrefs: ["/superadmin/inventario", "/superadmin/galeria", "/superadmin/envios", "/superadmin/equipo"] },
 ];
 
@@ -240,6 +241,16 @@ function BagIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
       <path d="M6 7h12l-1 13H7L6 7Z" strokeLinejoin="round" />
       <path d="M9 7V5a3 3 0 0 1 6 0v2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function CartIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+      <path d="M4 7h16l-1.2 9H5.2L4 7Z" strokeLinejoin="round" />
+      <path d="M9 20.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM17 20.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
+      <path d="M8 7V5.5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2V7" strokeLinecap="round" />
     </svg>
   );
 }

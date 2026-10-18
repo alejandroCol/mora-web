@@ -1,14 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import {
+  type FormEvent,
+  type InputHTMLAttributes,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { cartCount, discountOf, subtotalOf } from "@/commerce/cartMath";
-import type { ShippingQuoteOption } from "@/commerce/types";
-import { commerceLineLabel } from "@/commerce/sizing";
-import { finishLabel, finishes, formatMoney, products } from "@/lib/catalog";
+import type { CartLine, ShippingQuoteOption } from "@/commerce/types";
+import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
+import { formatMoney, products } from "@/lib/catalog";
 import { PRESALE } from "@/lib/presale";
 import { useMoraStore } from "@/lib/store";
 import type { BoldCheckoutSession } from "@/payments/types";
+import { CartLineVisual } from "@/components/cart/CartLineVisual";
 import { ColombiaFields, useDebounced } from "./ColombiaFields";
 import { currentAttribution, track } from "@/growth/track";
 import { loadBoldScript, useBoldCheckout } from "@/components/payments/useBoldCheckout";
@@ -17,13 +24,19 @@ const STEPS = [
   {
     label: "Tú",
     title: "Tus datos",
-    whisper: "Nombre, correo y a dónde llega. El envío se cotiza al instante.",
-    action: "Continuar al pago",
+    whisper: "Para el pedido y avisarte cuando salga.",
+    action: "Continuar",
+  },
+  {
+    label: "Envío",
+    title: "A dónde llega",
+    whisper: "Cotizamos el envío al instante en Colombia.",
+    action: "Continuar",
   },
   {
     label: "Pagar",
     title: "Revisa y paga",
-    whisper: `${PRESALE.promise} Tarjeta, Nequi, PSE o Bancolombia.`,
+    whisper: "Un último vistazo antes de pagar.",
     action: "Pagar",
   },
 ] as const;
@@ -61,6 +74,7 @@ export function CheckoutFlow() {
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [carrier, setCarrier] = useState<string>("");
   const [appliedOffer, setAppliedOffer] = useState<AppliedOffer | null>(null);
+  const [bagOpen, setBagOpen] = useState(false);
   const bold = useBoldCheckout();
   const checkoutTracked = useRef(false);
   const pendingPay = useRef<{ orderNumber: string; session: BoldCheckoutSession } | null>(
@@ -226,7 +240,11 @@ export function CheckoutFlow() {
   }, [cartKey, destKey, carrier]);
 
   useEffect(() => {
-    if (step === 1) void loadBoldScript().catch(() => undefined);
+    if (step === 2) void loadBoldScript().catch(() => undefined);
+  }, [step]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
   const envioCop =
@@ -234,6 +252,14 @@ export function CheckoutFlow() {
     quote?.envioCop ??
     null;
   const total = subtotal + (envioCop ?? 0) - discount;
+  const shownTotal = envioCop == null ? Math.max(0, subtotal - discount) : total;
+
+  function goTo(index: number) {
+    if (index < step) {
+      setError("");
+      setStep(index);
+    }
+  }
 
   function validateStep() {
     if (cart.length === 0) return "Añade un anillo antes de pagar.";
@@ -241,6 +267,11 @@ export function CheckoutFlow() {
       if (!draft.firstName.trim() || !draft.email.trim() || !draft.phone.trim()) {
         return "Nombre, correo y teléfono.";
       }
+      if (!draft.documentNumber?.replace(/\D/g, "")) {
+        return "Cédula o NIT para la factura.";
+      }
+    }
+    if (step === 1) {
       if (!draft.departamento || !draft.ciudad || draft.address.trim().length < 8) {
         return "Departamento, ciudad y una dirección completa.";
       }
@@ -313,7 +344,7 @@ export function CheckoutFlow() {
       return;
     }
     setError("");
-    if (step < 1) {
+    if (step === 0) {
       track(
         "Lead",
         { content_name: "Checkout", content_category: "checkout" },
@@ -323,18 +354,23 @@ export function CheckoutFlow() {
           firstName: draft.firstName,
         },
       );
+      setStep(1);
+      return;
+    }
+    if (step === 1) {
       track("AddPaymentInfo", {
         value: total,
         currency: "COP",
         num_items: piezas,
       });
-      setStep(1);
+      setStep(2);
       return;
     }
     void pay();
   }
 
   const current = STEPS[step];
+  const fullName = [draft.firstName, draft.lastName].filter(Boolean).join(" ");
 
   if (cart.length === 0) {
     return (
@@ -354,20 +390,66 @@ export function CheckoutFlow() {
   }
 
   return (
-    <form onSubmit={onContinue} className="w-full">
-      <ol className="check-steps check-steps-2">
+    <form onSubmit={onContinue} className="check-flow">
+      <div className="flex items-center justify-between gap-4 px-1 pt-3 sm:pt-6">
+        <Link
+          href="/#coleccion"
+          className="text-[13px] tracking-[-0.01em] text-[#6e6e73] hover:text-[#1d1d1f]"
+        >
+          ← Seguir eligiendo
+        </Link>
+        <button
+          type="button"
+          className="check-bag-toggle lg:hidden"
+          onClick={() => setBagOpen((open) => !open)}
+          aria-expanded={bagOpen}
+        >
+          <span>
+            {piezas} {piezas === 1 ? "anillo" : "anillos"}
+          </span>
+          <span className="check-bag-toggle-sum">
+            {formatMoney(shownTotal)}
+            <span aria-hidden className="check-bag-caret">
+              {bagOpen ? "⌃" : "⌄"}
+            </span>
+          </span>
+        </button>
+      </div>
+
+      {bagOpen ? (
+        <div className="check-card mt-3 px-5 py-4 lg:hidden">
+          <OrderLines cart={cart} />
+          <Totals
+            subtotal={subtotal}
+            envioCop={envioCop}
+            quoteError={quote?.error}
+            discount={discount}
+            offerCode={appliedOffer?.code}
+            total={shownTotal}
+          />
+        </div>
+      ) : null}
+
+      <ol className="check-steps mt-4">
         {STEPS.map((item, index) => {
           const state = index === step ? "on" : index < step ? "done" : "wait";
           return (
-            <li key={item.label}>
+            <li key={item.label} className="check-step-item">
+              {index > 0 ? (
+                <span
+                  className={`check-step-rail ${index <= step ? "check-step-rail-on" : ""}`}
+                  aria-hidden
+                />
+              ) : null}
               <button
                 type="button"
-                onClick={() => {
-                  if (index < step) setStep(index);
-                }}
+                onClick={() => goTo(index)}
                 className="check-step w-full"
+                aria-current={state === "on" ? "step" : undefined}
               >
-                <span className={`check-step-n check-step-n-${state}`}>{index + 1}</span>
+                <span className={`check-step-n check-step-n-${state}`}>
+                  {state === "done" ? "✓" : index + 1}
+                </span>
                 <span className={`check-step-l ${state === "on" ? "check-step-l-on" : ""}`}>
                   {item.label}
                 </span>
@@ -377,157 +459,217 @@ export function CheckoutFlow() {
         })}
       </ol>
 
-      <div className="mt-5 grid items-stretch gap-5 lg:grid-cols-2">
-      <section className="check-card flex flex-col">
-        <header className="border-b border-[rgba(22,20,31,0.06)] px-6 py-5">
-          <h1 className="title-name text-[1.65rem] tracking-[-0.04em] text-[#1d1d1f]">
-            {current.title}
-          </h1>
-          <p className="mt-1 text-[14px] leading-5 text-[#6e6e73]">{current.whisper}</p>
-        </header>
-        {step === 0 ? (
-          <>
-            <Field
-              label="Nombre"
-              autoComplete="given-name"
-              value={draft.firstName}
-              onChange={(value) => setDraft({ firstName: value })}
-            />
-            <Field
-              label="Apellido"
-              autoComplete="family-name"
-              value={draft.lastName}
-              onChange={(value) => setDraft({ lastName: value })}
-            />
-            <Field
-              label="Correo"
-              type="email"
-              autoComplete="email"
-              value={draft.email}
-              onChange={(value) => setDraft({ email: value })}
-            />
-            <Field
-              label="Teléfono"
-              type="tel"
-              autoComplete="tel"
-              value={draft.phone}
-              onChange={(value) => setDraft({ phone: value })}
-            />
-            <ColombiaFields
-              departamento={draft.departamento}
-              ciudad={draft.ciudad}
-              onDepartamento={(value) => setDraft({ departamento: value, ciudad: "" })}
-              onCiudad={(value) => setDraft({ ciudad: value })}
-            />
-            <Field
-              label="Dirección"
-              autoComplete="street-address"
-              value={draft.address}
-              onChange={(value) => setDraft({ address: value })}
-            />
-            <Field
-              label="Apto / referencia"
-              value={draft.referencia}
-              onChange={(value) => setDraft({ referencia: value })}
-              required={false}
-            />
-            <div className="check-field">
-              <span>Envío</span>
-              {quote?.ok && envioCop != null ? (
-                quote.gratis ? (
-                  <p className="text-[17px] tracking-[-0.022em] text-[#1d1d1f]">Gratis</p>
-                ) : quote.opciones && quote.opciones.length > 0 ? (
-                  <div className="mt-1 space-y-2">
-                    {quote.opciones.map((option) => {
-                      const active = option.carrier === carrier;
-                      return (
-                        <button
-                          key={`${option.carrier}-${option.service}`}
-                          type="button"
-                          onClick={() => setCarrier(option.carrier)}
-                          className={`check-ship ${active ? "check-ship-on" : ""}`}
-                        >
-                          <span>
-                            <span className="block text-[15px] tracking-[-0.016em] text-[#1d1d1f]">
-                              {option.carrierLabel}
-                            </span>
-                            {option.deliveryEstimate ? (
-                              <span className="mt-0.5 block text-[12px] text-[#6e6e73]">
-                                {option.deliveryEstimate}
-                              </span>
-                            ) : null}
-                          </span>
-                          <span className="text-[15px] tracking-[-0.016em] text-[#1d1d1f]">
-                            {formatMoney(option.totalPriceCop)}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-[17px] tracking-[-0.022em] text-[#1d1d1f]">
-                    {formatMoney(envioCop)}
-                  </p>
-                )
-              ) : (
-                <p className="text-[15px] leading-6 text-[#6e6e73]">
-                  {quote?.error ?? "Completa el destino para ver el envío."}
-                </p>
-              )}
-            </div>
-          </>
-        ) : null}
+      <div className="mt-4 grid items-start gap-5 lg:mt-6 lg:grid-cols-2">
+        <section className="check-card">
+          <header className="px-5 pb-1 pt-5 sm:px-6 sm:pt-6">
+            <h1 className="title-name text-[1.55rem] tracking-[-0.04em] text-[#1d1d1f] sm:text-[1.65rem]">
+              {current.title}
+            </h1>
+            <p className="mt-1 text-[13px] leading-5 text-[#6e6e73] sm:text-[14px]">
+              {current.whisper}
+            </p>
+          </header>
 
-        {step === 1 ? (
-          <div className="px-5 py-5">
-            <ul className="space-y-3">
-              {cart.map((line) => {
-                const model = products[line.modelId];
-                return (
-                  <li
-                    key={line.key}
-                    className="flex justify-between gap-4 text-[15px] tracking-[-0.016em] text-[#1d1d1f]"
-                  >
-                    <span>
-                      {commerceLineLabel({
-                        ...line,
-                        name: `Mora ${model.name}`,
-                        finishTitle: finishLabel(line.modelId, line.finishId),
-                      })}
-                    </span>
-                    <span className="shrink-0">
-                      {formatMoney(model.price * line.qty)}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-            <div className="mt-5 flex justify-between text-[15px] text-[#6e6e73]">
-              <span>Envío</span>
-              <span>{envioCop === 0 ? "Gratis" : formatMoney(envioCop ?? 0)}</span>
-            </div>
-            {discount > 0 ? (
-              <div className="mt-2 flex justify-between text-[15px] text-[#6e6e73]">
-                <span>Descuento{appliedOffer ? ` · ${appliedOffer.code}` : ""}</span>
-                <span>−{formatMoney(discount)}</span>
+          {step === 0 ? (
+            <>
+              <div className="check-pair">
+                <Field
+                  label="Nombre"
+                  autoComplete="given-name"
+                  value={draft.firstName}
+                  onChange={(value) => setDraft({ firstName: value })}
+                />
+                <Field
+                  label="Apellido"
+                  autoComplete="family-name"
+                  value={draft.lastName}
+                  onChange={(value) => setDraft({ lastName: value })}
+                />
               </div>
-            ) : null}
-            <div className="mt-2 flex justify-between text-[17px] tracking-[-0.022em] text-[#1d1d1f]">
-              <span>Total</span>
-              <span>{formatMoney(total)}</span>
+              <Field
+                label="Correo"
+                type="email"
+                autoComplete="email"
+                value={draft.email}
+                onChange={(value) => setDraft({ email: value })}
+              />
+              <Field
+                label="Teléfono"
+                type="tel"
+                autoComplete="tel"
+                inputMode="tel"
+                value={draft.phone}
+                onChange={(value) => setDraft({ phone: value })}
+              />
+              <div className="check-pair">
+                <label className="check-field">
+                  <span>Documento</span>
+                  <select
+                    required
+                    value={draft.documentType ?? "CC"}
+                    onChange={(event) => setDraft({ documentType: event.target.value })}
+                    className="appearance-none bg-transparent"
+                  >
+                    <option value="CC">Cédula</option>
+                    <option value="CE">Cédula extranjería</option>
+                    <option value="NIT">NIT</option>
+                    <option value="TI">Tarjeta de identidad</option>
+                    <option value="PA">Pasaporte</option>
+                  </select>
+                </label>
+                <Field
+                  label="Número"
+                  autoComplete="off"
+                  inputMode="numeric"
+                  value={draft.documentNumber ?? ""}
+                  onChange={(value) => setDraft({ documentNumber: value })}
+                />
+              </div>
+            </>
+          ) : null}
+
+          {step === 1 ? (
+            <>
+              <ColombiaFields
+                departamento={draft.departamento}
+                ciudad={draft.ciudad}
+                onDepartamento={(value) => setDraft({ departamento: value, ciudad: "" })}
+                onCiudad={(value) => setDraft({ ciudad: value })}
+              />
+              <Field
+                label="Dirección"
+                autoComplete="street-address"
+                value={draft.address}
+                onChange={(value) => setDraft({ address: value })}
+              />
+              <Field
+                label="Apto / referencia"
+                value={draft.referencia}
+                onChange={(value) => setDraft({ referencia: value })}
+                required={false}
+              />
+              <div className="check-field">
+                <span>Envío</span>
+                {quote?.ok && envioCop != null ? (
+                  quote.gratis ? (
+                    <p className="text-[17px] tracking-[-0.022em] text-[#1d1d1f]">Gratis</p>
+                  ) : quote.opciones && quote.opciones.length > 0 ? (
+                    <div className="mt-1 space-y-2">
+                      {quote.opciones.map((option) => {
+                        const active = option.carrier === carrier;
+                        return (
+                          <button
+                            key={`${option.carrier}-${option.service}`}
+                            type="button"
+                            onClick={() => setCarrier(option.carrier)}
+                            className={`check-ship ${active ? "check-ship-on" : ""}`}
+                          >
+                            <span>
+                              <span className="block text-[15px] tracking-[-0.016em] text-[#1d1d1f]">
+                                {option.carrierLabel}
+                              </span>
+                              {option.deliveryEstimate ? (
+                                <span className="mt-0.5 block text-[12px] text-[#6e6e73]">
+                                  {option.deliveryEstimate}
+                                </span>
+                              ) : null}
+                            </span>
+                            <span className="text-[15px] tracking-[-0.016em] text-[#1d1d1f]">
+                              {formatMoney(option.totalPriceCop)}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-[17px] tracking-[-0.022em] text-[#1d1d1f]">
+                      {formatMoney(envioCop)}
+                    </p>
+                  )
+                ) : (
+                  <p className="text-[15px] leading-6 text-[#6e6e73]">
+                    {quote?.error ?? "Completa el destino para ver el envío."}
+                  </p>
+                )}
+              </div>
+            </>
+          ) : null}
+
+          {step === 2 ? (
+            <div>
+              <button type="button" className="check-recap" onClick={() => goTo(0)}>
+                <span>
+                  <span className="check-recap-k">Tú</span>
+                  <span className="check-recap-v">{fullName || "Nombre"}</span>
+                  <span className="check-recap-s">
+                    {draft.email}
+                    {draft.documentNumber
+                      ? ` · ${draft.documentType ?? "CC"} ${draft.documentNumber}`
+                      : ""}
+                  </span>
+                </span>
+                <span className="check-recap-edit">Editar</span>
+              </button>
+              <button type="button" className="check-recap" onClick={() => goTo(1)}>
+                <span>
+                  <span className="check-recap-k">Envío</span>
+                  <span className="check-recap-v">
+                    {draft.ciudad
+                      ? draft.ciudad === draft.departamento
+                        ? formatoDepartamentoEtiqueta(draft.ciudad)
+                        : `${formatoDepartamentoEtiqueta(draft.ciudad)}, ${formatoDepartamentoEtiqueta(draft.departamento)}`
+                      : "Destino"}
+                  </span>
+                  <span className="check-recap-s">{draft.address}</span>
+                </span>
+                <span className="check-recap-edit">Editar</span>
+              </button>
+              <div className="px-5 py-4 sm:px-6">
+                <OrderLines cart={cart} />
+                <Totals
+                  subtotal={subtotal}
+                  envioCop={envioCop}
+                  quoteError={quote?.error}
+                  discount={discount}
+                  offerCode={appliedOffer?.code}
+                  total={shownTotal}
+                />
+                <p className="mt-4 text-[12px] leading-5 text-[#6e6e73]">
+                  Tarjeta, Nequi, PSE o Bancolombia. Entrega el {PRESALE.deliveryLabel}.
+                </p>
+              </div>
             </div>
+          ) : null}
+        </section>
+
+        <aside className="check-card hidden px-6 py-5 lg:flex lg:flex-col">
+          <h2 className="title-name text-[1.65rem] tracking-[-0.04em] text-[#1d1d1f]">
+            Tu pedido
+          </h2>
+          <div className="mt-5 flex-1">
+            <OrderLines cart={cart} />
           </div>
-        ) : null}
+          <Totals
+            subtotal={subtotal}
+            envioCop={envioCop}
+            quoteError={quote?.error}
+            discount={discount}
+            offerCode={appliedOffer?.code}
+            total={shownTotal}
+          />
+          <p className="mt-3 text-[12px] leading-5 text-[#6e6e73]">
+            Entrega el {PRESALE.deliveryLabel}
+          </p>
+        </aside>
+      </div>
 
-        {error ? (
-          <p className="px-6 pt-3 text-[13px] leading-5 text-[#6e6e73]">{error}</p>
-        ) : null}
-
-        <footer className="mt-auto flex items-center gap-4 border-t border-[rgba(22,20,31,0.06)] p-4">
+      <div className="check-dock">
+        {error ? <p className="check-dock-error">{error}</p> : null}
+        <div className="flex items-center gap-3">
           {step > 0 ? (
             <button
               type="button"
-              onClick={() => setStep(step - 1)}
+              onClick={() => goTo(step - 1)}
               className="shrink-0 px-2 text-[15px] tracking-[-0.016em] text-[#6e6e73] hover:text-[#1d1d1f]"
             >
               Atrás
@@ -535,77 +677,79 @@ export function CheckoutFlow() {
           ) : null}
           <button type="submit" disabled={busy} className="elegir-cta min-w-0 flex-1">
             {busy ? "Abriendo el pago…" : current.action}
+            {busy ? null : (
+              <span className="elegir-cta-note">{formatMoney(shownTotal)}</span>
+            )}
           </button>
-        </footer>
-      </section>
-
-      <aside className="check-card hidden flex-col px-6 py-5 lg:flex">
-        <h2 className="title-name text-[1.65rem] tracking-[-0.04em] text-[#1d1d1f]">
-          Tu pedido
-        </h2>
-        <ul className="mt-5 flex-1 space-y-4">
-          {cart.map((line) => {
-            const model = products[line.modelId];
-            const finish = finishes[line.finishId];
-            return (
-              <li key={line.key} className="flex items-start gap-3">
-                <span
-                  className="mt-0.5 h-8 w-8 shrink-0 rounded-full"
-                  style={{ background: finish.swatch }}
-                  aria-hidden
-                />
-                <span className="min-w-0 flex-1 text-[14px] leading-5 tracking-[-0.014em] text-[#1d1d1f]">
-                  {commerceLineLabel({
-                    ...line,
-                    name: `Mora ${model.name}`,
-                    finishTitle: finishLabel(line.modelId, line.finishId),
-                  })}
-                </span>
-                <span className="shrink-0 text-[14px] tracking-[-0.016em] text-[#1d1d1f]">
-                  {formatMoney(model.price * line.qty)}
-                </span>
-              </li>
-            );
-          })}
-        </ul>
-        <div className="mt-5 border-t border-[rgba(22,20,31,0.06)] pt-4">
-          <div className="flex justify-between text-[14px] text-[#6e6e73]">
-            <span>Subtotal</span>
-            <span className="text-[#1d1d1f]">{formatMoney(subtotal)}</span>
-          </div>
-          <div className="mt-2 flex justify-between text-[14px] text-[#6e6e73]">
-            <span>Envío</span>
-            <span className="text-[#1d1d1f]">
-              {quote?.error
-                ? quote.error
-                : envioCop === 0
-                  ? "Gratis"
-                  : envioCop == null
-                    ? "Al completar el destino"
-                    : formatMoney(envioCop)}
-            </span>
-          </div>
-          {discount > 0 ? (
-            <div className="mt-2 flex justify-between text-[14px] text-[#6e6e73]">
-              <span>Descuento{appliedOffer ? ` · ${appliedOffer.code}` : ""}</span>
-              <span className="text-[#1d1d1f]">−{formatMoney(discount)}</span>
-            </div>
-          ) : null}
-          <div className="mt-3 flex justify-between text-[17px] tracking-[-0.022em] text-[#1d1d1f]">
-            <span>Total</span>
-            <span>
-              {formatMoney(
-                envioCop == null ? Math.max(0, subtotal - discount) : total,
-              )}
-            </span>
-          </div>
-          <p className="mt-3 text-[12px] leading-5 text-[#6e6e73]">
-            Entrega el {PRESALE.deliveryLabel}
-          </p>
         </div>
-      </aside>
       </div>
     </form>
+  );
+}
+
+function OrderLines({ cart }: { cart: CartLine[] }) {
+  return (
+    <ul className="space-y-4">
+      {cart.map((line) => {
+        const model = products[line.modelId];
+        return (
+          <li key={line.key}>
+            <CartLineVisual
+              line={line}
+              price={formatMoney(model.price * line.qty)}
+              compact
+            />
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function Totals({
+  subtotal,
+  envioCop,
+  quoteError,
+  discount,
+  offerCode,
+  total,
+}: {
+  subtotal: number;
+  envioCop: number | null;
+  quoteError?: string;
+  discount: number;
+  offerCode?: string;
+  total: number;
+}) {
+  return (
+    <div className="mt-4 border-t border-[rgba(22,20,31,0.06)] pt-4">
+      <div className="flex justify-between text-[14px] text-[#6e6e73]">
+        <span>Subtotal</span>
+        <span className="text-[#1d1d1f]">{formatMoney(subtotal)}</span>
+      </div>
+      <div className="mt-2 flex justify-between text-[14px] text-[#6e6e73]">
+        <span>Envío</span>
+        <span className="text-[#1d1d1f]">
+          {quoteError
+            ? quoteError
+            : envioCop === 0
+              ? "Gratis"
+              : envioCop == null
+                ? "Al completar el destino"
+                : formatMoney(envioCop)}
+        </span>
+      </div>
+      {discount > 0 ? (
+        <div className="mt-2 flex justify-between text-[14px] text-[#6e6e73]">
+          <span>Descuento{offerCode ? ` · ${offerCode}` : ""}</span>
+          <span className="text-[#1d1d1f]">−{formatMoney(discount)}</span>
+        </div>
+      ) : null}
+      <div className="mt-3 flex justify-between text-[17px] tracking-[-0.022em] text-[#1d1d1f]">
+        <span>Total</span>
+        <span>{formatMoney(total)}</span>
+      </div>
+    </div>
   );
 }
 
@@ -616,6 +760,7 @@ function Field({
   type = "text",
   autoComplete,
   required = true,
+  inputMode,
 }: {
   label: string;
   value: string;
@@ -623,6 +768,7 @@ function Field({
   type?: string;
   autoComplete?: string;
   required?: boolean;
+  inputMode?: InputHTMLAttributes<HTMLInputElement>["inputMode"];
 }) {
   return (
     <label className="check-field">
@@ -630,6 +776,7 @@ function Field({
       <input
         required={required}
         type={type}
+        inputMode={inputMode}
         autoComplete={autoComplete}
         value={value}
         onChange={(event) => onChange(event.target.value)}

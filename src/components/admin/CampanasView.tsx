@@ -34,7 +34,7 @@ const STEPS = [
   "En Eventos del navegador y del servidor deben verse PageView, ViewContent, AddToCart, InitiateCheckout, Lead, Contact y Purchase.",
   "Crea la cuenta de WhatsApp Business y una app de Cloud API. Pega Phone number ID y el token.",
   "En la app, webhook = la URL de abajo. Verify token = el mismo de este panel. Suscribe messages.",
-  "En Anuncios, usa destino Click to WhatsApp. Esos chats llegan a Superadmin → WhatsApp con etiqueta Anuncio.",
+  "En Anuncios, usa destino Click to WhatsApp. Esos chats llegan a Superadmin → CRM con etiqueta Anuncio.",
   "Crea conversiones personalizadas: Lead (WhatsApp o checkout) y Purchase. Optimiza las campañas a esos eventos.",
   "Sube audiencias desde los leads (correo y teléfono). El Pixel ya recolecta visitantes para remarketing.",
 ];
@@ -194,7 +194,15 @@ export function CampanasView() {
               ) : (
                 leads.map((lead) => (
                   <tr key={lead.id} className="border-t border-white/6">
-                    <td className="px-4 py-3">{lead.name || "—"}</td>
+                    <td className="px-4 py-3">
+                      {lead.phone || lead.conversationId ? (
+                        <a href={`/superadmin/crm?c=${lead.conversationId || lead.phone}`}>
+                          {lead.name || "Abrir en CRM"}
+                        </a>
+                      ) : (
+                        lead.name || "—"
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-white/60">
                       {lead.phone || lead.email || "—"}
                     </td>

@@ -3,10 +3,10 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { IconCart } from "@/components/icons/NavIcons";
-import { sizeCopy } from "@/commerce/sizing";
-import { finishLabel, finishes, formatMoney, products } from "@/lib/catalog";
+import { formatMoney, products } from "@/lib/catalog";
 import { PRESALE } from "@/lib/presale";
 import { useCartCount, useCartSubtotal, useMoraStore } from "@/lib/store";
+import { CartLineVisual } from "./CartLineVisual";
 
 export function CartDrawer() {
   const { cart, cartOpen, closeCart, setQty, removeLine } = useMoraStore();
@@ -72,19 +72,10 @@ export function CartDrawer() {
             <ul className="divide-y divide-line">
               {cart.map((line) => {
                 const model = products[line.modelId];
-                const finish = finishes[line.finishId];
                 return (
-                  <li key={line.key} className="flex gap-4 py-4">
-                    <span
-                      className="jewel mt-1"
-                      style={{ background: finish.swatch }}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[15px] text-ink">
-                        Mora {model.name} · {finishLabel(line.modelId, line.finishId)}
-                      </p>
-                      <p className="mt-0.5 text-[13px] text-soft">{sizeCopy(line)}</p>
-                      <div className="mt-3 flex items-center gap-3">
+                  <li key={line.key} className="py-5">
+                    <CartLineVisual line={line} price={formatMoney(model.price * line.qty)}>
+                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
                         <div className="flex items-center rounded-full bg-white/80">
                           <button
                             type="button"
@@ -112,10 +103,7 @@ export function CartDrawer() {
                           Quitar
                         </button>
                       </div>
-                    </div>
-                    <p className="text-[13px] text-ink">
-                      {formatMoney(model.price * line.qty)}
-                    </p>
+                    </CartLineVisual>
                   </li>
                 );
               })}

@@ -21,7 +21,9 @@ export const COLLECTIONS = {
 export const DOCS = {
   commerce: `${COLLECTIONS.settings}/commerce`,
   growth: `${COLLECTIONS.settings}/growth`,
+  crm: `${COLLECTIONS.settings}/crm`,
   orderCounter: `${COLLECTIONS.counters}/orders`,
+  matiasInvoice: `${COLLECTIONS.counters}/matiasInvoice`,
 } as const;
 
 export const PENDING_TTL_MS = 45 * 60 * 1000;

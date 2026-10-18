@@ -23,6 +23,8 @@ export async function upsertLead(input: {
   orderId?: string;
   orderNumber?: string;
   status?: LeadStatus;
+  assignedTo?: string;
+  assignedName?: string;
 }): Promise<MoraLead | null> {
   const email = input.email?.trim().toLowerCase() ?? "";
   const phone = input.phone ? normalizePhone(input.phone) : "";
@@ -42,11 +44,13 @@ export async function upsertLead(input: {
     conversationId: input.conversationId ?? existing?.conversationId,
     orderId: input.orderId ?? existing?.orderId,
     orderNumber: input.orderNumber ?? existing?.orderNumber,
+    assignedTo: input.assignedTo ?? existing?.assignedTo,
+    assignedName: input.assignedName ?? existing?.assignedName,
     createdAt: existing?.createdAt ?? now,
     updatedAt: now,
   };
 
-  if (existing && existing.status === "sold" && next.status === "new") {
+  if (existing?.status === "sold") {
     next.status = "sold";
   }
   if (input.attribution?.utmSource === "facebook" || input.attribution?.fbclid) {
@@ -55,6 +59,12 @@ export async function upsertLead(input: {
 
   await leads().doc(next.id).set(next, { merge: true });
   return next;
+}
+
+export async function findLeadByPhone(phone: string) {
+  const normalized = normalizePhone(phone);
+  if (!normalized) return null;
+  return findLead({ email: "", phone: normalized });
 }
 
 async function findLead(input: { email: string; phone: string }) {

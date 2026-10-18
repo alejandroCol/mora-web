@@ -20,11 +20,50 @@ function messages(conversationId: string) {
   return conversations().doc(conversationId).collection("messages");
 }
 
-function conversationIdFromPhone(phone: string) {
+export function conversationIdFromPhone(phone: string) {
   return normalizePhone(phone) || phone.replace(/\D/g, "");
 }
 
-export async function listConversations(limit = 80): Promise<WhatsAppConversation[]> {
+function compact<T extends Record<string, unknown>>(value: T) {
+  return Object.fromEntries(
+    Object.entries(value).filter(([, entry]) => entry !== undefined),
+  ) as T;
+}
+
+function inboundText(raw: WebhookMessage) {
+  if (raw.text?.body) return raw.text.body;
+  if (raw.button?.text) return raw.button.text;
+  if (raw.interactive?.button_reply?.title) return raw.interactive.button_reply.title;
+  if (raw.interactive?.list_reply?.title) return raw.interactive.list_reply.title;
+  if (raw.image?.caption) return raw.image.caption;
+  if (raw.document?.filename) return raw.document.filename;
+  if (raw.type === "image") return "[foto]";
+  if (raw.type === "audio" || raw.type === "voice") return "[audio]";
+  if (raw.type === "video") return "[video]";
+  if (raw.type === "document") return "[archivo]";
+  if (raw.type === "sticker") return "[sticker]";
+  if (raw.type && raw.type !== "text") return `[${raw.type}]`;
+  return "";
+}
+
+function inboundMedia(raw: WebhookMessage) {
+  const id =
+    raw.image?.id ||
+    raw.audio?.id ||
+    raw.video?.id ||
+    raw.document?.id ||
+    raw.sticker?.id ||
+    raw.voice?.id;
+  const mime =
+    raw.image?.mime_type ||
+    raw.audio?.mime_type ||
+    raw.video?.mime_type ||
+    raw.document?.mime_type ||
+    raw.sticker?.mime_type;
+  return { mediaId: id, mimeType: mime };
+}
+
+export async function listConversations(limit = 200): Promise<WhatsAppConversation[]> {
   const snap = await conversations().orderBy("lastAt", "desc").limit(limit).get();
   return snap.docs.map((doc) => ({
     id: doc.id,
@@ -50,6 +89,8 @@ export async function sendWhatsAppText(input: {
   phone: string;
   text: string;
   by?: string;
+  byName?: string;
+  claim?: boolean;
 }) {
   const settings = await loadGrowthSettings();
   if (!settings.whatsappPhoneNumberId || !settings.whatsappAccessToken) {
@@ -95,27 +136,152 @@ export async function sendWhatsAppText(input: {
     status: "sent",
   };
   await messages(to).doc(message.id).set(message, { merge: true });
+  const existing = await getConversation(to);
+  const claim =
+    input.claim && input.by && input.by !== "auto" && !existing?.assignedTo
+      ? { assignedTo: input.by, assignedName: input.byName ?? "", assignedAt: at }
+      : {};
   await conversations().doc(to).set(
-    {
+    compact({
       id: to,
       phone: to,
       lastMessage: input.text,
       lastDirection: "out",
       lastAt: at,
+      lastOutboundAt: at,
       unread: 0,
-    },
+      ...claim,
+    }),
     { merge: true },
   );
   return message;
+}
+
+export async function sendWhatsAppTemplate(input: {
+  phone: string;
+  name: string;
+  language: string;
+  params?: string[];
+  by?: string;
+  byName?: string;
+  claim?: boolean;
+}) {
+  const settings = await loadGrowthSettings();
+  if (!settings.whatsappPhoneNumberId || !settings.whatsappAccessToken) {
+    throw Object.assign(new Error("WhatsApp Business aún no está conectado."), {
+      status: 503,
+    });
+  }
+
+  const to = conversationIdFromPhone(input.phone);
+  const template: Record<string, unknown> = {
+    name: input.name,
+    language: { code: input.language || "es" },
+  };
+  if (input.params?.length) {
+    template.components = [
+      {
+        type: "body",
+        parameters: input.params.map((text) => ({ type: "text", text })),
+      },
+    ];
+  }
+
+  const res = await fetch(`${GRAPH}/${settings.whatsappPhoneNumberId}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${settings.whatsappAccessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to,
+      type: "template",
+      template,
+    }),
+  });
+  const data = (await res.json()) as {
+    messages?: { id: string }[];
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    throw Object.assign(
+      new Error(data.error?.message ?? "WhatsApp no aceptó la plantilla."),
+      { status: 400 },
+    );
+  }
+
+  const waId = data.messages?.[0]?.id;
+  const at = Date.now();
+  const preview = `Plantilla ${input.name}`;
+  const message: WhatsAppMessage = {
+    id: waId ?? messages(to).doc().id,
+    waId,
+    direction: "out",
+    type: "template",
+    text: preview,
+    at,
+    status: "sent",
+  };
+  await messages(to).doc(message.id).set(message, { merge: true });
+  const existing = await getConversation(to);
+  const claim =
+    input.claim && input.by && !existing?.assignedTo
+      ? { assignedTo: input.by, assignedName: input.byName ?? "", assignedAt: at }
+      : {};
+  await conversations().doc(to).set(
+    compact({
+      id: to,
+      phone: to,
+      lastMessage: preview,
+      lastDirection: "out",
+      lastAt: at,
+      lastOutboundAt: at,
+      unread: 0,
+      ...claim,
+    }),
+    { merge: true },
+  );
+  return message;
+}
+
+export async function fetchWhatsAppMedia(mediaId: string) {
+  const settings = await loadGrowthSettings();
+  if (!settings.whatsappAccessToken) {
+    throw Object.assign(new Error("WhatsApp Business aún no está conectado."), {
+      status: 503,
+    });
+  }
+  const meta = await fetch(`${GRAPH}/${mediaId}`, {
+    headers: { Authorization: `Bearer ${settings.whatsappAccessToken}` },
+  });
+  const info = (await meta.json()) as { url?: string; mime_type?: string; error?: { message?: string } };
+  if (!meta.ok || !info.url) {
+    throw Object.assign(new Error(info.error?.message ?? "No se pudo abrir el archivo."), {
+      status: 400,
+    });
+  }
+  const file = await fetch(info.url, {
+    headers: { Authorization: `Bearer ${settings.whatsappAccessToken}` },
+  });
+  if (!file.ok) {
+    throw Object.assign(new Error("WhatsApp no entregó el archivo."), { status: 400 });
+  }
+  return {
+    contentType: info.mime_type || file.headers.get("content-type") || "application/octet-stream",
+    body: Buffer.from(await file.arrayBuffer()),
+  };
 }
 
 export async function updateConversation(
   id: string,
   patch: Partial<WhatsAppConversation>,
 ) {
-  await conversations().doc(id).set({ ...patch, id }, { merge: true });
+  await conversations().doc(id).set(compact({ ...patch, id }), { merge: true });
   return getConversation(id);
 }
+
+type MediaBlob = { id?: string; caption?: string; mime_type?: string; filename?: string };
 
 type WebhookMessage = {
   from?: string;
@@ -123,6 +289,17 @@ type WebhookMessage = {
   timestamp?: string;
   type?: string;
   text?: { body?: string };
+  button?: { text?: string };
+  interactive?: {
+    button_reply?: { title?: string };
+    list_reply?: { title?: string };
+  };
+  image?: MediaBlob;
+  audio?: MediaBlob;
+  video?: MediaBlob;
+  document?: MediaBlob;
+  sticker?: MediaBlob;
+  voice?: MediaBlob;
   referral?: {
     source_url?: string;
     source_id?: string;
@@ -138,6 +315,13 @@ type WebhookContact = {
   wa_id?: string;
 };
 
+type WebhookStatus = {
+  id?: string;
+  status?: string;
+  timestamp?: string;
+  recipient_id?: string;
+};
+
 export async function ingestWhatsAppWebhook(payload: unknown) {
   const root = payload as {
     entry?: {
@@ -145,6 +329,7 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
         value?: {
           contacts?: WebhookContact[];
           messages?: WebhookMessage[];
+          statuses?: WebhookStatus[];
         };
       }[];
     }[];
@@ -157,14 +342,21 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
     for (const change of entry.changes ?? []) {
       const value = change.value;
       const contacts = value?.contacts ?? [];
+      for (const status of value?.statuses ?? []) {
+        if (!status.id || !status.recipient_id) continue;
+        const phone = conversationIdFromPhone(status.recipient_id);
+        await messages(phone).doc(status.id).set(
+          compact({ status: status.status, waId: status.id }),
+          { merge: true },
+        );
+      }
       for (const raw of value?.messages ?? []) {
         if (!raw.from || !raw.id) continue;
         const phone = conversationIdFromPhone(raw.from);
         const contact = contacts.find((item) => item.wa_id === raw.from);
         const name = contact?.profile?.name ?? "";
-        const text =
-          raw.text?.body ??
-          (raw.type && raw.type !== "text" ? `[${raw.type}]` : "");
+        const text = inboundText(raw);
+        const media = inboundMedia(raw);
         const at = raw.timestamp ? Number(raw.timestamp) * 1000 : Date.now();
         const referral = raw.referral
           ? {
@@ -189,8 +381,10 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
           text,
           at,
           status: "received",
+          mediaId: media.mediaId,
+          mimeType: media.mimeType,
         };
-        await messages(phone).doc(raw.id).set(message, { merge: true });
+        await messages(phone).doc(raw.id).set(compact(message), { merge: true });
 
         const source = referral || prev?.source === "ad" ? "ad" : prev?.source ?? "organic";
         const attribution: AttributionSnapshot = {
@@ -202,20 +396,30 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
         };
 
         const unread = (prev?.unread ?? 0) + 1;
+        const desk = prev?.desk ?? "sales";
+        const sold = prev?.status === "sold";
+        const closed = prev?.status === "closed" && !sold;
+        const supportReopen =
+          desk === "support" && (prev?.supportStatus ?? "open") === "resolved"
+            ? { supportStatus: "open" as const }
+            : {};
         await conversations().doc(phone).set(
-          {
+          compact({
             id: phone,
             phone,
             name: name || prev?.name || phone,
             lastMessage: text,
             lastDirection: "in",
             lastAt: at,
+            lastInboundAt: at,
             unread,
-            status: prev?.status ?? "new",
+            status: closed ? "interested" : (prev?.status ?? "new"),
+            desk,
             source,
             referral: referral ?? prev?.referral,
             attribution,
-          },
+            ...supportReopen,
+          }),
           { merge: true },
         );
 

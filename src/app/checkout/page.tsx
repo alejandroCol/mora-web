@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CheckoutFlow } from "@/components/checkout/CheckoutFlow";
 import { useMoraStore } from "@/lib/store";
@@ -18,17 +17,9 @@ export default function CheckoutPage() {
   }, []);
 
   return (
-    <div className="min-h-dvh bg-[#f5f5f7] pt-[calc(4.25rem+env(safe-area-inset-top))]">
-      <div className="mx-auto max-w-[880px] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-8 sm:pb-20">
-        <Link
-          href="/#coleccion"
-          className="text-[13px] tracking-[-0.01em] text-[#6e6e73] hover:text-[#1d1d1f]"
-        >
-          ← Seguir eligiendo
-        </Link>
-        <div className="mt-6 sm:mt-8">
-          {ready ? <CheckoutFlow /> : <div className="min-h-[24rem]" aria-hidden />}
-        </div>
+    <div className="check-page min-h-dvh bg-[#f5f5f7] pt-[calc(3.5rem+env(safe-area-inset-top))] sm:pt-[calc(4.25rem+env(safe-area-inset-top))]">
+      <div className="mx-auto max-w-[880px] px-3 pb-0 sm:px-8 sm:pb-16">
+        {ready ? <CheckoutFlow /> : <div className="min-h-[24rem]" aria-hidden />}
       </div>
     </div>
   );

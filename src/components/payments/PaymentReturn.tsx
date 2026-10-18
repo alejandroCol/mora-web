@@ -1,9 +1,10 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
+import { PRESALE } from "@/lib/presale";
 import type { PaymentIntentStatus } from "@/payments/types";
+import { PurchaseSeal } from "./PurchaseSeal";
 
 type IntentView = {
   reference: string;
@@ -26,7 +27,7 @@ function destination(intent: IntentView) {
 function copyFor(status: PaymentIntentStatus | "waiting") {
   switch (status) {
     case "approved":
-      return { title: "Pago aprobado", detail: "Ya quedó. Te llevamos al pedido." };
+      return { title: "Ya es tuyo.", detail: PRESALE.promise };
     case "declined":
       return { title: "Pago rechazado", detail: "No se pudo cobrar. Puedes intentarlo otra vez." };
     case "voided":
@@ -44,16 +45,29 @@ function copyFor(status: PaymentIntentStatus | "waiting") {
 }
 
 function PaymentReturnInner() {
-  const router = useRouter();
   const params = useSearchParams();
+  const demo = params.get("demo") === "seal";
   const reference =
     params.get("bold-order-id") ?? params.get("ref") ?? params.get("orderId") ?? "";
-  const [status, setStatus] = useState<PaymentIntentStatus | "waiting">("waiting");
+  const [status, setStatus] = useState<PaymentIntentStatus | "waiting">(
+    demo ? "approved" : "waiting",
+  );
   const [error, setError] = useState("");
-  const [intent, setIntent] = useState<IntentView | null>(null);
+  const [intent, setIntent] = useState<IntentView | null>(
+    demo
+      ? {
+          reference: "demo",
+          status: "approved",
+          purpose: "order",
+          redirectPath: "/pedido",
+          metadata: { orderNumber: "MORA-000" },
+        }
+      : null,
+  );
   const synced = useRef(false);
 
   useEffect(() => {
+    if (demo) return;
     let cancelled = false;
     const started = Date.now();
 
@@ -86,11 +100,8 @@ function PaymentReturnInner() {
       if (data.ok && data.intent) {
         setIntent(data.intent);
         setStatus(data.intent.status);
-        if (data.intent.status === "approved") {
-          router.replace(destination(data.intent));
-          return true;
-        }
         if (
+          data.intent.status === "approved" ||
           data.intent.status === "declined" ||
           data.intent.status === "voided" ||
           data.intent.status === "error"
@@ -121,39 +132,44 @@ function PaymentReturnInner() {
     return () => {
       cancelled = true;
     };
-  }, [reference, router]);
+  }, [reference, demo]);
 
   const copy = copyFor(status);
-  const retryHref = intent ? destination(intent) : "/checkout";
+  const orderNumber = intent?.metadata.orderNumber;
+  const href = intent ? destination(intent) : "/pedido";
+  const failed =
+    status === "declined" || status === "voided" || status === "error" || Boolean(error);
 
-  return (
-    <div className="mx-auto max-w-lg text-center">
-      <p className="kicker">Pago</p>
-      <h1 className="mt-3 text-[2rem] font-medium tracking-[-0.04em] text-ink sm:text-[2.4rem]">
-        {copy.title}
-      </h1>
-      <p className="mt-2 text-[15px] leading-7 text-soft">{copy.detail}</p>
-      {error ? <p className="mt-6 text-[13px] text-ink/60">{error}</p> : null}
-      {status === "approved" || status === "pending" || status === "waiting" ? null : (
-        <Link
-          href={retryHref}
-          className="mt-8 inline-flex h-11 items-center rounded-full bg-ink px-8 text-[13px] text-white"
-        >
-          Volver al pedido
-        </Link>
-      )}
-    </div>
-  );
+  if (failed) {
+    return (
+      <PurchaseSeal
+        phase="fail"
+        title={error ? "No se pudo confirmar" : copy.title}
+        detail={error || copy.detail}
+        failHref={intent ? href : "/checkout"}
+      />
+    );
+  }
+
+  if (status === "approved") {
+    return (
+      <PurchaseSeal
+        phase="done"
+        title={copy.title}
+        detail={copy.detail}
+        href={href}
+        orderNumber={orderNumber}
+      />
+    );
+  }
+
+  return <PurchaseSeal phase="wait" title={copy.title} detail={copy.detail} />;
 }
 
 export function PaymentReturn() {
   return (
     <Suspense
-      fallback={
-        <div className="mx-auto max-w-lg text-center">
-          <p className="text-[15px] text-soft">Confirmando el pago…</p>
-        </div>
-      }
+      fallback={<PurchaseSeal phase="wait" title="Confirmando el pago" detail="Un momento." />}
     >
       <PaymentReturnInner />
     </Suspense>

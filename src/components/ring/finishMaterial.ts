@@ -12,7 +12,7 @@ export function applyRingFinish(material: MeshPhysicalMaterial, next: Finish) {
   material.metalness = next.metalness;
   material.roughness = next.roughness;
   material.clearcoat = next.clearcoat;
-  material.clearcoatRoughness = silver ? 0.8 : gold ? 0.42 : ceramic ? 0.35 : 0.9;
+  material.clearcoatRoughness = silver ? 0.8 : gold ? 0.1 : ceramic ? 0.35 : 0.9;
   material.envMapIntensity = next.envMapIntensity;
   material.emissive.set(next.emissive);
   material.emissiveIntensity = next.emissiveIntensity;

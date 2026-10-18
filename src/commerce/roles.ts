@@ -33,8 +33,8 @@ export const ROLE_LABEL: Record<StaffRole, string> = {
 
 export const ROLE_BLURB: Record<StaffRole, string> = {
   founder: "Operación completa más el presupuesto de la casa.",
-  superadmin: "Equipo, inventario, galería, envíos, campañas, WhatsApp y ventas.",
-  vendedor: "WhatsApp, ventas manuales y despacho de pedidos.",
+  superadmin: "Equipo, inventario, galería, envíos, campañas, CRM y ventas.",
+  vendedor: "CRM, ventas manuales y despacho de pedidos.",
 };
 
 const ROLE_PERMISSIONS: Record<StaffRole, StaffPermission[]> = {

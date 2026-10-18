@@ -78,15 +78,15 @@ export const finishes: Record<FinishId, Finish> = {
     id: "gold",
     title: "Oro",
     whisper: "Oro que no grita.",
-    // Amarillo de oro de joyería. Un champán claro, con el estudio encima, se ve blanco.
-    color: "#E6B12E",
+    // 18k espejo de la foto: el color es el F0 del metal; el brillo lo da la rugosidad baja.
+    color: "#C9A227",
     metalness: 1,
-    roughness: 0.24,
-    clearcoat: 0,
-    envMapIntensity: 1,
+    roughness: 0.08,
+    clearcoat: 0.22,
+    envMapIntensity: 1.4,
     emissive: "#000000",
     emissiveIntensity: 0,
-    swatch: "linear-gradient(145deg, #f6dc86 0%, #e0a82a 46%, #8d6412 100%)",
+    swatch: "linear-gradient(145deg, #fff3cd 0%, #e8c35a 40%, #c9a227 68%, #8a5a14 100%)",
   },
   silver: {
     id: "silver",
@@ -185,6 +185,21 @@ export function defaultGalleryImage(modelId: ModelId) {
 export function finishLabel(modelId: ModelId, finishId: FinishId) {
   if (finishId === "black") return modelId === "titan" ? "Negro mate" : "Negro";
   return finishes[finishId].title;
+}
+
+export function finishPhoto(finishId: FinishId) {
+  switch (finishId) {
+    case "lilac":
+      return "/encuesta/lila.jpg";
+    case "white":
+      return "/encuesta/blanco.jpg";
+    case "black":
+      return "/encuesta/mate.jpg";
+    case "gold":
+      return "/encuesta/oro.jpg";
+    case "silver":
+      return "/encuesta/plata.jpg";
+  }
 }
 
 export function formatMoney(value: number) {

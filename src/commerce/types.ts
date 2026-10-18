@@ -1,4 +1,5 @@
 import type { FinishId, ModelId } from "@/lib/catalog";
+import type { InvoiceSnapshot } from "@/invoices/types";
 
 export type SizingMethod = "kit" | "self";
 
@@ -147,6 +148,7 @@ export type MoraOrder = {
   notes?: string;
   timeline: OrderTimelineEvent[];
   emails?: { paidSentAt?: number; dispatchedSentAt?: number };
+  invoice?: InvoiceSnapshot;
   attribution?: AttributionSnapshot;
   meta?: {
     purchaseEventId?: string;

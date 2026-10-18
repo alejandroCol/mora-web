@@ -30,7 +30,7 @@ export function ColombiaFields({
   }, [cities, ciudad, onCiudad]);
 
   return (
-    <>
+    <div className="check-pair">
       <label className="check-field">
         <span>Departamento</span>
         <select
@@ -64,7 +64,7 @@ export function ColombiaFields({
           ))}
         </select>
       </label>
-    </>
+    </div>
   );
 }
 

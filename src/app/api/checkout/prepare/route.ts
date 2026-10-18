@@ -71,6 +71,12 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
+    if (!customer.documentNumber?.replace(/\D/g, "")) {
+      return Response.json(
+        { ok: false, error: "Cédula o NIT para la factura." },
+        { status: 400 },
+      );
+    }
     if (
       !shipping?.departamento?.trim() ||
       !shipping.ciudad?.trim() ||
@@ -126,8 +132,8 @@ export async function POST(request: Request) {
         lastName: customer.lastName?.trim() ?? "",
         email: customer.email.trim().toLowerCase(),
         phone: customer.phone.trim(),
-        documentType: customer.documentType,
-        documentNumber: customer.documentNumber,
+        documentType: customer.documentType?.trim() || "CC",
+        documentNumber: customer.documentNumber.replace(/\D/g, ""),
       },
       shipping: shippingSnap,
       notes: body.notes,

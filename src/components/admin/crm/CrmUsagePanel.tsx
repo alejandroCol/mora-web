@@ -1,10 +1,32 @@
 "use client";
 
 import type { WhatsAppUsageReport } from "@/growth/types";
+import { formatWhen } from "@/crm/labels";
 import { formatCop, formatUsd } from "@/crm/whatsappPricing";
 
-export function CrmUsagePanel({ usage }: { usage: WhatsAppUsageReport | null }) {
+type WebhookDebug = {
+  lastPostAt: number;
+  lastIngestAt: number;
+  lastMessageCount: number;
+  lastFrom: string;
+  lastError: string;
+};
+
+export function CrmUsagePanel({
+  usage,
+  webhookDebug,
+}: {
+  usage: WhatsAppUsageReport | null;
+  webhookDebug?: WebhookDebug | null;
+}) {
   if (!usage) return null;
+
+  const metaReach =
+    webhookDebug && webhookDebug.lastPostAt > 0
+      ? `Último POST de Meta: ${formatWhen(webhookDebug.lastPostAt)}${
+          webhookDebug.lastFrom ? ` · desde ${webhookDebug.lastFrom}` : ""
+        }${webhookDebug.lastError ? ` · error: ${webhookDebug.lastError}` : ""}`
+      : "Meta aún no ha llamado al webhook (solo pruebas manuales). Revisa WhatsApp → Configuration → Suscribir.";
 
   const { freeAllowance, totals, byCategory } = usage;
   const serviceCap = freeAllowance.servicePerMonth;
@@ -22,6 +44,7 @@ export function CrmUsagePanel({ usage }: { usage: WhatsAppUsageReport | null }) 
             <span className="crm-usage-cop">≈ {formatCop(totals.estimatedCop)}</span>
           </p>
           <p className="crm-usage-note">{usage.policyNote}</p>
+          {webhookDebug ? <p className="crm-usage-hint mt-2">{metaReach}</p> : null}
         </div>
         <a
           href={usage.docUrl}

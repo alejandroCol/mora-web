@@ -1,4 +1,5 @@
 import { loadGrowthSettings } from "@/server/growthSettings";
+import { recordWhatsAppWebhookPost } from "@/server/whatsappWebhookDebug";
 import { ingestWhatsAppWebhook } from "@/server/whatsapp";
 
 export async function GET(request: Request) {
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const payload = await request.json();
-  await ingestWhatsAppWebhook(payload).catch((error) => {
+  await recordWhatsAppWebhookPost(payload, () => ingestWhatsAppWebhook(payload)).catch((error) => {
     console.error("[whatsapp webhook]", error);
   });
   return Response.json({ ok: true });

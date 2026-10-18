@@ -33,6 +33,13 @@ type Connection = {
   displayNumber: string;
   webhook: string;
   welcome: boolean;
+  webhookDebug?: {
+    lastPostAt: number;
+    lastIngestAt: number;
+    lastMessageCount: number;
+    lastFrom: string;
+    lastError: string;
+  };
 };
 
 type Filter = "all" | "mine" | "unassigned" | "unread" | "today" | "waiting" | "resolved";
@@ -359,7 +366,9 @@ export function CrmWorkspace() {
         ) : null}
       </div>
 
-      {connection?.ready ? <CrmUsagePanel usage={usage} /> : null}
+      {connection?.ready ? (
+        <CrmUsagePanel usage={usage} webhookDebug={connection.webhookDebug} />
+      ) : null}
 
       {view === "board" ? (
         <CrmBoard desk={desk} conversations={filtered} onOpen={openChat} />

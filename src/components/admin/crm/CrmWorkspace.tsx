@@ -366,9 +366,7 @@ export function CrmWorkspace() {
         ) : null}
       </div>
 
-      {connection?.ready ? (
-        <CrmUsagePanel usage={usage} webhookDebug={connection.webhookDebug} />
-      ) : null}
+      {connection?.ready ? <CrmUsagePanel usage={usage} /> : null}
 
       {view === "board" ? (
         <CrmBoard desk={desk} conversations={filtered} onOpen={openChat} />

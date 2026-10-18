@@ -3,10 +3,12 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ORDER_STATUS_LABEL } from "@/commerce/labels";
+import type { CrmLostReason } from "@/growth/types";
 import { formatMoney } from "@/lib/catalog";
 import type { CrmSeller, ProductInterest, SupportTopic, WhatsAppConversation } from "@/growth/types";
 import {
   INTEREST_LABEL,
+  LOST_REASON_LABEL,
   SUPPORT_TOPIC_LABEL,
   followUpLabel,
   formatDay,
@@ -142,6 +144,26 @@ export function CrmContactPanel({
               ))}
             </select>
           </label>
+        ) : null}
+
+        {conversation.status === "closed" ? (
+          <div>
+            <p className="text-[11px] text-white/35">Por qué se fue</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {(Object.keys(LOST_REASON_LABEL) as CrmLostReason[]).map((reason) => (
+                <button
+                  key={reason}
+                  type="button"
+                  onClick={() => onPatch({ lostReason: reason })}
+                  className={`rounded-full px-2.5 py-1 text-[11px] ${
+                    conversation.lostReason === reason ? "bg-[#1d1d1f] text-white" : "bg-white/8 text-white/50"
+                  }`}
+                >
+                  {LOST_REASON_LABEL[reason]}
+                </button>
+              ))}
+            </div>
+          </div>
         ) : null}
 
         <div>

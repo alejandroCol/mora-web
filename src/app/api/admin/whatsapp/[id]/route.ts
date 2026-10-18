@@ -1,4 +1,3 @@
-import type { WhatsAppConversationStatus } from "@/growth/types";
 import { jsonError, requirePermission } from "@/server/adminAuth";
 import { loadCrmSettings, patchConversation } from "@/server/crm";
 import {
@@ -86,19 +85,7 @@ export async function PATCH(
   try {
     const staff = await requirePermission(request, "whatsapp");
     const { id } = await context.params;
-    const body = (await request.json()) as {
-      status?: WhatsAppConversationStatus;
-      unread?: number;
-      assignedTo?: string | null;
-      desk?: "sales" | "support";
-      interest?: "pro" | "ultra" | "both" | "unknown";
-      city?: string;
-      email?: string;
-      name?: string;
-      nextFollowUpAt?: number | null;
-      supportStatus?: "open" | "waiting" | "resolved";
-      supportTopic?: "size" | "shipping" | "warranty" | "app" | "ring" | "payment" | "other";
-    };
+    const body = (await request.json()) as Parameters<typeof patchConversation>[1];
     const conversation = await patchConversation(id, body, {
       uid: staff.uid,
       name: staff.name || staff.email,

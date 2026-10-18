@@ -1,5 +1,6 @@
 import type {
   CrmDesk,
+  CrmLostReason,
   ProductInterest,
   SupportStatus,
   SupportTopic,
@@ -31,6 +32,22 @@ export const SUPPORT_STATUS_LABEL: Record<SupportStatus, string> = {
   waiting: "Esperando",
   resolved: "Resuelto",
 };
+
+export const LOST_REASON_LABEL: Record<CrmLostReason, string> = {
+  price: "Precio",
+  size: "Talla",
+  later: "Después",
+  silent: "No contestó",
+  other: "Otro",
+};
+
+export function isSnoozed(until?: number, now = Date.now()) {
+  return (until ?? 0) > now;
+}
+
+export function needsReply(item: { lastDirection?: "in" | "out"; snoozedUntil?: number }) {
+  return item.lastDirection === "in" && !isSnoozed(item.snoozedUntil);
+}
 
 export const SUPPORT_TOPIC_LABEL: Record<SupportTopic, string> = {
   size: "Talla",

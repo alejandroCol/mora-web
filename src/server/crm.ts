@@ -4,6 +4,7 @@ import { emptyCrmSettings } from "@/crm/replies";
 import type {
   CrmCounts,
   CrmDesk,
+  CrmLostReason,
   CrmNote,
   CrmQuickReply,
   CrmSeller,
@@ -56,6 +57,9 @@ export function crmCounts(
         (item.desk ?? "sales") === "support" && (item.supportStatus ?? "open") !== "resolved",
     ).length,
     mine: uid ? conversations.filter((item) => item.assignedTo === uid).length : 0,
+    waitingOnUs: conversations.filter(
+      (item) => (item.desk ?? "sales") === "sales" && item.lastDirection === "in" && (item.snoozedUntil ?? 0) <= Date.now(),
+    ).length,
   };
 }
 
@@ -175,6 +179,9 @@ export type ConversationPatch = {
   nextFollowUpAt?: number | null;
   supportStatus?: SupportStatus;
   supportTopic?: SupportTopic;
+  pinned?: boolean;
+  snoozedUntil?: number | null;
+  lostReason?: CrmLostReason | "";
 };
 
 export async function patchConversation(
@@ -202,6 +209,15 @@ export async function patchConversation(
   if (typeof patch.name === "string" && patch.name.trim()) next.name = patch.name.trim();
   if (patch.supportStatus) next.supportStatus = patch.supportStatus;
   if (patch.supportTopic) next.supportTopic = patch.supportTopic;
+  if (typeof patch.pinned === "boolean") next.pinned = patch.pinned;
+  if (patch.lostReason === "") next.lostReason = undefined;
+  else if (patch.lostReason) next.lostReason = patch.lostReason;
+  if (patch.snoozedUntil === null) {
+    next.snoozedUntil = 0;
+  } else if (typeof patch.snoozedUntil === "number") {
+    next.snoozedUntil = patch.snoozedUntil;
+    next.nextFollowUpAt = patch.snoozedUntil;
+  }
 
   if (patch.nextFollowUpAt === null) {
     next.nextFollowUpAt = 0;

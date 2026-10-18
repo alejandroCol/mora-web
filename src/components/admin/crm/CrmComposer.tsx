@@ -3,6 +3,14 @@
 import { useMemo, useState } from "react";
 import type { CrmDesk, CrmSettings } from "@/growth/types";
 import { formatClock } from "@/crm/labels";
+import { formatMoney, products } from "@/lib/catalog";
+
+const SELLS = [
+  { id: "pro", label: "Pro", text: `Mora Pro ${formatMoney(products.aero.price)} → https://moraring.com/anillo/pro` },
+  { id: "ultra", label: "Ultra", text: `Mora Ultra ${formatMoney(products.titan.price)} → https://moraring.com/anillo/ultra` },
+  { id: "talla", label: "Talla", text: "Te mandamos el medidor o te mides aquí: https://moraring.com/talla" },
+  { id: "pago", label: "Pagar", text: "Para apartarlo: https://moraring.com/checkout" },
+];
 
 export function CrmComposer({
   desk,
@@ -56,6 +64,19 @@ export function CrmComposer({
       ) : windowClosesAt ? (
         <p className="crm-composer-note">Libre hasta las {formatClock(windowClosesAt)}</p>
       ) : null}
+
+      <div className="mb-2 flex gap-1 overflow-x-auto">
+        {SELLS.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setDraft((current) => (current ? `${current}\n${item.text}` : item.text))}
+            className="crm-sell"
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
 
       {replies.length > 0 ? (
         <div className="mb-2 flex gap-1 overflow-x-auto">

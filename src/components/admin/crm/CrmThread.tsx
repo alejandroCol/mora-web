@@ -1,13 +1,27 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { CrmSeller, WhatsAppConversation, WhatsAppConversationStatus, WhatsAppMessage } from "@/growth/types";
-import { PIPELINE_LABEL, SUPPORT_STATUS_LABEL } from "@/crm/labels";
+import type { CrmSeller, WhatsAppConversation, WhatsAppMessage } from "@/growth/types";
+import { LOST_REASON_LABEL, PIPELINE_LABEL, SUPPORT_STATUS_LABEL, followUpLabel, isSnoozed } from "@/crm/labels";
 import { formatClock } from "@/crm/labels";
+import type { CrmLostReason, WhatsAppConversationStatus } from "@/growth/types";
 
 function initial(name: string, phone: string) {
   const source = name.trim() || phone;
   return source.slice(0, 1).toUpperCase();
+}
+
+function snoozeAt(kind: "1h" | "manana" | "sem") {
+  const date = new Date();
+  if (kind === "1h") return date.getTime() + 60 * 60 * 1000;
+  if (kind === "manana") {
+    date.setDate(date.getDate() + 1);
+    date.setHours(10, 0, 0, 0);
+    return date.getTime();
+  }
+  date.setDate(date.getDate() + 7);
+  date.setHours(10, 0, 0, 0);
+  return date.getTime();
 }
 
 export function CrmThread({
@@ -66,6 +80,26 @@ export function CrmThread({
               </option>
             ))}
           </select>
+          <button type="button" onClick={() => onPatch({ pinned: !conversation.pinned })} className="crm-chat-chip">
+            {conversation.pinned ? "Fijo" : "Fijar"}
+          </button>
+          {isSnoozed(conversation.snoozedUntil) ? (
+            <button type="button" onClick={() => onPatch({ snoozedUntil: null })} className="crm-chat-chip">
+              Despertar
+            </button>
+          ) : (
+            <>
+              <button type="button" onClick={() => onPatch({ snoozedUntil: snoozeAt("1h") })} className="crm-chat-chip">
+                1 h
+              </button>
+              <button type="button" onClick={() => onPatch({ snoozedUntil: snoozeAt("manana") })} className="crm-chat-chip">
+                Mañana
+              </button>
+              <button type="button" onClick={() => onPatch({ snoozedUntil: snoozeAt("sem") })} className="crm-chat-chip">
+                Sem
+              </button>
+            </>
+          )}
           <button type="button" onClick={() => onPatch({ desk: support ? "sales" : "support" })} className="crm-chat-chip">
             {support ? "Ventas" : "Soporte"}
           </button>
@@ -99,6 +133,23 @@ export function CrmThread({
                 </button>
               ))}
         </div>
+        {isSnoozed(conversation.snoozedUntil) ? (
+          <p className="crm-chat-sleep">Vuelve {followUpLabel(conversation.snoozedUntil!)}</p>
+        ) : null}
+        {conversation.status === "closed" ? (
+          <div className="crm-chat-pipe">
+            {(Object.keys(LOST_REASON_LABEL) as CrmLostReason[]).map((reason) => (
+              <button
+                key={reason}
+                type="button"
+                onClick={() => onPatch({ lostReason: reason })}
+                className={`crm-pipe ${conversation.lostReason === reason ? "is-on" : ""}`}
+              >
+                {LOST_REASON_LABEL[reason]}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </header>
 
       <div ref={scroller} className="crm-scroll flex-1 space-y-2 overflow-y-auto px-4 py-3 lg:px-5">

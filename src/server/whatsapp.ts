@@ -418,6 +418,7 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
             lastDirection: "in",
             lastAt: at,
             lastInboundAt: at,
+            snoozedUntil: 0,
             unread,
             status: closed ? "interested" : (prev?.status ?? "new"),
             desk,

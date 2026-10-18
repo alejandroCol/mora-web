@@ -17,7 +17,7 @@ import type {
   WhatsAppMessage,
   WhatsAppUsageReport,
 } from "@/growth/types";
-import { DESK_LABEL } from "@/crm/labels";
+import { DESK_LABEL, isSnoozed, needsReply } from "@/crm/labels";
 import { useAdminAuth } from "../AdminAuth";
 import { ManualSaleForm } from "../ManualSaleForm";
 import { CrmBoard } from "./CrmBoard";
@@ -43,7 +43,7 @@ type Connection = {
   };
 };
 
-type Filter = "all" | "mine" | "unassigned" | "unread" | "today" | "waiting" | "resolved";
+type Filter = "all" | "mine" | "unassigned" | "unread" | "today" | "waiting" | "resolved" | "reply" | "snoozed";
 type View = "inbox" | "board";
 type Pane = "list" | "thread" | "ficha";
 
@@ -59,10 +59,11 @@ export type CrmContactState = {
 
 const SALES_FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "Todos" },
+  { id: "reply", label: "Te toca" },
+  { id: "today", label: "Hoy" },
+  { id: "snoozed", label: "Dormidos" },
   { id: "mine", label: "Míos" },
-  { id: "unassigned", label: "Sin dueño" },
-  { id: "unread", label: "Sin leer" },
-  { id: "today", label: "Seguir hoy" },
+  { id: "unassigned", label: "Libres" },
 ];
 
 const SUPPORT_FILTERS: { id: Filter; label: string }[] = [
@@ -95,6 +96,7 @@ export function CrmWorkspace() {
     followUpDue: 0,
     supportOpen: 0,
     mine: 0,
+    waitingOnUs: 0,
   });
   const [connection, setConnection] = useState<Connection | null>(null);
   const [usage, setUsage] = useState<WhatsAppUsageReport | null>(null);
@@ -191,15 +193,21 @@ export function CrmWorkspace() {
     const q = query.trim().toLowerCase();
     const due = new Date();
     due.setHours(23, 59, 59, 999);
-    return conversations.filter((item) => {
+    const now = Date.now();
+    return conversations
+      .filter((item) => {
       const itemDesk = item.desk ?? "sales";
       if (itemDesk !== desk) return false;
+      const asleep = isSnoozed(item.snoozedUntil, now);
       if (desk === "support") {
         const support = item.supportStatus ?? "open";
         if (filter === "all" && support === "resolved") return false;
         if (filter === "waiting" && support !== "waiting") return false;
         if (filter === "resolved" && support !== "resolved") return false;
       }
+      if (desk === "sales" && filter !== "snoozed" && asleep) return false;
+      if (filter === "snoozed" && !asleep) return false;
+      if (filter === "reply" && !needsReply(item)) return false;
       if (filter === "mine" && item.assignedTo !== me?.uid) return false;
       if (filter === "unassigned" && item.assignedTo) return false;
       if (filter === "unread" && item.unread < 1) return false;
@@ -213,7 +221,12 @@ export function CrmWorkspace() {
         item.lastMessage.toLowerCase().includes(q) ||
         (item.assignedName ?? "").toLowerCase().includes(q)
       );
-    });
+    })
+      .sort((a, b) => {
+        if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1;
+        if (needsReply(a) !== needsReply(b)) return needsReply(a) ? -1 : 1;
+        return (b.lastAt ?? 0) - (a.lastAt ?? 0);
+      });
   }, [conversations, desk, filter, me?.uid, query]);
 
   const active = conversations.find((item) => item.id === activeId) ?? contact?.conversation ?? null;
@@ -324,6 +337,7 @@ export function CrmWorkspace() {
             >
               {DESK_LABEL[item]}
               {item === "support" && counts.supportOpen > 0 ? ` ${counts.supportOpen}` : ""}
+              {item === "sales" && counts.waitingOnUs > 0 ? ` ${counts.waitingOnUs}` : ""}
             </button>
           ))}
           <button
@@ -344,11 +358,15 @@ export function CrmWorkspace() {
       </header>
 
       <div className="flex flex-wrap gap-2 text-[12px] text-white/45">
-        <span>{counts.unread} sin leer</span>
-        <span>·</span>
-        <span>{counts.unassigned} sin dueño</span>
-        <span>·</span>
-        <span>{counts.followUpDue} seguir hoy</span>
+        {counts.waitingOnUs ? <span>{counts.waitingOnUs} te toca</span> : null}
+        {counts.waitingOnUs ? <span>·</span> : null}
+        <span>{counts.unassigned} libres</span>
+        {counts.followUpDue ? (
+          <>
+            <span>·</span>
+            <span>{counts.followUpDue} hoy</span>
+          </>
+        ) : null}
         {connection && !connection.ready ? (
           <>
             <span>·</span>

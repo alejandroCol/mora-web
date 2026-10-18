@@ -1,9 +1,9 @@
 "use client";
 
 import type { WhatsAppConversation } from "@/growth/types";
-import { PIPELINE_LABEL, SUPPORT_STATUS_LABEL, followUpLabel, formatWhen } from "@/crm/labels";
+import { INTEREST_LABEL, PIPELINE_LABEL, SUPPORT_STATUS_LABEL, followUpLabel, formatWhen, isSnoozed, needsReply } from "@/crm/labels";
 
-type Filter = "all" | "mine" | "unassigned" | "unread" | "today" | "waiting" | "resolved";
+type Filter = "all" | "mine" | "unassigned" | "unread" | "today" | "waiting" | "resolved" | "reply" | "snoozed";
 
 export function CrmInboxList({
   conversations,
@@ -67,12 +67,15 @@ export function CrmInboxList({
                 <button
                   type="button"
                   onClick={() => onOpen(item.id)}
-                  className={`flex w-full flex-col items-start gap-1 px-5 py-3 text-left ${
-                    on ? "bg-white/10" : "hover:bg-white/4"
-                  }`}
+                  className={`crm-row flex w-full flex-col items-start gap-1 px-5 py-3 text-left ${
+                    on ? "is-on" : ""
+                  } ${needsReply(item) ? "needs-you" : ""}`}
                 >
                   <span className="flex w-full items-center justify-between gap-2">
-                    <span className="truncate text-[14px]">{item.name || item.phone}</span>
+                    <span className="flex min-w-0 items-center gap-1.5">
+                      {item.pinned ? <span className="crm-pin">✦</span> : null}
+                      <span className="truncate text-[14px]">{item.name || item.phone}</span>
+                    </span>
                     <span className="shrink-0 text-[10px] text-white/30">
                       {formatWhen(item.lastAt)}
                     </span>
@@ -82,7 +85,11 @@ export function CrmInboxList({
                     {item.unread > 0 ? (
                       <span className="rounded-full bg-[#1d1d1f] px-1.5 text-white">{item.unread}</span>
                     ) : null}
-                    <span>{item.source === "ad" ? "Anuncio" : "Orgánico"}</span>
+                    {needsReply(item) ? <span className="crm-dot">Te toca</span> : null}
+                    {isSnoozed(item.snoozedUntil) ? <span>Dormido</span> : null}
+                    {item.interest && item.interest !== "unknown" ? (
+                      <span>{INTEREST_LABEL[item.interest]}</span>
+                    ) : null}
                     <span>· {stage}</span>
                     {item.assignedName ? <span>· {item.assignedName}</span> : (
                       <span

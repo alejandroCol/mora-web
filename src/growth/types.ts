@@ -71,6 +71,8 @@ export type WhatsAppConversationStatus =
   | "sold"
   | "closed";
 
+export type CrmLostReason = "price" | "size" | "later" | "silent" | "other";
+
 export type WhatsAppReferral = {
   sourceUrl?: string;
   sourceId?: string;
@@ -107,6 +109,9 @@ export type WhatsAppConversation = {
   lastOutboundAt?: number;
   supportStatus?: SupportStatus;
   supportTopic?: SupportTopic;
+  pinned?: boolean;
+  snoozedUntil?: number;
+  lostReason?: CrmLostReason;
 };
 
 export type WhatsAppBillingCategory = "marketing" | "utility" | "authentication" | "service";
@@ -212,6 +217,7 @@ export type CrmCounts = {
   followUpDue: number;
   supportOpen: number;
   mine: number;
+  waitingOnUs: number;
 };
 
 export type GrowthSettings = {

@@ -16,7 +16,7 @@ const frames = [
   {
     kicker: "03",
     title: "Dos materias",
-    body: "Aero o Titan. El mismo silencio. Otra piel.",
+    body: "Pro o Ultra. El mismo silencio. Otra piel.",
   },
 ];
 

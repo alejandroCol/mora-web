@@ -1,6 +1,6 @@
 export function siteOrigin() {
   return (
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://mora.ring"
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://moraring.com"
   );
 }
 

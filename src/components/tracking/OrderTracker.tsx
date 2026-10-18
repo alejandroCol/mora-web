@@ -6,15 +6,29 @@ import { type FormEvent, Suspense, useEffect, useState } from "react";
 import { BRAND } from "@/brand";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { TRACKING_STEPS, fulfillmentIndex } from "@/commerce/orderMachine";
-import { ORDER_STATUS_LABEL } from "@/commerce/labels";
-import type { OrderStatus } from "@/commerce/types";
+import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL } from "@/commerce/labels";
+import type { OrderStatus, PaymentStatus } from "@/commerce/types";
+import { payWithBold } from "@/components/payments/useBoldCheckout";
+import type { BoldCheckoutSession } from "@/payments/types";
 import { track } from "@/growth/track";
+import { commerceLineLabel, orderNeedsSize, tallaPath } from "@/commerce/sizing";
 import { formatMoney } from "@/lib/catalog";
+import { PRESALE } from "@/lib/presale";
 
 type PublicOrder = {
   orderNumber: string;
   status: OrderStatus;
-  items: { name: string; finishTitle: string; size: number; qty: number }[];
+  paymentStatus?: PaymentStatus;
+  canRetry?: boolean;
+  expiresAt?: number | null;
+  needsSize?: boolean;
+  items: {
+    name: string;
+    finishTitle: string;
+    size: number;
+    sizing?: "kit" | "self";
+    qty: number;
+  }[];
   ciudad: string;
   departamento: string;
   carrierLabel?: string;
@@ -34,27 +48,64 @@ async function fetchOrder(n: string) {
   return (await res.json()) as { ok: boolean; error?: string; order?: PublicOrder };
 }
 
-export function OrderTracker({ initial }: { initial?: string }) {
+export function OrderTracker({
+  initial,
+  paymentRef,
+}: {
+  initial?: string;
+  paymentRef?: string;
+}) {
   const [value, setValue] = useState(initial ?? "");
   const [order, setOrder] = useState<PublicOrder | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(Boolean(initial));
+  const [paying, setPaying] = useState(false);
+
+  useEffect(() => {
+    if (!paymentRef) return;
+    void fetch("/api/payments/sync", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reference: paymentRef }),
+    }).catch(() => undefined);
+  }, [paymentRef]);
 
   useEffect(() => {
     if (!initial) return;
     setValue(initial);
     setLoading(true);
-    void fetchOrder(initial).then((data) => {
+    let cancelled = false;
+    const started = Date.now();
+
+    async function load(once: boolean) {
+      const data = await fetchOrder(initial!);
+      if (cancelled) return data.order ?? null;
       setLoading(false);
       if (!data.ok || !data.order) {
-        setError(data.error ?? "No encontramos ese pedido.");
-        setOrder(null);
-        return;
+        if (once) {
+          setError(data.error ?? "No encontramos ese pedido.");
+          setOrder(null);
+        }
+        return null;
       }
       setError("");
       setOrder(data.order);
+      return data.order;
+    }
+
+    void load(true).then(async (first) => {
+      if (!first || first.status !== "awaiting_payment") return;
+      while (!cancelled && Date.now() - started < 90_000) {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        const next = await load(false);
+        if (!next || next.status !== "awaiting_payment") break;
+      }
     });
-  }, [initial]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [initial, paymentRef]);
 
   useEffect(() => {
     if (!order?.paidAt) return;
@@ -127,14 +178,56 @@ export function OrderTracker({ initial }: { initial?: string }) {
         <p className="mt-6 rounded-2xl bg-white/70 px-4 py-3 text-sm text-soft">{error}</p>
       ) : null}
 
-      {order ? <OrderStatusCard order={order} /> : null}
+      {order ? (
+        <OrderStatusCard
+          order={order}
+          paying={paying}
+          onRetry={
+            order.canRetry
+              ? async () => {
+                  setPaying(true);
+                  setError("");
+                  try {
+                    const res = await fetch("/api/checkout/resume", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ orderNumber: order.orderNumber }),
+                    });
+                    const data = (await res.json()) as {
+                      ok: boolean;
+                      error?: string;
+                      session?: BoldCheckoutSession;
+                    };
+                    if (!data.ok || !data.session) {
+                      throw new Error(data.error ?? "No pudimos reabrir el pago.");
+                    }
+                    await payWithBold(data.session);
+                  } catch (err) {
+                    setError(err instanceof Error ? err.message : "El pago no se completó.");
+                  } finally {
+                    setPaying(false);
+                  }
+                }
+              : undefined
+          }
+        />
+      ) : null}
     </div>
   );
 }
 
-function OrderStatusCard({ order }: { order: PublicOrder }) {
+function OrderStatusCard({
+  order,
+  onRetry,
+  paying,
+}: {
+  order: PublicOrder;
+  onRetry?: () => void;
+  paying?: boolean;
+}) {
   const index = fulfillmentIndex(order.status);
   const cancelled = order.status === "cancelled";
+  const waitingPay = order.status === "awaiting_payment";
 
   return (
     <div className="receipt-sheet mt-10 rounded-[1.35rem] bg-white/70 px-5 py-6 sm:px-6 sm:py-7">
@@ -155,6 +248,47 @@ function OrderStatusCard({ order }: { order: PublicOrder }) {
         </div>
         <p className="text-[14px] text-ink">{formatMoney(order.totals.total)}</p>
       </div>
+
+      {waitingPay ? (
+        <p className="mt-8 rounded-2xl bg-white/70 px-5 py-4 text-[14px] leading-6 text-soft">
+          {order.paymentStatus === "pending"
+            ? "Estamos confirmando el pago. Nequi y PSE tardan un momento."
+            : order.paymentStatus
+              ? `Pago ${PAYMENT_STATUS_LABEL[order.paymentStatus].toLowerCase()}.`
+              : "Estamos esperando el pago."}
+        </p>
+      ) : null}
+
+      {onRetry ? (
+        <button
+          type="button"
+          onClick={onRetry}
+          disabled={paying}
+          className="mt-4 h-11 w-full rounded-full bg-ink text-[13px] text-white disabled:opacity-50"
+        >
+          {paying ? "Abriendo el pago…" : "Pagar otra vez"}
+        </button>
+      ) : null}
+
+      {order.needsSize || orderNeedsSize(order.items) ? (
+        <div className="mt-6 rounded-[1.2rem] bg-white/80 px-5 py-5">
+          <p className="kicker">Medidor</p>
+          <p className="title-whisper mt-2 text-[1.25rem] text-ink">
+            Primero el medidor. Luego tu talla.
+          </p>
+          <p className="mt-2 text-[13px] leading-6 text-soft">
+            Cuando lo uses, entra con este pedido y pide el anillo. {PRESALE.promise}
+          </p>
+          <Link
+            href={tallaPath(order.orderNumber)}
+            className="mt-4 flex h-11 items-center justify-center rounded-full bg-ink text-[13px] text-white"
+          >
+            Pedir mi talla
+          </Link>
+        </div>
+      ) : order.status === "paid" ? (
+        <p className="mt-6 text-[13px] leading-6 text-soft">{PRESALE.promise}</p>
+      ) : null}
 
       {cancelled ? (
         <p className="mt-8 rounded-2xl bg-white/70 px-5 py-4 text-[14px] leading-6 text-soft">
@@ -201,8 +335,7 @@ function OrderStatusCard({ order }: { order: PublicOrder }) {
         {order.items.map((item, i) => (
           <li key={`${item.name}-${i}`} className="flex justify-between py-3">
             <span className="text-ink">
-              {item.name} · {item.finishTitle} · #{item.size}
-              {item.qty > 1 ? ` ×${item.qty}` : ""}
+              {commerceLineLabel(item)}
             </span>
           </li>
         ))}
@@ -233,10 +366,12 @@ export function PedidoIndexPage() {
   );
 }
 
-export function PedidoNumberPage() {
+function PedidoNumberInner() {
   const params = useParams<{ orderNumber: string }>();
+  const search = useSearchParams();
   const router = useRouter();
   const n = decodeURIComponent(params.orderNumber ?? "");
+  const paymentRef = search.get("bold-order-id") ?? search.get("ref") ?? undefined;
 
   useEffect(() => {
     if (n && !n.toUpperCase().startsWith("MORA-")) {
@@ -244,9 +379,15 @@ export function PedidoNumberPage() {
     }
   }, [n, router]);
 
+  return <OrderTracker initial={n.toUpperCase()} paymentRef={paymentRef} />;
+}
+
+export function PedidoNumberPage() {
   return (
     <div className="hero-wash min-h-dvh px-6 pt-[calc(5.5rem+env(safe-area-inset-top))] pb-20">
-      <OrderTracker initial={n.toUpperCase()} />
+      <Suspense>
+        <PedidoNumberInner />
+      </Suspense>
       <p className="mx-auto mt-12 max-w-lg text-center text-[12px] text-soft">
         <Link href="/" className="hover:text-ink">
           Volver a {BRAND.name}

@@ -14,6 +14,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     pathname.startsWith("/circulo") ||
     pathname.startsWith("/encuesta");
   const isGallery = pathname.startsWith("/galeria");
+  const isProduct = pathname.startsWith("/anillo");
 
   if (isAdmin) {
     return <>{children}</>;
@@ -23,6 +24,16 @@ export function AppChrome({ children }: { children: ReactNode }) {
     return (
       <>
         {children}
+        <CartDrawer />
+      </>
+    );
+  }
+
+  if (isProduct) {
+    return (
+      <>
+        <SiteHeader />
+        <main className="flex-1">{children}</main>
         <CartDrawer />
       </>
     );

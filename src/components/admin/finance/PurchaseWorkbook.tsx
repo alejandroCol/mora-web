@@ -118,7 +118,7 @@ export function PurchaseWorkbook({
       <div className="frame-in rounded-[1.6rem] bg-white/[0.04] px-6 py-12 text-center">
         <p className="font-display text-3xl tracking-[-0.05em]">El primer pedido.</p>
         <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-white/45">
-          Aero y Titan, color por talla, forros y cargadores aparte. Escribes cantidades y costos; el
+          Pro y Ultra, color por talla, forros y cargadores aparte. Escribes cantidades y costos; el
           total se arma solo.
         </p>
         <button

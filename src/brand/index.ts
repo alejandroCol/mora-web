@@ -12,7 +12,7 @@ export const BRAND = {
   name: "Mora",
   tagline: "Un anillo. Un estado.",
   description:
-    "Anillo inteligente de lujo en Colombia. Mora Aero en cerámica y Titan en titanio. Pulso, sueño y autonomía de días, sin pantalla que pida atención.",
+    "Anillo inteligente de lujo en Colombia. Mora Pro en cerámica y Mora Ultra en titanio. Preventa con entrega el 20 de noviembre. Pulso, sueño y autonomía de días, sin pantalla que pida atención.",
   assets: {
     mark: "/brand/mark.png",
     wordmark: "/brand/wordmark.png",
@@ -30,7 +30,7 @@ export function brandPath(asset: BrandAsset) {
 
 export function absoluteBrandUrl(asset: BrandAsset) {
   const base =
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://mora.ring";
+    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") || "https://moraring.com";
   return `${base}${BRAND.assets[asset]}`;
 }
 

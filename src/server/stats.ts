@@ -5,6 +5,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 
 function emptyMethods(): DailyStats["byMethod"] {
   return {
+    bold: { count: 0, revenue: 0 },
     wompi: { count: 0, revenue: 0 },
     transferencia: { count: 0, revenue: 0 },
     efectivo: { count: 0, revenue: 0 },
@@ -62,6 +63,8 @@ export async function loadStats(days = 30) {
       byMethod[method].count += day.byMethod?.[method]?.count ?? 0;
       byMethod[method].revenue += day.byMethod?.[method]?.revenue ?? 0;
     }
+    byMethod.bold.count += day.byMethod?.wompi?.count ?? 0;
+    byMethod.bold.revenue += day.byMethod?.wompi?.revenue ?? 0;
   }
 
   const recent = await adminDb()

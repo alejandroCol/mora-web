@@ -5,7 +5,8 @@ const rows = [
   ["Autonomía", "Cinco a siete días"],
   ["Agua", "IP67 / 5 ATM"],
   ["Compañero", "App Mora para iOS"],
-  ["Talla", "6 a 13 · kit de medida"],
+  ["Talla", "6 a 13 · medidor o guía en video"],
+  ["Preventa", "Entrega el 20 de noviembre"],
   ["Envío", "Según destino, cotizado al instante"],
 ];
 

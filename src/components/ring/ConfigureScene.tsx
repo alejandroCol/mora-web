@@ -60,17 +60,20 @@ function applyFinish(
   const gold = next.id === "gold";
   const silver = next.id === "silver";
   const matte = next.id === "black";
+  const ceramic = next.id === "white" || next.id === "lilac";
   for (const material of materials) {
     material.color.set(next.color);
     material.metalness = next.metalness;
     material.roughness = next.roughness;
     material.clearcoat = next.clearcoat;
-    material.clearcoatRoughness = gold ? 0.2 : silver ? 0.08 : 0.9;
+    material.clearcoatRoughness = gold ? 0.2 : silver ? 0.08 : ceramic ? 0.35 : 0.9;
     material.envMapIntensity = next.envMapIntensity;
     material.emissive.set(next.emissive);
     material.emissiveIntensity = next.emissiveIntensity;
-    material.sheen = gold ? 0.42 : silver ? 0.22 : 0;
-    material.sheenColor.set(gold ? "#F6DEAA" : "#f4f8ff");
+    material.sheen = gold ? 0.42 : silver ? 0.22 : ceramic ? 0.16 : 0;
+    material.sheenColor.set(
+      gold ? "#F6DEAA" : next.id === "lilac" ? "#E4D7F6" : "#f4f8ff",
+    );
     material.specularIntensity = gold || silver ? 1 : matte ? 0.12 : 0.45;
     material.vertexColors = false;
   }

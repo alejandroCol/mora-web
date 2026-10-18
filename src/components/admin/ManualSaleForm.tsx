@@ -2,12 +2,22 @@
 
 import { useMemo, useState } from "react";
 import { cartLineKey } from "@/commerce/sku";
+import { commerceLineLabel } from "@/commerce/sizing";
 import type { CartLine, PaymentMethod } from "@/commerce/types";
-import { catalog, finishes, formatMoney, products, type FinishId, type ModelId } from "@/lib/catalog";
+import {
+  catalog,
+  finishLabel,
+  finishes,
+  formatMoney,
+  productTitle,
+  products,
+  type FinishId,
+  type ModelId,
+} from "@/lib/catalog";
 import { ColombiaFields } from "@/components/checkout/ColombiaFields";
 import { PAYMENT_METHOD_LABEL } from "@/commerce/labels";
 
-const MANUAL_METHODS: Exclude<PaymentMethod, "wompi">[] = [
+const MANUAL_METHODS: Exclude<PaymentMethod, "bold" | "wompi">[] = [
   "transferencia",
   "efectivo",
   "datafono",
@@ -42,7 +52,7 @@ export function ManualSaleForm({
   const [ciudad, setCiudad] = useState("");
   const [direccion, setDireccion] = useState("");
   const [pickup, setPickup] = useState(true);
-  const [method, setMethod] = useState<Exclude<PaymentMethod, "wompi">>("efectivo");
+  const [method, setMethod] = useState<Exclude<PaymentMethod, "bold" | "wompi">>("efectivo");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -62,7 +72,7 @@ export function ManualSaleForm({
           line.key === key ? { ...line, qty: line.qty + 1 } : line,
         );
       }
-      return [...current, { key, modelId, finishId, size, qty: 1 }];
+      return [...current, { key, modelId, finishId, size, sizing: "self", qty: 1 }];
     });
   }
 
@@ -137,7 +147,7 @@ export function ManualSaleForm({
           >
             {catalog.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.name}
+                {productTitle(item.id)}
               </option>
             ))}
           </select>
@@ -149,7 +159,7 @@ export function ManualSaleForm({
                 onClick={() => setFinishId(id)}
                 className={`jewel ${finishId === id ? "jewel-on" : ""}`}
                 style={{ background: finishes[id].swatch }}
-                aria-label={finishes[id].title}
+                aria-label={finishLabel(modelId, id)}
               />
             ))}
           </div>
@@ -180,8 +190,11 @@ export function ManualSaleForm({
           {lines.map((line) => (
             <li key={line.key} className="flex justify-between py-2">
               <span>
-                {products[line.modelId].name} · {finishes[line.finishId].title} · #{line.size} ×
-                {line.qty}
+                {commerceLineLabel({
+                  ...line,
+                  name: `Mora ${products[line.modelId].name}`,
+                  finishTitle: finishLabel(line.modelId, line.finishId),
+                })}
               </span>
               <button
                 type="button"

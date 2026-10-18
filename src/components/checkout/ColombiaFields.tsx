@@ -31,13 +31,13 @@ export function ColombiaFields({
 
   return (
     <>
-      <label className="reserve-row">
+      <label className="check-field">
         <span>Departamento</span>
         <select
           required
           value={departamento}
           onChange={(event) => onDepartamento(event.target.value)}
-          className="reserve-input appearance-none bg-transparent"
+          className="appearance-none bg-transparent"
         >
           <option value="">Elige</option>
           {COLOMBIA_DEPARTAMENTOS.map((item) => (
@@ -47,14 +47,14 @@ export function ColombiaFields({
           ))}
         </select>
       </label>
-      <label className="reserve-row">
+      <label className="check-field">
         <span>Ciudad</span>
         <select
           required
           value={ciudad}
           disabled={!departamento}
           onChange={(event) => onCiudad(event.target.value)}
-          className="reserve-input appearance-none bg-transparent disabled:opacity-40"
+          className="appearance-none bg-transparent disabled:opacity-40"
         >
           <option value="">{departamento ? "Elige" : "Primero el departamento"}</option>
           {cities.map((item) => (

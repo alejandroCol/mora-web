@@ -41,7 +41,24 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: NEXT_PUBLIC_SITE_URL
+    value: https://moraring.com
+    availability:
+      - BUILD
+      - RUNTIME
   - variable: RESEND_FROM
     value: "Mora <hola@mora.ring>"
+    availability:
+      - RUNTIME
+  - variable: BOLD_ENV
+    value: prod
+    availability:
+      - RUNTIME
+  - variable: BOLD_IDENTITY_KEY
+    secret: BOLD_IDENTITY_KEY
+    availability:
+      - RUNTIME
+  - variable: BOLD_SECRET_KEY
+    secret: BOLD_SECRET_KEY
     availability:
       - RUNTIME

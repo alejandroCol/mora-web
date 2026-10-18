@@ -9,18 +9,24 @@ export function SiteFooter() {
         <div>
           <BrandLogo variant="mark" className="h-8 w-8 object-contain" />
           <p className="mt-3 max-w-xs text-[15px] leading-6 text-soft">
-            {BRAND.tagline} Hecho para estar, no para exhibirse.
+            Mora Pro y Mora Ultra. Preventa con entrega el 20 de noviembre.
           </p>
         </div>
         <div className="flex gap-8 text-[13px] text-soft">
+          <Link href="/#preventa" className="hover:text-ink">
+            Preventa
+          </Link>
           <Link href="/#coleccion" className="hover:text-ink">
             Colección
           </Link>
-          <Link href="/#reservar" className="hover:text-ink">
-            Elegir
+          <Link href="/anillo/pro" className="hover:text-ink">
+            Pro
           </Link>
-          <Link href="/#preguntas" className="hover:text-ink">
-            Preguntas
+          <Link href="/anillo/ultra" className="hover:text-ink">
+            Ultra
+          </Link>
+          <Link href="/talla" className="hover:text-ink">
+            Mi talla
           </Link>
           <Link href="/pedido" className="hover:text-ink">
             Mi pedido

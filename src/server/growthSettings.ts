@@ -19,7 +19,7 @@ function fromEnv(): GrowthSettings {
       process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.replace(/\D/g, "") ?? "",
     whatsappWelcome:
       process.env.WHATSAPP_WELCOME?.trim() ??
-      "Hola, soy Mora. Dime modelo, color y talla y te ayudo a reservarlo.",
+      "Hola, soy Mora. Dime si te queda Pro o Ultra, el color, y si quieres medidor de talla.",
     whatsappPrefill:
       process.env.WHATSAPP_PREFILL?.trim() ??
       "Hola Mora, quiero un anillo. ¿Me orientan?",

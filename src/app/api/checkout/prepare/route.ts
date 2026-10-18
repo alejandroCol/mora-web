@@ -1,5 +1,6 @@
-import { lineToOrderItem } from "@/commerce/sku";
-import { cartCount, subtotalOf } from "@/commerce/cartMath";
+import { lineToOrderItem, normalizeCartLine } from "@/commerce/sku";
+import { isSizePending } from "@/commerce/sizing";
+import { cartCount, discountOf, subtotalOf } from "@/commerce/cartMath";
 import type {
   AttributionSnapshot,
   CartLine,
@@ -7,12 +8,13 @@ import type {
   ShippingQuoteOption,
 } from "@/commerce/types";
 import { products } from "@/lib/catalog";
+import { resolveCheckoutOffer } from "@/server/abandonedCarts";
 import { upsertLead } from "@/server/leads";
 import { requestClient, sendMetaEvent } from "@/server/metaCapi";
 import { createPendingOrder } from "@/server/orders";
 import { quoteShipping } from "@/server/quoteShipping";
-import { buildWidgetConfig, wompiIsConfigured } from "@/server/wompi";
-import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
+import { boldSessionForOrder } from "@/server/checkoutSession";
+import { boldIsConfigured, newBoldReference, requestOrigin } from "@/payments";
 
 type Body = {
   items?: CartLine[];
@@ -26,26 +28,23 @@ type Body = {
   };
   notes?: string;
   attribution?: AttributionSnapshot;
+  sessionId?: string;
+  offerCode?: string;
 };
-
-function siteUrl(request: Request) {
-  return (
-    process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-    new URL(request.url).origin
-  );
-}
 
 export async function POST(request: Request) {
   try {
-    if (!wompiIsConfigured()) {
+    if (!boldIsConfigured()) {
       return Response.json(
-        { ok: false, error: "Wompi aún no está configurado." },
+        { ok: false, error: "El pago aún no está configurado." },
         { status: 503 },
       );
     }
 
     const body = (await request.json()) as Body;
-    const items = (body.items ?? []).filter((item) => item.qty > 0);
+    const items = (body.items ?? [])
+      .filter((item) => item.qty > 0)
+      .map(normalizeCartLine);
     const customer = body.customer;
     const shipping = body.shipping;
 
@@ -57,6 +56,7 @@ export async function POST(request: Request) {
       if (!product || !product.finishes.includes(item.finishId)) {
         return Response.json({ ok: false, error: "Hay un anillo inválido." }, { status: 400 });
       }
+      if (isSizePending(item)) continue;
       if (!product.sizes.includes(item.size)) {
         return Response.json({ ok: false, error: "Hay una talla inválida." }, { status: 400 });
       }
@@ -109,7 +109,16 @@ export async function POST(request: Request) {
       deliveryEstimate: selected?.deliveryEstimate,
     };
 
-    const wompiReference = `MORA_${Date.now().toString(36).toUpperCase()}_${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const offered = await resolveCheckoutOffer({
+      sessionId: body.sessionId,
+      code: body.offerCode,
+      email: customer.email,
+    }).catch(() => null);
+    const discountCop = offered?.offer
+      ? discountOf(subtotalOf(items), offered.offer)
+      : 0;
+
+    const boldReference = newBoldReference();
     const order = await createPendingOrder({
       items,
       customer: {
@@ -122,11 +131,14 @@ export async function POST(request: Request) {
       },
       shipping: shippingSnap,
       notes: body.notes,
-      wompiReference,
+      boldReference,
       attribution: body.attribution,
+      discountCop,
+      cartSessionId: body.sessionId || offered?.sessionId,
+      offerCode: offered?.offer?.code,
     });
 
-    const origin = siteUrl(request);
+    const origin = requestOrigin(request);
     const client = requestClient(request);
     await upsertLead({
       source: body.attribution?.fbclid ? "ad" : "checkout",
@@ -162,30 +174,7 @@ export async function POST(request: Request) {
       ...client,
     }).catch(() => undefined);
 
-    const expirationTime = new Date(order.expiresAt ?? Date.now() + 45 * 60 * 1000).toISOString();
-    const widget = buildWidgetConfig({
-      reference: wompiReference,
-      amountCop: order.totals.total,
-      redirectUrl: `${origin}/pedido/${order.orderNumber}`,
-      expirationTime,
-      customer: {
-        email: order.customer.email,
-        fullName: `${order.customer.firstName} ${order.customer.lastName}`.trim(),
-        phoneNumber: order.customer.phone.replace(/\D/g, "").slice(-10),
-        phoneNumberPrefix: "+57",
-        legalId: order.customer.documentNumber,
-        legalIdType: order.customer.documentType,
-      },
-      shipping: {
-        addressLine1: order.shipping.direccion,
-        addressLine2: order.shipping.referencia,
-        country: "CO",
-        city: order.shipping.ciudad,
-        phoneNumber: order.customer.phone.replace(/\D/g, "").slice(-10),
-        region: formatoDepartamentoEtiqueta(order.shipping.departamento),
-        name: `${order.customer.firstName} ${order.customer.lastName}`.trim(),
-      },
-    });
+    const session = await boldSessionForOrder(order, origin, boldReference);
 
     return Response.json({
       ok: true,
@@ -203,11 +192,15 @@ export async function POST(request: Request) {
         seleccionada: ShippingQuoteOption | null;
         opciones: ShippingQuoteOption[];
       },
-      widget,
+      session,
       items: items.map(lineToOrderItem),
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "No pudimos crear el pago.";
+    const raw = error instanceof Error ? error.message : "No pudimos crear el pago.";
+    const message =
+      /default credentials|application-default/i.test(raw)
+        ? "Firebase no está conectado en este entorno. En local, llena FIREBASE_SERVICE_ACCOUNT_JSON o GOOGLE_APPLICATION_CREDENTIALS y reinicia el servidor."
+        : raw;
     return Response.json({ ok: false, error: message }, { status: 400 });
   }
 }

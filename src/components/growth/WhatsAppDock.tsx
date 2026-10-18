@@ -25,14 +25,16 @@ export function WhatsAppDock() {
     pathname.startsWith("/superadmin") ||
     pathname.startsWith("/acceso") ||
     pathname.startsWith("/circulo") ||
-    pathname.startsWith("/encuesta")
+    pathname.startsWith("/encuesta") ||
+    pathname.startsWith("/anillo") ||
+    pathname.startsWith("/galeria")
   )
     return null;
   if (!config?.whatsappDisplayNumber) return null;
 
   const prefill =
     config.whatsappPrefill ||
-    `Hola Mora, me interesa ${selection.modelId === "aero" ? "Aero" : "Titan"}.`;
+    `Hola Mora, me interesa Mora ${selection.modelId === "aero" ? "Pro" : "Ultra"}.`;
 
   return (
     <a

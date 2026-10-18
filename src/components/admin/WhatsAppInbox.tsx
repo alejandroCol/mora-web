@@ -180,7 +180,7 @@ export function WhatsAppInbox() {
                       <span className="flex w-full items-center justify-between gap-2">
                         <span className="truncate text-[14px]">{item.name || item.phone}</span>
                         {item.unread > 0 ? (
-                          <span className="rounded-full bg-white px-1.5 text-[10px] text-[#12111a]">
+                          <span className="rounded-full bg-[#1d1d1f] px-1.5 text-[10px] text-white">
                             {item.unread}
                           </span>
                         ) : null}
@@ -241,8 +241,8 @@ export function WhatsAppInbox() {
                     key={message.id}
                     className={`max-w-[80%] rounded-2xl px-3 py-2 text-[13px] leading-6 ${
                       message.direction === "out"
-                        ? "ml-auto bg-white text-[#12111a]"
-                        : "bg-white/8 text-[#f4f1ea]"
+                        ? "admin-bubble-out ml-auto"
+                        : "admin-bubble-in"
                     }`}
                   >
                     {message.text}

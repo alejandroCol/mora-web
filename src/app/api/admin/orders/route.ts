@@ -26,7 +26,7 @@ export async function POST(request: Request) {
       items?: CartLine[];
       customer?: CustomerSnapshot;
       shipping?: ShippingSnapshot;
-      paymentMethod?: Exclude<PaymentMethod, "wompi">;
+      paymentMethod?: Exclude<PaymentMethod, "bold" | "wompi">;
       notes?: string;
       skipStock?: boolean;
       channel?: Exclude<OrderChannel, "online">;

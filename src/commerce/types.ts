@@ -1,6 +1,8 @@
 import type { FinishId, ModelId } from "@/lib/catalog";
 
-export type PaymentMethod = "wompi" | "transferencia" | "efectivo" | "datafono";
+export type SizingMethod = "kit" | "self";
+
+export type PaymentMethod = "bold" | "wompi" | "transferencia" | "efectivo" | "datafono";
 export type PaymentStatus =
   | "pending"
   | "approved"
@@ -22,6 +24,7 @@ export type CartLine = {
   modelId: ModelId;
   finishId: FinishId;
   size: number;
+  sizing: SizingMethod;
   qty: number;
 };
 
@@ -30,6 +33,7 @@ export type OrderItem = CartLine & {
   name: string;
   finishTitle: string;
   unitPrice: number;
+  sizedAt?: number;
 };
 
 export type CustomerSnapshot = {
@@ -67,6 +71,9 @@ export type ShippingSnapshot = {
 export type PaymentSnapshot = {
   method: PaymentMethod;
   status: PaymentStatus;
+  boldTransactionId?: string;
+  boldReference?: string;
+  boldPaymentType?: string;
   wompiTransactionId?: string;
   wompiReference?: string;
   wompiPaymentType?: string;
@@ -82,7 +89,37 @@ export type OrderTimelineEvent = {
 export type OrderTotals = {
   subtotal: number;
   shipping: number;
+  discount: number;
   total: number;
+};
+
+export type CartOfferKind = "percent" | "amount";
+
+export type AbandonedCartStatus = "open" | "offered" | "recovered" | "dismissed";
+
+export type CartOffer = {
+  kind: CartOfferKind;
+  value: number;
+  code: string;
+  discountCop: number;
+  offeredAt: number;
+  offeredBy?: string;
+};
+
+export type AbandonedCart = {
+  id: string;
+  sessionId: string;
+  status: AbandonedCartStatus;
+  items: CartLine[];
+  customer: Partial<CustomerSnapshot>;
+  shipping: Partial<ShippingSnapshot>;
+  subtotal: number;
+  offer?: CartOffer;
+  offerCode?: string;
+  recoveredOrderId?: string;
+  recoveredOrderNumber?: string;
+  createdAt: number;
+  updatedAt: number;
 };
 
 export type AttributionSnapshot = {
@@ -111,7 +148,11 @@ export type MoraOrder = {
   timeline: OrderTimelineEvent[];
   emails?: { paidSentAt?: number; dispatchedSentAt?: number };
   attribution?: AttributionSnapshot;
-  meta?: { purchaseEventId?: string };
+  meta?: {
+    purchaseEventId?: string;
+    cartSessionId?: string;
+    offerCode?: string;
+  };
   conversationId?: string;
   createdAt: number;
   updatedAt: number;
@@ -127,9 +168,11 @@ export type InventoryDoc = {
   sku: string;
   modelId: ModelId;
   finishId: FinishId;
+  size?: number;
   units: number;
   reserved: number;
   updatedAt: number;
+  managed?: boolean;
 };
 
 export type GalleryImage = {
@@ -178,7 +221,7 @@ export type DailyStats = {
 };
 
 export const PAYMENT_METHODS: PaymentMethod[] = [
-  "wompi",
+  "bold",
   "transferencia",
   "efectivo",
   "datafono",

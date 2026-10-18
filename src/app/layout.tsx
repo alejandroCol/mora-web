@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Inter } from "next/font/google";
 import { BRAND } from "@/brand";
 import { AppChrome } from "@/components/AppChrome";
 import { FirebaseAnalytics } from "@/components/FirebaseAnalytics";
@@ -8,18 +7,6 @@ import { WhatsAppDock } from "@/components/growth/WhatsAppDock";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { siteOrigin } from "@/lib/site";
 import "./globals.css";
-
-const sans = Inter({
-  variable: "--font-sans-loaded",
-  subsets: ["latin"],
-});
-
-const display = Fraunces({
-  variable: "--font-display-loaded",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
-  axes: ["opsz", "SOFT", "WONK"],
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -42,8 +29,9 @@ export function generateMetadata(): Metadata {
       "anillo inteligente",
       "smart ring Colombia",
       "Mora ring",
-      "Aero",
-      "Titan",
+      "Mora Pro",
+      "Mora Ultra",
+      "preventa",
       "anillo de titanio",
       "anillo de cerámica",
     ],
@@ -71,10 +59,7 @@ export function generateMetadata(): Metadata {
     },
     verification: google ? { google } : undefined,
     icons: {
-      icon: [
-        { url: BRAND.assets.favicon, type: "image/png", sizes: "32x32" },
-        { url: BRAND.assets.mark, type: "image/png" },
-      ],
+      icon: [{ url: BRAND.assets.favicon, type: "image/png", sizes: "32x32" }],
       apple: [{ url: BRAND.assets.apple, sizes: "180x180" }],
     },
   };
@@ -84,7 +69,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es-CO"
-      className={`${sans.variable} ${display.variable} h-full scroll-smooth antialiased`}
+      className="h-full scroll-smooth antialiased"
     >
       <body className="flex min-h-full flex-col bg-paper text-ink">
         <JsonLd />

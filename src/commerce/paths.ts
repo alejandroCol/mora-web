@@ -14,6 +14,8 @@ export const COLLECTIONS = {
   financeOrders: "financeOrders",
   financeAttachments: "financeAttachments",
   encuestaVotes: "encuestaVotes",
+  paymentIntents: "paymentIntents",
+  abandonedCarts: "abandonedCarts",
 } as const;
 
 export const DOCS = {

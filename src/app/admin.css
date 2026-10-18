@@ -1,34 +1,34 @@
 /*
  * Mora admin — isolated from the storefront.
- * Only imported by /superadmin and /acceso. Tokens live on .mora-admin
- * so a future admin restyle cannot leak into the ecommerce styles.
+ * Only imported by /superadmin and /acceso. Same black-and-white
+ * language as the shop: paper, ink, white cards, black buttons.
  */
 
 .mora-admin {
   --admin-font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
     "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
-  --admin-bg: #ffffff;
-  --admin-canvas: #ffffff;
-  --admin-sidebar: #efe6f4;
-  --admin-sidebar-deep: #e5d8ef;
-  --admin-sidebar-ink: #2a2a2c;
-  --admin-sidebar-muted: #3f3f44;
-  --admin-sidebar-edge: rgba(68, 48, 82, 0.08);
-  --admin-card: #f7f7f8;
-  --admin-field: #f0eef2;
-  --admin-line: rgba(28, 28, 30, 0.08);
-  --admin-ink: #1c1c1e;
-  --admin-muted: #6c6c70;
-  --admin-faint: #8e8e93;
-  --admin-accent: #9b87b0;
-  --admin-accent-soft: rgba(155, 135, 176, 0.16);
-  --admin-danger: #c45b5b;
-  --admin-ok: #5a9a6e;
-  --admin-shadow: 0 1px 0 rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
-  --admin-radius: 1.15rem;
+  --admin-bg: #f5f5f7;
+  --admin-canvas: #fbfbfd;
+  --admin-sidebar: #ffffff;
+  --admin-sidebar-deep: #ffffff;
+  --admin-sidebar-ink: #1d1d1f;
+  --admin-sidebar-muted: #6e6e73;
+  --admin-sidebar-edge: rgba(0, 0, 0, 0.08);
+  --admin-card: #ffffff;
+  --admin-field: #f5f5f7;
+  --admin-line: rgba(0, 0, 0, 0.08);
+  --admin-ink: #1d1d1f;
+  --admin-muted: #6e6e73;
+  --admin-faint: #6e6e73;
+  --admin-accent: #1d1d1f;
+  --admin-accent-soft: rgba(29, 29, 31, 0.06);
+  --admin-danger: #b42318;
+  --admin-ok: #1f7a38;
+  --admin-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --admin-radius: 18px;
   --admin-topbar: 3.5rem;
-  --admin-sidebar-w: 16.5rem;
-  --admin-sidebar-collapsed: 4.75rem;
+  --admin-sidebar-w: 15.5rem;
+  --admin-sidebar-collapsed: 4.5rem;
 
   color: var(--admin-ink);
   background: var(--admin-bg);
@@ -44,21 +44,49 @@
   border-color: var(--admin-line);
 }
 
+.mora-admin ::selection {
+  background: #e8e8ed;
+  color: var(--admin-ink);
+}
+
 .mora-admin .font-display {
   font-family: var(--admin-font) !important;
-  font-weight: 590;
-  letter-spacing: -0.03em;
+  font-weight: 600;
+  letter-spacing: -0.03em !important;
+  line-height: 1.15;
+  color: var(--admin-ink);
   font-variation-settings: normal;
+}
+
+.mora-admin h1.font-display {
+  font-size: clamp(1.75rem, 2.4vw, 2.15rem) !important;
+}
+
+.mora-admin .uppercase {
+  text-transform: none;
+  letter-spacing: -0.011em !important;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.35;
 }
 
 .mora-admin .h-full.rounded-full.bg-white,
 .mora-admin .rounded-t-md.bg-white\/80 {
-  background: var(--admin-accent) !important;
+  background: #1d1d1f !important;
 }
 
-.mora-admin .bg-\[\#0e0d14\],
-.mora-admin .bg-\[\#16141f\] {
-  background-color: var(--admin-card) !important;
+.mora-admin .bg-\[\#16141f\],
+.mora-admin .bg-\[\#14131c\],
+.mora-admin .bg-\[\#12111a\] {
+  background-color: #fff !important;
+  color: var(--admin-ink);
+  box-shadow: var(--admin-shadow);
+}
+
+.mora-admin button.bg-\[\#0e0d14\],
+.mora-admin .bg-\[\#1d1d1f\].text-white {
+  background: #1d1d1f !important;
+  color: #fff !important;
 }
 
 .mora-admin .text-\[\#f4f1ea\] {
@@ -83,16 +111,26 @@
   color: var(--admin-muted) !important;
 }
 
+.mora-admin .text-white\/80,
 .mora-admin .text-white\/40,
 .mora-admin .text-white\/35,
 .mora-admin .text-white\/30,
 .mora-admin .text-white\/28 {
-  color: var(--admin-faint) !important;
+  color: var(--admin-muted) !important;
+}
+
+.mora-admin .bg-black\/50 {
+  color: #fff !important;
+}
+
+.mora-admin .bg-black\/50.text-white\/80 {
+  color: #fff !important;
 }
 
 .mora-admin .placeholder\:text-white\/25::placeholder,
+.mora-admin .placeholder\:text-white\/30::placeholder,
 .mora-admin .placeholder\:text-white\/35::placeholder {
-  color: var(--admin-faint) !important;
+  color: #86868b !important;
 }
 
 .mora-admin .hover\:text-white:hover {
@@ -101,29 +139,87 @@
 
 .mora-admin .bg-white\/\[0\.04\],
 .mora-admin .bg-white\/\[0\.05\] {
-  background: var(--admin-card) !important;
+  background: #fff !important;
   box-shadow: var(--admin-shadow);
 }
 
-.mora-admin .bg-white\/8,
-.mora-admin .bg-white\/6 {
-  background: var(--admin-field) !important;
-}
-
-.mora-admin .border-white\/8 {
-  border-color: var(--admin-line) !important;
-}
-
-.mora-admin .bg-white\/\[0\.04\] .bg-white\/8,
-.mora-admin .bg-white\/\[0\.05\] .bg-white\/8 {
+.mora-admin .bg-white\/\[0\.04\] .bg-white\/\[0\.05\] {
+  background: #f5f5f7 !important;
   box-shadow: none;
 }
 
-.mora-admin button.bg-white.text-\[\#0e0d14\],
-.mora-admin button.bg-white.text-\[\#16141f\],
-.mora-admin a.bg-white.text-\[\#0e0d14\] {
-  background: var(--admin-accent) !important;
+.mora-admin .bg-white\/8,
+.mora-admin .bg-white\/6,
+.mora-admin .bg-white\/10 {
+  background: #fff !important;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.1);
+}
+
+.mora-admin .bg-white\/\[0\.04\] .bg-white\/8,
+.mora-admin .bg-white\/\[0\.05\] .bg-white\/8,
+.mora-admin .bg-\[\#16141f\] .bg-white\/8,
+.mora-admin .bg-\[\#14131c\] .bg-white\/8,
+.mora-admin .bg-\[\#12111a\] .bg-white\/8,
+.mora-admin .bg-white\/\[0\.04\] .bg-white\/6,
+.mora-admin .bg-\[\#12111a\] .bg-white\/10,
+.mora-admin .hover\:bg-white\/4:hover,
+.mora-admin .hover\:bg-white\/8:hover,
+.mora-admin .hover\:bg-white\/\[0\.08\]:hover {
+  background: #f5f5f7 !important;
+  box-shadow: none !important;
+}
+
+.mora-admin .bg-white\/\[0\.04\] .hover\:bg-white\/\[0\.08\]:hover {
+  background: #ececee !important;
+}
+
+.mora-admin .border-white\/8,
+.mora-admin .border-white\/15,
+.mora-admin .border-white\/6,
+.mora-admin .divide-white\/8 > * {
+  border-color: var(--admin-line) !important;
+}
+
+.mora-admin .rounded-3xl.bg-white,
+.mora-admin .rounded-\[1\.6rem\].bg-white,
+.mora-admin .rounded-2xl.bg-white {
+  box-shadow: var(--admin-shadow);
+}
+
+.mora-admin button.bg-white,
+.mora-admin a.rounded-full.bg-white,
+.mora-admin label.rounded-full.bg-white,
+.mora-admin span.rounded-full.bg-white {
+  background: #1d1d1f !important;
   color: #fff !important;
+  box-shadow: none;
+}
+
+.mora-admin button.bg-white:hover,
+.mora-admin a.rounded-full.bg-white:hover,
+.mora-admin label.rounded-full.bg-white:hover {
+  background: #3a3a3c !important;
+}
+
+.mora-admin button.bg-white span {
+  background: transparent !important;
+  color: inherit !important;
+  box-shadow: none !important;
+}
+
+.mora-admin button.bg-white span + span {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.mora-admin a.rounded-full.border {
+  background: #fff;
+  color: #1d1d1f !important;
+  border-color: transparent !important;
+  box-shadow: var(--admin-shadow);
+}
+
+.mora-admin .text-rose-200\/80 {
+  color: var(--admin-danger) !important;
 }
 
 .mora-admin .text-red-300 {
@@ -154,6 +250,89 @@
   color: var(--admin-ink);
 }
 
+.mora-admin input[type="checkbox"] {
+  accent-color: #1d1d1f;
+}
+
+.admin-sheet {
+  overflow: hidden;
+  border-radius: 18px;
+  background: #fff;
+  box-shadow: var(--admin-shadow);
+}
+
+.admin-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.95rem 1.1rem;
+}
+
+.admin-field + .admin-field {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.admin-field > span {
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  color: #6e6e73;
+}
+
+.admin-input {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  height: auto;
+  font-size: 17px;
+  letter-spacing: -0.022em;
+  color: #1d1d1f;
+  outline: none;
+  box-shadow: none !important;
+}
+
+.admin-cta {
+  display: flex;
+  width: 100%;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 980px;
+  background: #1d1d1f;
+  color: #fff !important;
+  font-size: 17px;
+  letter-spacing: -0.022em;
+}
+
+.admin-cta:hover {
+  background: #3a3a3c;
+}
+
+.admin-cta:disabled {
+  opacity: 0.45;
+}
+
+.mora-admin .admin-bubble-out {
+  background: #1d1d1f !important;
+  color: #fff !important;
+  box-shadow: none;
+}
+
+.mora-admin .admin-bubble-in {
+  background: #f5f5f7 !important;
+  color: #1d1d1f !important;
+  box-shadow: none;
+}
+
+.mora-admin .jewel-on {
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.8),
+    inset 0 -7px 10px rgba(22, 20, 31, 0.18),
+    0 0 0 2px #fff,
+    0 0 0 4px #1d1d1f;
+}
+
 .mora-admin select option {
   color: #1c1c1e;
   background: #fff;
@@ -180,8 +359,7 @@
   width: min(var(--admin-sidebar-w), 88vw);
   flex-direction: column;
   align-items: stretch;
-  background:
-    linear-gradient(180deg, #f4edf8 0%, var(--admin-sidebar) 42%, var(--admin-sidebar-deep) 100%);
+  background: #fff;
   color: var(--admin-sidebar-ink);
   border-right: 1px solid var(--admin-sidebar-edge);
   padding: calc(1.05rem + env(safe-area-inset-top)) 0.7rem
@@ -210,12 +388,11 @@
 }
 
 .admin-role {
-  margin: 0.28rem 0 0;
+  margin: 0.35rem 0 0;
   padding: 0 0.45rem;
-  font-size: 0.6875rem;
-  font-weight: 500;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-size: 0.8125rem;
+  font-weight: 400;
+  letter-spacing: -0.011em;
   color: var(--admin-sidebar-muted);
 }
 
@@ -230,7 +407,7 @@
   overflow: auto;
   padding-right: 0.1rem;
   scrollbar-width: thin;
-  scrollbar-color: rgba(68, 48, 82, 0.18) transparent;
+  scrollbar-color: rgba(0, 0, 0, 0.16) transparent;
 }
 
 .admin-nav-group {
@@ -241,12 +418,11 @@
 
 .admin-nav-section {
   margin: 0 0 0.28rem;
-  padding: 0 0.5rem;
-  font-size: 0.625rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #6a6570;
+  padding: 0 0.55rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: -0.011em;
+  color: #86868b;
 }
 
 .admin-nav-link {
@@ -259,23 +435,23 @@
   min-height: 2.25rem;
   border-radius: 0.65rem;
   padding: 0.35rem 0.6rem;
-  color: #2a2a2c;
-  font-size: 0.875rem;
-  font-weight: 450;
-  letter-spacing: -0.01em;
+  color: #1d1d1f;
+  font-size: 0.9375rem;
+  font-weight: 400;
+  letter-spacing: -0.016em;
   transition: background 0.16s ease, color 0.16s ease;
 }
 
 .admin-nav-link:hover {
-  background: rgba(255, 255, 255, 0.48);
-  color: #1c1c1e;
+  background: #f5f5f7;
+  color: #1d1d1f;
 }
 
 .admin-nav-link.is-active {
-  background: rgba(255, 255, 255, 0.78);
-  box-shadow: 0 1px 0 rgba(68, 48, 82, 0.04);
-  color: #1c1c1e;
-  font-weight: 560;
+  background: #1d1d1f;
+  box-shadow: none;
+  color: #fff;
+  font-weight: 500;
 }
 
 .admin-nav-ico {
@@ -292,9 +468,13 @@
   opacity: 0.62;
 }
 
-.admin-nav-link:hover .admin-nav-ico svg,
-.admin-nav-link.is-active .admin-nav-ico svg {
+.admin-nav-link:hover .admin-nav-ico svg {
   opacity: 0.92;
+}
+
+.admin-nav-link.is-active .admin-nav-ico svg {
+  opacity: 1;
+  color: #fff;
 }
 
 .admin-side-foot {
@@ -304,7 +484,7 @@
   gap: 0.45rem;
   margin-top: 0.75rem;
   padding: 0.65rem 0.2rem 0.1rem;
-  border-top: 1px solid rgba(68, 48, 82, 0.08);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
 }
 
 .admin-user {
@@ -321,8 +501,8 @@
   flex-shrink: 0;
   place-items: center;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.72);
-  color: #2a2a2c;
+  background: #1d1d1f;
+  color: #fff;
   font-size: 0.7rem;
   font-weight: 620;
   letter-spacing: 0;
@@ -340,13 +520,13 @@
   white-space: nowrap;
   font-size: 0.75rem;
   font-weight: 520;
-  color: #2a2a2c;
+  color: #1d1d1f;
 }
 
 .admin-side-foot .admin-ghost {
   display: block;
   padding: 0;
-  color: #5c5c62;
+  color: #6e6e73;
   font-size: 0.6875rem;
 }
 
@@ -356,12 +536,12 @@
   width: 2.35rem;
   place-items: center;
   border-radius: 0.75rem;
-  color: var(--admin-sidebar-ink);
-  background: rgba(255, 255, 255, 0.4);
+  color: #1d1d1f;
+  background: #f5f5f7;
 }
 
 .admin-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.7);
+  background: #ececee;
 }
 
 .admin-collapse,
@@ -376,12 +556,12 @@
   flex-shrink: 0;
   border: 0;
   border-radius: 0.55rem;
-  background: rgba(255, 255, 255, 0.42);
-  color: #2a2a2c;
+  background: #f5f5f7;
+  color: #1d1d1f;
 }
 
 .admin-collapse:hover {
-  background: rgba(255, 255, 255, 0.78);
+  background: #ececee;
 }
 
 .admin-close {
@@ -397,7 +577,8 @@
   gap: 0.65rem;
   min-height: calc(var(--admin-topbar) + env(safe-area-inset-top));
   padding: env(safe-area-inset-top) 0.9rem 0;
-  background: color-mix(in srgb, var(--admin-bg) 86%, transparent);
+  background: color-mix(in srgb, var(--admin-bg) 88%, transparent);
+  border-bottom: 1px solid transparent;
   backdrop-filter: saturate(1.4) blur(16px);
 }
 
@@ -416,7 +597,8 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 1.05rem;
-  font-weight: 590;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 }
 
 .admin-main {
@@ -508,7 +690,7 @@
     padding-right: 0.85rem;
   }
 
-  .mora-admin .font-display {
-    font-size: clamp(1.65rem, 7vw, 2.25rem) !important;
+  .mora-admin h1.font-display {
+    font-size: clamp(1.65rem, 7vw, 2rem) !important;
   }
 }

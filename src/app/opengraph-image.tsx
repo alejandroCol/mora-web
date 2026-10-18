@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-export const alt = "Mora — Un anillo. Un estado.";
+export const alt = "Mora — Preventa. Pro y Ultra. 20 de noviembre.";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -24,9 +24,9 @@ export default function OpenGraphImage() {
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
           <div style={{ fontSize: 92, letterSpacing: -4, fontWeight: 500 }}>Mora</div>
-          <div style={{ fontSize: 36, opacity: 0.62 }}>Un anillo. Un estado.</div>
+          <div style={{ fontSize: 36, opacity: 0.62 }}>Preventa · 20 de noviembre</div>
         </div>
-        <div style={{ fontSize: 22, opacity: 0.4 }}>Aero · Titan · Colombia</div>
+        <div style={{ fontSize: 22, opacity: 0.4 }}>Pro · Ultra · Colombia</div>
       </div>
     ),
     { ...size },

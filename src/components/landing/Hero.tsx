@@ -16,7 +16,7 @@ const DESKTOP_SCALE = 0.756;
 const MOBILE_SCALE = DESKTOP_SCALE * 1.6;
 
 export function Hero() {
-  const [mobile, setMobile] = useState(false);
+  const [mobile, setMobile] = useState<boolean | null>(null);
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 639px)");
@@ -28,7 +28,7 @@ export function Hero() {
 
   return (
     <section className="hero-wash relative flex min-h-dvh flex-col overflow-hidden">
-      {mobile ? (
+      {mobile === true ? (
         <div className="relative flex min-h-0 flex-1 items-center justify-center pt-[calc(3.5rem+env(safe-area-inset-top))]">
           <div className="mx-auto h-[min(90vw,36rem)] w-[min(90vw,36rem)] translate-x-[2vw]">
             <RingCanvas
@@ -39,12 +39,13 @@ export function Hero() {
             />
           </div>
           <a
-            href="#reservar"
-            aria-label="Elegir color"
+            href="#coleccion"
+            aria-label="Elegir mi Mora"
             className="absolute inset-0 z-[1]"
           />
         </div>
-      ) : (
+      ) : null}
+      {mobile === false ? (
         <div className="absolute inset-0 [&_canvas]:pointer-events-none">
           <RingCanvas
             original
@@ -53,23 +54,25 @@ export function Hero() {
             className="h-full w-full"
           />
           <a
-            href="#reservar"
-            aria-label="Elegir color"
+            href="#coleccion"
+            aria-label="Elegir mi Mora"
             className="absolute left-1/2 top-[46%] z-[1] block h-[min(70vw,32rem)] w-[min(70vw,32rem)] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full"
           />
         </div>
-      )}
+      ) : null}
+      {mobile === null ? <div className="min-h-0 flex-1" aria-hidden /> : null}
 
-      <div className="pointer-events-none relative z-10 mt-auto flex shrink-0 flex-col items-center gap-3 px-6 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-2 sm:absolute sm:inset-x-0 sm:bottom-12 sm:gap-5 sm:pb-0">
-        <p className="title-whisper text-[clamp(1.45rem,7vw,2.75rem)] leading-[1.15] text-ink">
-          Un anillo.
-          <span className="text-ink/55"> Un estado.</span>
-        </p>
+      <div className="pointer-events-none relative z-10 mt-auto flex shrink-0 flex-col items-center px-6 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-2 sm:absolute sm:inset-x-0 sm:bottom-12 sm:pb-0">
         <a
-          href="#reservar"
-          className="elegir-nudge pointer-events-auto text-[13px] text-soft transition-colors hover:text-ink"
+          href="#coleccion"
+          aria-label="Elegir mi Mora, preventa"
+          className="elegir-cta pointer-events-auto"
         >
-          Elegir
+          Elegir mi Mora
+          <span className="elegir-cta-note">(Preventa)</span>
+          <span aria-hidden className="elegir-cta-arrow">
+            ›
+          </span>
         </a>
       </div>
     </section>

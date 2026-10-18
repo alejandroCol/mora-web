@@ -8,12 +8,12 @@ const FAQ = [
     a: "Mora es un smart ring de lujo silencioso. Mide pulso, oxígeno, HRV, sueño y movimiento sin una pantalla que pida atención.",
   },
   {
-    q: "¿Cuál es la diferencia entre Aero y Titan?",
-    a: "Aero es cerámica de alta densidad. Titan es titanio grado médico, el más ligero de la casa. Los dos cuestan lo mismo y miden lo mismo.",
+    q: "¿Cuál es la diferencia entre Pro y Ultra?",
+    a: "Mora Pro es cerámica de alta densidad. Mora Ultra es titanio grado médico, el más ligero de la casa. Los dos cuestan lo mismo y miden lo mismo.",
   },
   {
     q: "¿Cuánto dura la batería?",
-    a: "Entre cinco y siete días, según el modelo. Aero llega a siete. Titan, a seis.",
+    a: "Entre cinco y siete días, según el modelo. Pro llega a siete. Ultra, a seis.",
   },
   {
     q: "¿Hacen envíos en Colombia?",
@@ -21,7 +21,11 @@ const FAQ = [
   },
   {
     q: "¿Cómo elijo la talla?",
-    a: "Las tallas van del 6 al 13. Con el anillo llega un kit de medida si necesitas cambiar.",
+    a: "Puedes pedir el medidor de tallas —te llega primero, y con tu pedido confirmas el número— o medirte en casa con la guía en video. El precio no cambia.",
+  },
+  {
+    q: "¿Cuándo llega el anillo?",
+    a: "Estamos en preventa. El anillo se entrega el 20 de noviembre.",
   },
 ];
 
@@ -49,7 +53,7 @@ export function JsonLd() {
         publisher: { "@id": `${origin}/#org` },
         potentialAction: {
           "@type": "ReserveAction",
-          target: siteUrl("/#reservar"),
+          target: siteUrl("/#coleccion"),
           name: "Elegir un anillo Mora",
         },
       },
@@ -64,10 +68,11 @@ export function JsonLd() {
         image: [`${origin}${BRAND.assets.mark}`],
         offers: {
           "@type": "Offer",
-          url: siteUrl("/#reservar"),
+          url: siteUrl(`/anillo/${item.slug}`),
           priceCurrency: "COP",
           price: item.price,
-          availability: "https://schema.org/InStock",
+          availability: "https://schema.org/PreOrder",
+          availabilityEnds: "2026-11-20",
           itemCondition: "https://schema.org/NewCondition",
         },
       })),

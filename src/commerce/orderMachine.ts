@@ -33,7 +33,7 @@ export const TRACKING_STEPS: {
   {
     status: "paid",
     label: "Pedido pagado",
-    description: "El pago quedó aprobado. Preparamos tu anillo en el atelier.",
+    description: "El pago quedó aprobado. Tu anillo se entrega el 20 de noviembre.",
   },
   {
     status: "in_transit",

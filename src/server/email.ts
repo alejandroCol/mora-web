@@ -1,7 +1,9 @@
 import { BRAND, absoluteBrandUrl, brandLockup } from "@/brand";
-import { formatMoney } from "@/lib/catalog";
+import { commerceLineLabel, orderNeedsSize, tallaPath } from "@/commerce/sizing";
+import { finishLabel, formatMoney, products } from "@/lib/catalog";
+import { PRESALE } from "@/lib/presale";
 import { PAYMENT_METHOD_LABEL } from "@/commerce/labels";
-import type { MoraOrder } from "@/commerce/types";
+import type { AbandonedCart, MoraOrder } from "@/commerce/types";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
 
 function escapeHtml(value: string) {
@@ -24,7 +26,7 @@ const SOFT = "#6a6580";
 function siteUrl() {
   return (
     process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-    "https://mora.ring"
+    "https://moraring.com"
   );
 }
 
@@ -39,7 +41,7 @@ function button(href: string, label: string) {
 function itemRows(order: MoraOrder) {
   return order.items
     .map((item) => {
-      const label = `${item.name} · ${item.finishTitle} · #${item.size}`;
+      const label = commerceLineLabel(item);
       return `<tr>
         <td style="padding:12px 0;border-bottom:1px solid rgba(22,20,31,0.08);font-size:14px;color:${INK}">${escapeHtml(label)} <span style="color:${SOFT}">×${item.qty}</span></td>
         <td style="padding:12px 0;border-bottom:1px solid rgba(22,20,31,0.08);font-size:14px;text-align:right;white-space:nowrap">${formatMoney(item.unitPrice * item.qty)}</td>
@@ -110,6 +112,11 @@ function orderBody(order: MoraOrder, extra?: string) {
     <table role="presentation" width="100%" style="margin-top:18px">${itemRows(order)}</table>
     <table role="presentation" width="100%" style="margin-top:8px;font-size:14px">
       <tr><td style="padding:6px 0;color:${SOFT}">Anillos</td><td style="text-align:right">${formatMoney(order.totals.subtotal)}</td></tr>
+      ${
+        order.totals.discount
+          ? `<tr><td style="padding:6px 0;color:${SOFT}">Descuento${order.meta?.offerCode ? ` · ${escapeHtml(order.meta.offerCode)}` : ""}</td><td style="text-align:right">−${formatMoney(order.totals.discount)}</td></tr>`
+          : ""
+      }
       <tr><td style="padding:6px 0;color:${SOFT}">Envío${order.shipping.carrierLabel ? ` · ${escapeHtml(order.shipping.carrierLabel)}` : ""}</td><td style="text-align:right">${order.totals.shipping === 0 ? "Gratis" : formatMoney(order.totals.shipping)}</td></tr>
       <tr><td style="padding-top:12px;border-top:1px solid ${INK};font-weight:600">Total</td><td style="padding-top:12px;border-top:1px solid ${INK};text-align:right;font-weight:600">${formatMoney(order.totals.total)}</td></tr>
     </table>
@@ -146,12 +153,21 @@ async function sendResend(to: string, subject: string, html: string) {
 }
 
 export async function sendPaidCustomerEmail(order: MoraOrder) {
+  const needsSize = orderNeedsSize(order.items);
+  const extra = needsSize
+    ? `<p style="margin:16px 0 0;font-size:14px;color:${SOFT}">Te enviamos primero el medidor de tallas. Cuando lo uses, entra con tu pedido y pide el anillo. ${PRESALE.promise}</p>`
+    : `<p style="margin:16px 0 0;font-size:14px;color:${SOFT}">${PRESALE.promise}</p>`;
   const html = shell({
-    kicker: BRAND.name,
+    kicker: `${BRAND.name} · ${PRESALE.label}`,
     title: "Tu pedido quedó.",
     intro: `Hola ${escapeHtml(order.customer.firstName || "")}. El pago se confirmó. Guardá el número de pedido para seguir cada paso.`,
-    body: orderBody(order),
-    cta: button(orderTrackingUrl(order.orderNumber), "Ver mi pedido"),
+    body: orderBody(order, extra),
+    cta: button(
+      needsSize
+        ? `${siteUrl()}${tallaPath(order.orderNumber)}`
+        : orderTrackingUrl(order.orderNumber),
+      needsSize ? "Pedir mi talla" : "Ver mi pedido",
+    ),
   });
   return sendResend(
     order.customer.email,
@@ -193,4 +209,46 @@ export async function sendPaidStaffEmail(order: MoraOrder) {
     cta: button(`${siteUrl()}/superadmin/ventas`, "Abrir ventas"),
   });
   return sendResend(to, `Venta ${order.orderNumber} · ${BRAND.name}`, html);
+}
+
+export function abandonedCheckoutUrl(code: string) {
+  return `${siteUrl()}/checkout?oferta=${encodeURIComponent(code)}`;
+}
+
+export async function sendAbandonedOfferEmail(cart: AbandonedCart) {
+  const email = cart.customer.email?.trim();
+  const offer = cart.offer;
+  if (!email || !offer) return { ok: false as const, error: "missing_offer" };
+
+  const name = cart.customer.firstName?.trim() || "hola";
+  const lines = cart.items
+    .map((item) => {
+      const model = products[item.modelId];
+      const finish = finishLabel(item.modelId, item.finishId);
+      return `<tr>
+        <td style="padding:10px 0;border-bottom:1px solid rgba(22,20,31,0.08);font-size:14px;color:${INK}">Mora ${escapeHtml(model?.name ?? "")} · ${escapeHtml(finish)} <span style="color:${SOFT}">×${item.qty}</span></td>
+      </tr>`;
+    })
+    .join("");
+  const discounted = Math.max(0, cart.subtotal - offer.discountCop);
+  const html = shell({
+    kicker: "Tu Mora te espera",
+    title: "Dejamos un detalle en tu pedido.",
+    intro: `${escapeHtml(name)}, tu carrito sigue guardado. Aplicamos ${escapeHtml(formatMoney(offer.discountCop))} de descuento para que lo termines cuando quieras.`,
+    body: `
+      <table role="presentation" width="100%">${lines}</table>
+      <table role="presentation" width="100%" style="margin-top:8px;font-size:14px">
+        <tr><td style="padding:6px 0;color:${SOFT}">Subtotal</td><td style="text-align:right">${formatMoney(cart.subtotal)}</td></tr>
+        <tr><td style="padding:6px 0;color:${SOFT}">Descuento · ${escapeHtml(offer.code)}</td><td style="text-align:right">−${formatMoney(offer.discountCop)}</td></tr>
+        <tr><td style="padding-top:12px;border-top:1px solid ${INK};font-weight:600">Anillos</td><td style="padding-top:12px;border-top:1px solid ${INK};text-align:right;font-weight:600">${formatMoney(discounted)}</td></tr>
+      </table>
+      <p style="margin:18px 0 0;font-size:13px;color:${SOFT}">El envío se cotiza al volver al pago. Código ${escapeHtml(offer.code)}.</p>
+    `,
+    cta: button(abandonedCheckoutUrl(offer.code), "Terminar mi pedido"),
+  });
+  return sendResend(
+    email,
+    `Tu Mora con ${formatMoney(offer.discountCop)} de descuento`,
+    html,
+  );
 }

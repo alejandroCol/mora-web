@@ -1,4 +1,10 @@
-import { catalog, finishes, type FinishId, type ModelId } from "@/lib/catalog";
+import {
+  catalog,
+  finishLabel,
+  finishes,
+  type FinishId,
+  type ModelId,
+} from "@/lib/catalog";
 
 export const FINANCE_CURRENCIES = ["COP", "USD", "CNY"] as const;
 export type FinanceCurrency = (typeof FINANCE_CURRENCIES)[number];
@@ -391,7 +397,8 @@ export function spentByCategory(expenses: FinanceExpense[]) {
   return base;
 }
 
-export function finishTitle(finishId: FinishId) {
+export function finishTitle(finishId: FinishId, modelId?: ModelId) {
+  if (modelId) return finishLabel(modelId, finishId);
   return finishes[finishId].title;
 }
 

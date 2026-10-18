@@ -1,5 +1,7 @@
-export type FinishId = "white" | "black" | "gold" | "silver";
+export type FinishId = "lilac" | "white" | "black" | "gold" | "silver";
 export type ModelId = "aero" | "titan";
+export type ProductSlug = "pro" | "ultra";
+export type ProductKind = "ring";
 
 export type Finish = {
   id: FinishId;
@@ -17,6 +19,8 @@ export type Finish = {
 
 export type RingProduct = {
   id: ModelId;
+  slug: ProductSlug;
+  kind: ProductKind;
   name: string;
   line: string;
   material: string;
@@ -31,9 +35,22 @@ export type RingProduct = {
 };
 
 export const finishes: Record<FinishId, Finish> = {
+  lilac: {
+    id: "lilac",
+    title: "Lila",
+    whisper: "Cerámica en el color de Mora.",
+    color: "#C9B6E4",
+    metalness: 0.08,
+    roughness: 0.28,
+    clearcoat: 0.4,
+    envMapIntensity: 1.05,
+    emissive: "#D4C4EE",
+    emissiveIntensity: 0.06,
+    swatch: "linear-gradient(145deg, #f6f1ff 0%, #d4c4ee 48%, #a890d0 100%)",
+  },
   white: {
     id: "white",
-    title: "Porcelana",
+    title: "Blanco",
     whisper: "Blanco que no brilla.",
     color: "#FBF8F2",
     metalness: 0.1,
@@ -46,7 +63,7 @@ export const finishes: Record<FinishId, Finish> = {
   },
   black: {
     id: "black",
-    title: "Mate",
+    title: "Negro mate",
     whisper: "Negro que no brilla.",
     color: "#111111",
     metalness: 0.04,
@@ -59,7 +76,7 @@ export const finishes: Record<FinishId, Finish> = {
   },
   gold: {
     id: "gold",
-    title: "Champán",
+    title: "Oro",
     whisper: "Oro que no grita.",
     color: "#F4D7A4",
     metalness: 1,
@@ -72,7 +89,7 @@ export const finishes: Record<FinishId, Finish> = {
   },
   silver: {
     id: "silver",
-    title: "Niebla",
+    title: "Plata",
     whisper: "Plata fría.",
     color: "#F7FBFF",
     metalness: 1,
@@ -88,15 +105,17 @@ export const finishes: Record<FinishId, Finish> = {
 export const products: Record<ModelId, RingProduct> = {
   aero: {
     id: "aero",
-    name: "Aero",
+    slug: "pro",
+    kind: "ring",
+    name: "Pro",
     line: "Cerámica",
     material: "Cerámica de alta densidad",
     weight: "3.3 g",
-    price: 549_000,
+    price: 679_000,
     water: "5 ATM",
     battery: "7 días",
     sizes: [6, 7, 8, 9, 10, 11, 12, 13],
-    finishes: ["white", "black", "gold"],
+    finishes: ["lilac", "white", "black"],
     promise: "Se siente. No se anuncia.",
     details: [
       "Sueño, pulso y ciclo en un gesto.",
@@ -106,11 +125,13 @@ export const products: Record<ModelId, RingProduct> = {
   },
   titan: {
     id: "titan",
-    name: "Titan",
+    slug: "ultra",
+    kind: "ring",
+    name: "Ultra",
     line: "Titanio",
     material: "Titanio grado médico",
     weight: "2.5 g",
-    price: 549_000,
+    price: 679_000,
     water: "IP67",
     battery: "6 días",
     sizes: [6, 7, 8, 9, 10, 11, 12, 13],
@@ -126,6 +147,26 @@ export const products: Record<ModelId, RingProduct> = {
 
 export const catalog = [products.aero, products.titan];
 
+export const SLUG_TO_MODEL: Record<ProductSlug, ModelId> = {
+  pro: "aero",
+  ultra: "titan",
+};
+
+export function productTitle(modelId: ModelId) {
+  return `Mora ${products[modelId].name}`;
+}
+
+export function productPath(modelId: ModelId) {
+  return `/anillo/${products[modelId].slug}`;
+}
+
+export function resolveProductSlug(slug: string): ModelId | null {
+  const key = slug.trim().toLowerCase();
+  if (key === "pro" || key === "aero") return "aero";
+  if (key === "ultra" || key === "titan") return "titan";
+  return null;
+}
+
 export const DEFAULT_GALLERY_SRC = "/gallery/rings.png";
 
 export function defaultGalleryImage(modelId: ModelId) {
@@ -137,6 +178,11 @@ export function defaultGalleryImage(modelId: ModelId) {
     createdAt: 0,
     system: true as const,
   };
+}
+
+export function finishLabel(modelId: ModelId, finishId: FinishId) {
+  if (finishId === "black") return modelId === "titan" ? "Negro mate" : "Negro";
+  return finishes[finishId].title;
 }
 
 export function formatMoney(value: number) {

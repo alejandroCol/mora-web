@@ -1,9 +1,11 @@
 import { FieldValue, type Firestore } from "firebase-admin/firestore";
 import { catalog } from "@/lib/catalog";
 import { COLLECTIONS } from "@/commerce/paths";
-import { availableUnits, inventorySku } from "@/commerce/sku";
+import { availableUnits, inventoryLabel, inventorySku, parseInventorySku } from "@/commerce/sku";
 import type { InventoryDoc } from "@/commerce/types";
 import { adminDb } from "@/lib/firebaseAdmin";
+
+const DEFAULT_UNITS = 50;
 
 export function inventoryRef(db: Firestore, sku: string) {
   return db.collection(COLLECTIONS.inventory).doc(sku);
@@ -18,30 +20,41 @@ export async function listInventory(): Promise<InventoryDoc[]> {
 
 async function seedInventoryIfNeeded(db: Firestore) {
   const existing = await db.collection(COLLECTIONS.inventory).get();
-  const have = new Set(existing.docs.map((doc) => doc.id));
+  const have = new Map(existing.docs.map((doc) => [doc.id, doc.data() as InventoryDoc]));
   const now = Date.now();
   const batch = db.batch();
   let writes = 0;
   for (const product of catalog) {
     for (const finishId of product.finishes) {
-      const sku = inventorySku(product.id, finishId);
-      if (have.has(sku)) continue;
-      const data: InventoryDoc = {
-        sku,
-        modelId: product.id,
-        finishId,
-        units: 0,
-        reserved: 0,
-        updatedAt: now,
-      };
-      batch.set(inventoryRef(db, sku), data);
-      writes += 1;
+      const legacy = have.get(`${product.id}__${finishId}`);
+      const inherited =
+        legacy && (legacy.managed || legacy.units > 0) ? legacy.units : DEFAULT_UNITS;
+      for (const size of product.sizes) {
+        const sku = inventorySku(product.id, finishId, size);
+        const current = have.get(sku);
+        if (current?.managed) continue;
+        if (current && (current.units > 0 || (current.reserved ?? 0) > 0)) continue;
+        const data: InventoryDoc = {
+          sku,
+          modelId: product.id,
+          finishId,
+          size,
+          units: inherited,
+          reserved: current?.reserved ?? 0,
+          updatedAt: now,
+          managed: false,
+        };
+        batch.set(inventoryRef(db, sku), data, { merge: true });
+        writes += 1;
+      }
     }
   }
   if (writes > 0) await batch.commit();
 }
 
 export async function setInventoryUnits(sku: string, units: number) {
+  const parsed = parseInventorySku(sku);
+  if (!parsed?.size) throw new Error("Esa talla no existe.");
   const db = adminDb();
   const ref = inventoryRef(db, sku);
   await db.runTransaction(async (tx) => {
@@ -62,9 +75,13 @@ export async function setInventoryUnits(sku: string, units: number) {
       {
         ...(snap.data() ?? {}),
         sku,
+        modelId: parsed.modelId,
+        finishId: parsed.finishId,
+        size: parsed.size,
         units: nextUnits,
         reserved: current.reserved ?? 0,
         updatedAt: Date.now(),
+        managed: true,
       },
       { merge: true },
     );
@@ -75,6 +92,7 @@ export async function assertAndReserve(
   db: Firestore,
   demand: Map<string, number>,
 ) {
+  await seedInventoryIfNeeded(db);
   const refs = [...demand.keys()].map((sku) => inventoryRef(db, sku));
   await db.runTransaction(async (tx) => {
     const snaps = await Promise.all(refs.map((ref) => tx.get(ref)));
@@ -84,7 +102,7 @@ export async function assertAndReserve(
       const data = snap.data() as InventoryDoc | undefined;
       const available = availableUnits(data?.units ?? 0, data?.reserved ?? 0);
       if (available < qty) {
-        throw new Error(`Sin stock suficiente para ${sku}.`);
+        throw new Error(`Sin stock suficiente para ${inventoryLabel(sku)}.`);
       }
     });
     snaps.forEach((snap, index) => {
@@ -154,6 +172,7 @@ export async function consumeWithoutReservation(
   db: Firestore,
   demand: Map<string, number>,
 ) {
+  await seedInventoryIfNeeded(db);
   const refs = [...demand.keys()].map((sku) => inventoryRef(db, sku));
   await db.runTransaction(async (tx) => {
     const snaps = await Promise.all(refs.map((ref) => tx.get(ref)));
@@ -163,7 +182,7 @@ export async function consumeWithoutReservation(
       const data = snap.data() as InventoryDoc | undefined;
       const available = availableUnits(data?.units ?? 0, data?.reserved ?? 0);
       if (available < qty) {
-        throw new Error(`Sin stock suficiente para ${sku}.`);
+        throw new Error(`Sin stock suficiente para ${inventoryLabel(sku)}.`);
       }
       tx.set(
         refs[index],
@@ -178,11 +197,29 @@ export async function consumeWithoutReservation(
   });
 }
 
+export async function restoreUnits(db: Firestore, demand: Map<string, number>) {
+  if (demand.size === 0) return;
+  const batch = db.batch();
+  for (const [sku, qty] of demand) {
+    if (!sku || qty <= 0) continue;
+    batch.set(
+      inventoryRef(db, sku),
+      {
+        units: FieldValue.increment(qty),
+        updatedAt: Date.now(),
+      },
+      { merge: true },
+    );
+  }
+  await batch.commit();
+}
+
 export function demandFromItems(
   items: { sku: string; qty: number }[],
 ) {
   const map = new Map<string, number>();
   for (const item of items) {
+    if (!item.sku) continue;
     map.set(item.sku, (map.get(item.sku) ?? 0) + item.qty);
   }
   return map;

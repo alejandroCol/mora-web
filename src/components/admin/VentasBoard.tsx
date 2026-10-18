@@ -4,8 +4,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { ORDER_STATUS_LABEL, PAYMENT_METHOD_LABEL } from "@/commerce/labels";
 import type { MoraOrder, OrderStatus } from "@/commerce/types";
+import { commerceLineLabel, orderNeedsSize } from "@/commerce/sizing";
 import { formatMoney } from "@/lib/catalog";
 import { useAdminAuth } from "./AdminAuth";
+import { AbandonedCarts } from "./AbandonedCarts";
 import { ManualSaleForm } from "./ManualSaleForm";
 
 const COLUMNS: { status: OrderStatus; hint: string }[] = [
@@ -95,6 +97,8 @@ export function VentasBoard() {
         </div>
       </div>
 
+      <AbandonedCarts />
+
       <input
         value={query}
         onChange={(event) => setQuery(event.target.value)}
@@ -132,6 +136,7 @@ export function VentasBoard() {
                       </p>
                       <p className="mt-1 text-[11px] uppercase tracking-[0.08em] text-white/35">
                         {PAYMENT_METHOD_LABEL[order.payment.method]} · {order.channel}
+                        {orderNeedsSize(order.items) ? " · talla pendiente" : ""}
                       </p>
                     </button>
                   </li>
@@ -250,16 +255,24 @@ function OrderDrawer({
           {order.items.map((item) => (
             <li key={item.key} className="flex justify-between">
               <span>
-                {item.name} · {item.finishTitle} · #{item.size} ×{item.qty}
+                {commerceLineLabel(item)}
               </span>
               <span>{formatMoney(item.unitPrice * item.qty)}</span>
             </li>
           ))}
         </ul>
+        {order.totals.discount ? (
+          <p className="mt-2 text-right text-[12px] text-white/40">
+            Descuento{order.meta?.offerCode ? ` · ${order.meta.offerCode}` : ""} −
+            {formatMoney(order.totals.discount)}
+          </p>
+        ) : null}
         <p className="mt-4 text-right text-lg">{formatMoney(order.totals.total)}</p>
         <p className="mt-1 text-right text-[12px] text-white/40">
           {PAYMENT_METHOD_LABEL[order.payment.method]}
-          {order.payment.wompiPaymentType ? ` · ${order.payment.wompiPaymentType}` : ""}
+          {order.payment.boldPaymentType ?? order.payment.wompiPaymentType
+            ? ` · ${order.payment.boldPaymentType ?? order.payment.wompiPaymentType}`
+            : ""}
         </p>
 
         {order.status === "paid" ? (
@@ -273,13 +286,18 @@ function OrderDrawer({
               placeholder="Opcional, se envía al cliente"
               className="mt-2 h-11 w-full rounded-2xl bg-white/8 px-3 text-sm"
             />
+            {orderNeedsSize(order.items) ? (
+              <p className="mt-4 rounded-2xl bg-white/8 px-4 py-3 text-[13px] leading-5 text-white/60">
+                Talla pendiente. Enviá el medidor y esperá a que confirmen el número.
+              </p>
+            ) : null}
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || orderNeedsSize(order.items)}
               onClick={() => onStatus("in_transit")}
               className="mt-4 h-11 w-full rounded-full bg-white text-[13px] text-[#14131c] disabled:opacity-40"
             >
-              Despachar pedido
+              Despachar anillo
             </button>
           </div>
         ) : null}

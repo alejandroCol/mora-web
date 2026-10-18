@@ -9,7 +9,8 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
 };
 
 export const PAYMENT_METHOD_LABEL: Record<PaymentMethod, string> = {
-  wompi: "Wompi",
+  bold: "Pago en línea",
+  wompi: "Pago en línea",
   transferencia: "Transferencia",
   efectivo: "Efectivo",
   datafono: "Datáfono",

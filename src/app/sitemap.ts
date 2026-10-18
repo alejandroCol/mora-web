@@ -36,10 +36,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.4,
     },
     ...catalog.map((item) => ({
+      url: siteUrl(`/anillo/${item.slug}`),
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.9,
+    })),
+    ...catalog.map((item) => ({
       url: siteUrl(`/galeria/${item.id}`),
       lastModified: now,
       changeFrequency: "weekly" as const,
-      priority: 0.8,
+      priority: 0.6,
     })),
   ];
 }

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect } from "react";
 import { IconCart } from "@/components/icons/NavIcons";
-import { finishes, formatMoney, products } from "@/lib/catalog";
+import { sizeCopy } from "@/commerce/sizing";
+import { finishLabel, finishes, formatMoney, products } from "@/lib/catalog";
+import { PRESALE } from "@/lib/presale";
 import { useCartCount, useCartSubtotal, useMoraStore } from "@/lib/store";
 
 export function CartDrawer() {
@@ -64,8 +66,7 @@ export function CartDrawer() {
         <div className="flex-1 overflow-y-auto px-6 pb-4">
           {cart.length === 0 ? (
             <p className="mt-8 text-[15px] leading-7 text-soft">
-              Elige un color y una talla. Puedes mezclar varios anillos en el
-              mismo pedido.
+              Elige un anillo. Color, y si pedimos medidor o te mides ahora.
             </p>
           ) : (
             <ul className="divide-y divide-line">
@@ -80,9 +81,9 @@ export function CartDrawer() {
                     />
                     <div className="min-w-0 flex-1">
                       <p className="text-[15px] text-ink">
-                        {model.name} · {finish.title}
+                        Mora {model.name} · {finishLabel(line.modelId, line.finishId)}
                       </p>
-                      <p className="mt-0.5 text-[13px] text-soft">Talla {line.size}</p>
+                      <p className="mt-0.5 text-[13px] text-soft">{sizeCopy(line)}</p>
                       <div className="mt-3 flex items-center gap-3">
                         <div className="flex items-center rounded-full bg-white/80">
                           <button
@@ -127,7 +128,9 @@ export function CartDrawer() {
             <span className="text-[13px] text-soft">Subtotal</span>
             <span className="text-[15px] text-ink">{formatMoney(subtotal)}</span>
           </div>
-          <p className="mt-1 text-[12px] text-soft">El envío se calcula en el checkout, según destino.</p>
+          <p className="mt-1 text-[12px] text-soft">
+            {PRESALE.promise} El envío se calcula en el checkout.
+          </p>
           <Link
             href="/checkout"
             onClick={closeCart}
@@ -158,7 +161,7 @@ export function CartButton() {
     >
       <IconCart className="h-[19px] w-[19px] sm:h-5 sm:w-5" />
       {count > 0 ? (
-        <span className="absolute -right-2.5 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-ink px-1 text-[10px] text-white">
+        <span className="absolute -right-2.5 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-[#ece8f6] px-1 text-[10px] font-medium text-[#7a6eae]">
           {count}
         </span>
       ) : null}

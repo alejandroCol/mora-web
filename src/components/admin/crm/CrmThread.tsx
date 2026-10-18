@@ -5,6 +5,11 @@ import type { CrmSeller, WhatsAppConversation, WhatsAppConversationStatus, Whats
 import { PIPELINE_LABEL, SUPPORT_STATUS_LABEL } from "@/crm/labels";
 import { formatClock } from "@/crm/labels";
 
+function initial(name: string, phone: string) {
+  const source = name.trim() || phone;
+  return source.slice(0, 1).toUpperCase();
+}
+
 export function CrmThread({
   conversation,
   messages,
@@ -35,26 +40,24 @@ export function CrmThread({
 
   return (
     <>
-      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 px-4 py-3 lg:px-5">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <button type="button" onClick={onBack} className="text-[12px] text-white/40 lg:hidden">
-              Inbox
-            </button>
-            <p className="truncate text-[15px]">{conversation.name || conversation.phone}</p>
+      <header className="crm-chat-head">
+        <div className="crm-chat-who">
+          <button type="button" onClick={onBack} className="crm-chat-back lg:hidden">
+            Inbox
+          </button>
+          <span className="crm-chat-mark" aria-hidden>
+            {initial(conversation.name, conversation.phone)}
+          </span>
+          <div className="min-w-0">
+            <p className="crm-chat-name">{conversation.name || conversation.phone}</p>
+            <p className="crm-chat-phone">+{conversation.phone}</p>
           </div>
-          <p className="text-[12px] text-white/40">+{conversation.phone}</p>
-          {conversation.referral?.headline ? (
-            <p className="mt-1 text-[12px] text-white/50">Anuncio: {conversation.referral.headline}</p>
-          ) : null}
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="crm-chat-tools">
           <select
             value={conversation.assignedTo || ""}
-            onChange={(event) =>
-              onPatch({ assignedTo: event.target.value || null })
-            }
-            className="h-8 rounded-full bg-white/8 px-3 text-[11px] outline-none"
+            onChange={(event) => onPatch({ assignedTo: event.target.value || null })}
+            className="crm-chat-select"
           >
             <option value="">Sin dueño</option>
             {sellers.map((seller) => (
@@ -63,63 +66,42 @@ export function CrmThread({
               </option>
             ))}
           </select>
-          <button
-            type="button"
-            onClick={() => onPatch({ desk: support ? "sales" : "support" })}
-            className="rounded-full bg-white/8 px-3 py-1.5 text-[11px] text-white/55"
-          >
-            {support ? "A ventas" : "A soporte"}
+          <button type="button" onClick={() => onPatch({ desk: support ? "sales" : "support" })} className="crm-chat-chip">
+            {support ? "Ventas" : "Soporte"}
           </button>
-          <button
-            type="button"
-            onClick={onFicha}
-            className="rounded-full bg-white/8 px-3 py-1.5 text-[11px] text-white/55 xl:hidden"
-          >
+          <button type="button" onClick={onFicha} className="crm-chat-chip xl:hidden">
             Ficha
           </button>
-          <button
-            type="button"
-            onClick={onSale}
-            className="rounded-full bg-white px-3 py-1.5 text-[11px] text-[#12111a]"
-          >
-            Registrar venta
+          <button type="button" onClick={onSale} className="crm-chat-sale">
+            Venta
           </button>
+        </div>
+        <div className="crm-chat-pipe">
+          {support
+            ? (["open", "waiting", "resolved"] as const).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => onPatch({ supportStatus: status })}
+                  className={`crm-pipe ${(conversation.supportStatus ?? "open") === status ? "is-on" : ""}`}
+                >
+                  {SUPPORT_STATUS_LABEL[status]}
+                </button>
+              ))
+            : (Object.keys(PIPELINE_LABEL) as WhatsAppConversationStatus[]).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  onClick={() => onPatch({ status })}
+                  className={`crm-pipe ${conversation.status === status ? "is-on" : ""}`}
+                >
+                  {PIPELINE_LABEL[status]}
+                </button>
+              ))}
         </div>
       </header>
 
-      <div className="flex flex-wrap gap-1.5 border-b border-white/8 px-4 py-2 lg:px-5">
-        {support
-          ? (["open", "waiting", "resolved"] as const).map((status) => (
-              <button
-                key={status}
-                type="button"
-                onClick={() => onPatch({ supportStatus: status })}
-                className={`rounded-full px-3 py-1 text-[11px] ${
-                  (conversation.supportStatus ?? "open") === status
-                    ? "bg-white text-[#12111a]"
-                    : "bg-white/8 text-white/55"
-                }`}
-              >
-                {SUPPORT_STATUS_LABEL[status]}
-              </button>
-            ))
-          : (Object.keys(PIPELINE_LABEL) as WhatsAppConversationStatus[]).map((status) => (
-              <button
-                key={status}
-                type="button"
-                onClick={() => onPatch({ status })}
-                className={`rounded-full px-3 py-1 text-[11px] ${
-                  conversation.status === status
-                    ? "bg-white text-[#12111a]"
-                    : "bg-white/8 text-white/55"
-                }`}
-              >
-                {PIPELINE_LABEL[status]}
-              </button>
-            ))}
-      </div>
-
-      <div ref={scroller} className="crm-scroll flex-1 space-y-2 overflow-y-auto px-4 py-5 lg:px-5">
+      <div ref={scroller} className="crm-scroll flex-1 space-y-2 overflow-y-auto px-4 py-3 lg:px-5">
         {messages.map((message) => (
           <div
             key={message.id}

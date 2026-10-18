@@ -311,8 +311,8 @@ export function CrmWorkspace() {
 
   return (
     <div className="crm-app">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-2">
+      <header className="crm-toolbar">
+        <div className="flex flex-wrap items-center gap-1.5">
           {(Object.keys(DESK_LABEL) as CrmDesk[]).map((item) => (
             <button
               key={item}

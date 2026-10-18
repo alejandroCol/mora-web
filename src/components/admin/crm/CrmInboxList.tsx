@@ -52,7 +52,7 @@ export function CrmInboxList({
           ))}
         </div>
       </div>
-      <ul className="max-h-[28vh] overflow-y-auto lg:max-h-none lg:flex-1">
+      <ul className="min-h-0 flex-1 overflow-y-auto">
         {conversations.length === 0 ? (
           <li className="px-5 py-8 text-[13px] text-white/35">Nada en este filtro.</li>
         ) : (

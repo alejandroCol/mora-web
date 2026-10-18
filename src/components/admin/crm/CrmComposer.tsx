@@ -47,28 +47,24 @@ export function CrmComposer({
   }
 
   return (
-    <div className="border-t border-white/8 p-4">
+    <div className="crm-composer">
       {!windowOpen ? (
-        <p className="mb-3 text-[12px] leading-5 text-white/45">
-          La ventana de 24 h está cerrada. WhatsApp solo acepta una plantilla aprobada.
-          {templates.length === 0
-            ? " Añádelas en Ajustes cuando Meta las apruebe."
-            : ""}
+        <p className="crm-composer-note">
+          Ventana cerrada. Solo plantilla Meta.
+          {templates.length === 0 ? " Añádelas en Ajustes." : ""}
         </p>
       ) : windowClosesAt ? (
-        <p className="mb-3 text-[12px] text-white/35">
-          Puedes escribir libre hasta las {formatClock(windowClosesAt)}.
-        </p>
+        <p className="crm-composer-note">Libre hasta las {formatClock(windowClosesAt)}</p>
       ) : null}
 
       {replies.length > 0 ? (
-        <div className="mb-3 flex gap-1.5 overflow-x-auto pb-1">
+        <div className="mb-2 flex gap-1 overflow-x-auto">
           {replies.map((reply) => (
             <button
               key={reply.id}
               type="button"
               onClick={() => setDraft(reply.body)}
-              className="shrink-0 rounded-full bg-white/8 px-3 py-1.5 text-[11px] text-white/60"
+              className="shrink-0 rounded-full bg-white/8 px-2.5 py-1 text-[11px] text-white/60"
             >
               {reply.title}
             </button>

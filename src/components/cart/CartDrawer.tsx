@@ -134,13 +134,14 @@ export function CartDrawer() {
           <Link
             href="/checkout"
             onClick={closeCart}
-            className={`mt-4 flex h-12 items-center justify-center rounded-full text-[14px] ${
-              cart.length === 0
-                ? "pointer-events-none bg-ink/20 text-white"
-                : "bg-ink text-white hover:opacity-80"
+            className={`elegir-cta mt-4 w-full ${
+              cart.length === 0 ? "pointer-events-none opacity-35" : ""
             }`}
           >
-            Continuar
+            Reservar
+            <span aria-hidden className="elegir-cta-arrow">
+              ›
+            </span>
           </Link>
         </footer>
       </aside>

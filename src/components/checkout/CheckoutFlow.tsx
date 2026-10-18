@@ -17,13 +17,7 @@ const STEPS = [
   {
     label: "Tú",
     title: "Tus datos",
-    whisper: "Nombre y correo para el pedido y el comprobante.",
-    action: "Continuar",
-  },
-  {
-    label: "Envío",
-    title: "Dónde llega",
-    whisper: "Cotizamos el envío al instante en Colombia.",
+    whisper: "Nombre, correo y a dónde llega. El envío se cotiza al instante.",
     action: "Continuar al pago",
   },
   {
@@ -232,7 +226,7 @@ export function CheckoutFlow() {
   }, [cartKey, destKey, carrier]);
 
   useEffect(() => {
-    if (step === 2) void loadBoldScript().catch(() => undefined);
+    if (step === 1) void loadBoldScript().catch(() => undefined);
   }, [step]);
 
   const envioCop =
@@ -247,8 +241,6 @@ export function CheckoutFlow() {
       if (!draft.firstName.trim() || !draft.email.trim() || !draft.phone.trim()) {
         return "Nombre, correo y teléfono.";
       }
-    }
-    if (step === 1) {
       if (!draft.departamento || !draft.ciudad || draft.address.trim().length < 8) {
         return "Departamento, ciudad y una dirección completa.";
       }
@@ -321,26 +313,22 @@ export function CheckoutFlow() {
       return;
     }
     setError("");
-    if (step < 2) {
-      if (step === 0) {
-        track(
-          "Lead",
-          { content_name: "Checkout", content_category: "checkout" },
-          {
-            email: draft.email,
-            phone: draft.phone,
-            firstName: draft.firstName,
-          },
-        );
-      }
-      if (step === 1) {
-        track("AddPaymentInfo", {
-          value: total,
-          currency: "COP",
-          num_items: piezas,
-        });
-      }
-      setStep(step + 1);
+    if (step < 1) {
+      track(
+        "Lead",
+        { content_name: "Checkout", content_category: "checkout" },
+        {
+          email: draft.email,
+          phone: draft.phone,
+          firstName: draft.firstName,
+        },
+      );
+      track("AddPaymentInfo", {
+        value: total,
+        currency: "COP",
+        num_items: piezas,
+      });
+      setStep(1);
       return;
     }
     void pay();
@@ -367,7 +355,7 @@ export function CheckoutFlow() {
 
   return (
     <form onSubmit={onContinue} className="w-full">
-      <ol className="check-steps">
+      <ol className="check-steps check-steps-2">
         {STEPS.map((item, index) => {
           const state = index === step ? "on" : index < step ? "done" : "wait";
           return (
@@ -425,11 +413,6 @@ export function CheckoutFlow() {
               value={draft.phone}
               onChange={(value) => setDraft({ phone: value })}
             />
-          </>
-        ) : null}
-
-        {step === 1 ? (
-          <>
             <ColombiaFields
               departamento={draft.departamento}
               ciudad={draft.ciudad}
@@ -495,7 +478,7 @@ export function CheckoutFlow() {
           </>
         ) : null}
 
-        {step === 2 ? (
+        {step === 1 ? (
           <div className="px-5 py-5">
             <ul className="space-y-3">
               {cart.map((line) => {
@@ -556,7 +539,7 @@ export function CheckoutFlow() {
         </footer>
       </section>
 
-      <aside className="check-card flex flex-col px-6 py-5">
+      <aside className="check-card hidden flex-col px-6 py-5 lg:flex">
         <h2 className="title-name text-[1.65rem] tracking-[-0.04em] text-[#1d1d1f]">
           Tu pedido
         </h2>
@@ -593,8 +576,8 @@ export function CheckoutFlow() {
           <div className="mt-2 flex justify-between text-[14px] text-[#6e6e73]">
             <span>Envío</span>
             <span className="text-[#1d1d1f]">
-              {step < 1
-                ? "En el siguiente paso"
+              {quote?.error
+                ? quote.error
                 : envioCop === 0
                   ? "Gratis"
                   : envioCop == null
@@ -611,7 +594,9 @@ export function CheckoutFlow() {
           <div className="mt-3 flex justify-between text-[17px] tracking-[-0.022em] text-[#1d1d1f]">
             <span>Total</span>
             <span>
-              {formatMoney(step < 1 ? Math.max(0, subtotal - discount) : total)}
+              {formatMoney(
+                envioCop == null ? Math.max(0, subtotal - discount) : total,
+              )}
             </span>
           </div>
           <p className="mt-3 text-[12px] leading-5 text-[#6e6e73]">

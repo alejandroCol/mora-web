@@ -18,8 +18,8 @@ export default function CheckoutPage() {
   }, []);
 
   return (
-    <div className="min-h-dvh bg-[#f5f5f7] pt-[calc(4.5rem+env(safe-area-inset-top))]">
-      <div className="mx-auto max-w-[880px] px-5 pb-20 sm:px-8">
+    <div className="min-h-dvh bg-[#f5f5f7] pt-[calc(4.25rem+env(safe-area-inset-top))]">
+      <div className="mx-auto max-w-[880px] px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] sm:px-8 sm:pb-20">
         <Link
           href="/#coleccion"
           className="text-[13px] tracking-[-0.01em] text-[#6e6e73] hover:text-[#1d1d1f]"

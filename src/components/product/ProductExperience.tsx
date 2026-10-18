@@ -1,10 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ParticleVeil } from "@/components/gallery/ParticleVeil";
 import { BuySheet } from "@/components/product/BuySheet";
+import { LookStage } from "@/components/product/LookStage";
 import { products, type ModelId } from "@/lib/catalog";
 import { track } from "@/growth/track";
 import { useMoraStore } from "@/lib/store";
@@ -15,11 +14,10 @@ const RingCanvas = dynamic(
 );
 
 export function ProductExperience({ modelId }: { modelId: ModelId }) {
-  const router = useRouter();
-  const { selection, setModel, setFinish, closeCart } = useMoraStore();
+  const { selection, setModel, setFinish } = useMoraStore();
   const model = products[modelId];
-  const [leaving, setLeaving] = useState(false);
   const [desktop, setDesktop] = useState(false);
+  const [looks, setLooks] = useState(false);
   const finishId = model.finishes.includes(selection.finishId)
     ? selection.finishId
     : model.finishes[0];
@@ -48,42 +46,43 @@ export function ProductExperience({ modelId }: { modelId: ModelId }) {
     });
   }, [model.id, model.line, model.name, model.price]);
 
-  function openGallery() {
-    closeCart();
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      router.push(`/galeria/${modelId}?entrada=1`);
-      return;
-    }
-    setLeaving(true);
-    window.setTimeout(() => {
-      router.push(`/galeria/${modelId}?entrada=1`);
-    }, 720);
-  }
-
   return (
     <div className="hero-wash h-dvh overflow-hidden pt-[calc(3.5rem+env(safe-area-inset-top))] sm:pt-[4.25rem]">
       <div className="mx-auto flex h-full max-w-[1180px] flex-col lg:flex-row">
-        <section className="relative flex h-[28vh] min-h-[168px] shrink-0 items-center justify-center lg:h-auto lg:min-h-0 lg:flex-1">
-          <RingCanvas
-            configure
-            finishId={finishId}
-            scale={desktop ? 0.58 : 0.7}
-            className="h-full w-full max-w-[34rem]"
-          />
-          <button
-            type="button"
-            onClick={openGallery}
-            className="absolute bottom-4 left-1/2 z-10 -translate-x-1/2 text-[13px] tracking-[-0.01em] text-soft transition-colors hover:text-ink lg:bottom-6"
-          >
-            Ver imágenes ›
-          </button>
+        <section
+          className={`relative shrink-0 lg:h-auto lg:min-h-0 lg:flex-1 ${
+            looks
+              ? "h-[min(52vh,24rem)] min-h-[220px]"
+              : "flex h-[28vh] min-h-[168px] items-center justify-center"
+          }`}
+        >
+          {looks ? (
+            <LookStage modelId={modelId} onBack={() => setLooks(false)} />
+          ) : (
+            <>
+              <RingCanvas
+                configure
+                finishId={finishId}
+                scale={desktop ? 0.58 : 0.7}
+                className="h-full w-full max-w-[34rem]"
+              />
+              <button
+                type="button"
+                onClick={() => setLooks(true)}
+                className="absolute bottom-3 left-1/2 z-10 -translate-x-1/2 text-[13px] tracking-[-0.01em] text-soft transition-colors hover:text-ink lg:bottom-6"
+              >
+                Ver imágenes ›
+              </button>
+            </>
+          )}
         </section>
         <aside className="relative min-h-0 flex-1 bg-white/70 lg:w-[24.5rem] lg:flex-none lg:border-l lg:border-line lg:bg-transparent">
-          <BuySheet modelId={modelId} onGallery={openGallery} />
+          <BuySheet
+            modelId={modelId}
+            onGallery={looks ? undefined : () => setLooks(true)}
+          />
         </aside>
       </div>
-      {leaving ? <ParticleVeil /> : null}
     </div>
   );
 }

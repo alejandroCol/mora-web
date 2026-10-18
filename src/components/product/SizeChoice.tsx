@@ -42,8 +42,8 @@ export function SizeChoice({
 
   return (
     <div>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[15px] tracking-[-0.016em] text-[#1d1d1f]">
+      <div className="flex items-center gap-2 whitespace-nowrap">
+        <p className="min-w-0 flex-1 text-[14px] tracking-[-0.018em] text-[#1d1d1f] sm:text-[15px]">
           ¿Quieres pedir un medidor?
         </p>
         <button
@@ -54,23 +54,22 @@ export function SizeChoice({
         >
           i
         </button>
-      </div>
-
-      <div className="size-seg mt-3">
-        <button
-          type="button"
-          onClick={() => onSizing("kit")}
-          aria-pressed={sizing === "kit"}
-        >
-          Sí
-        </button>
-        <button
-          type="button"
-          onClick={() => onSizing("self")}
-          aria-pressed={sizing === "self"}
-        >
-          No
-        </button>
+        <div className="size-seg size-seg-inline">
+          <button
+            type="button"
+            onClick={() => onSizing("kit")}
+            aria-pressed={sizing === "kit"}
+          >
+            Sí
+          </button>
+          <button
+            type="button"
+            onClick={() => onSizing("self")}
+            aria-pressed={sizing === "self"}
+          >
+            No
+          </button>
+        </div>
       </div>
 
       {sizing === "kit" ? (
@@ -109,12 +108,6 @@ export function SizeChoice({
             Ver cómo medir ›
           </button>
         </div>
-      ) : null}
-
-      {sizing == null ? (
-        <p className="mt-2.5 text-[13px] leading-5 text-soft">
-          Elige una opción para reservar.
-        </p>
       ) : null}
 
       {info ? (

@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { Center, ContactShadows, Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { finishes, type Finish, type FinishId } from "@/lib/catalog";
+import { applyRingFinish } from "./finishMaterial";
 import { ParticleRing, sampleMesh } from "./ParticleRing";
 import { RING_POSE } from "./pose";
 
@@ -57,26 +58,7 @@ function applyFinish(
   materials: THREE.MeshPhysicalMaterial[],
   next: Finish,
 ) {
-  const gold = next.id === "gold";
-  const silver = next.id === "silver";
-  const matte = next.id === "black";
-  const ceramic = next.id === "white" || next.id === "lilac";
-  for (const material of materials) {
-    material.color.set(next.color);
-    material.metalness = next.metalness;
-    material.roughness = next.roughness;
-    material.clearcoat = next.clearcoat;
-    material.clearcoatRoughness = gold ? 0.2 : silver ? 0.08 : ceramic ? 0.35 : 0.9;
-    material.envMapIntensity = next.envMapIntensity;
-    material.emissive.set(next.emissive);
-    material.emissiveIntensity = next.emissiveIntensity;
-    material.sheen = gold ? 0.42 : silver ? 0.22 : ceramic ? 0.16 : 0;
-    material.sheenColor.set(
-      gold ? "#F6DEAA" : next.id === "lilac" ? "#E4D7F6" : "#f4f8ff",
-    );
-    material.specularIntensity = gold || silver ? 1 : matte ? 0.12 : 0.45;
-    material.vertexColors = false;
-  }
+  for (const material of materials) applyRingFinish(material, next);
 }
 
 type ConfigureSceneProps = {
@@ -117,22 +99,8 @@ export function ConfigureScene({ finishId, scale = 0.9 }: ConfigureSceneProps) {
     const shells = collectSurfaceMeshes(cloned);
     surface.current = shells.map((mesh) => {
       mesh.geometry.deleteAttribute("color");
-      const material = new THREE.MeshPhysicalMaterial({
-        color: applied.color,
-        metalness: applied.metalness,
-        roughness: applied.roughness,
-        clearcoat: applied.clearcoat,
-        clearcoatRoughness: 0.18,
-        envMapIntensity: applied.envMapIntensity,
-        emissive: new THREE.Color(applied.emissive),
-        emissiveIntensity: applied.emissiveIntensity,
-        opacity: 1,
-        vertexColors: false,
-        sheen: applied.id === "gold" ? 0.42 : 0.12,
-        sheenColor: new THREE.Color(
-          applied.id === "gold" ? "#F6DEAA" : "#ffffff",
-        ),
-      });
+      const material = new THREE.MeshPhysicalMaterial({ opacity: 1 });
+      applyRingFinish(material, applied);
       mesh.material = material;
       return material;
     });
@@ -179,20 +147,20 @@ export function ConfigureScene({ finishId, scale = 0.9 }: ConfigureSceneProps) {
 
   return (
     <>
-      <ambientLight intensity={0.62} />
+      <ambientLight intensity={finishId === "silver" ? 0.7 : 0.62} />
       <directionalLight
         position={[2.6, 3.4, 2.2]}
-        intensity={1.2}
-        color="#fff6ea"
+        intensity={finishId === "silver" ? 0.72 : 1.2}
+        color={finishId === "silver" ? "#f4f6f8" : "#fff6ea"}
       />
       <directionalLight
         position={[-2.4, 1.1, -1.6]}
-        intensity={0.42}
+        intensity={finishId === "silver" ? 0.28 : 0.42}
         color="#dce6f6"
       />
       <directionalLight
         position={[0.2, -1.6, 1.4]}
-        intensity={0.28}
+        intensity={finishId === "silver" ? 0.1 : 0.28}
         color="#f0d7a4"
       />
       <group ref={group}>
@@ -234,7 +202,10 @@ export function ConfigureScene({ finishId, scale = 0.9 }: ConfigureSceneProps) {
         far={2.2}
         color="#1c1830"
       />
-      <Environment preset="studio" environmentIntensity={0.92} />
+      <Environment
+        preset="studio"
+        environmentIntensity={finishId === "silver" ? 0.58 : 0.92}
+      />
     </>
   );
 }

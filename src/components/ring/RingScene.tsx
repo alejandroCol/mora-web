@@ -5,6 +5,7 @@ import { useFrame } from "@react-three/fiber";
 import { Center, ContactShadows, Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { finishes, type FinishId } from "@/lib/catalog";
+import { applyRingFinish } from "./finishMaterial";
 import { RING_POSE } from "./pose";
 
 const MODEL_PATH = "/models/mora-ring.glb";
@@ -61,16 +62,8 @@ export function RingScene({
         if (!(child instanceof THREE.Mesh)) return;
         child.castShadow = true;
         child.receiveShadow = true;
-        const material = new THREE.MeshPhysicalMaterial({
-          color: finish.color,
-          metalness: finish.metalness,
-          roughness: finish.roughness,
-          clearcoat: finish.clearcoat,
-          clearcoatRoughness: 0.18,
-          envMapIntensity: 1.35,
-          sheen: finish.metalness < 0.5 ? 0.18 : 0,
-          sheenColor: new THREE.Color("#e8e4f2"),
-        });
+        const material = new THREE.MeshPhysicalMaterial();
+        applyRingFinish(material, finish);
         child.material = material;
         next.push(material);
       });
@@ -79,10 +72,9 @@ export function RingScene({
     }
 
     for (const material of materials.current) {
-      material.metalness = finish.metalness;
-      material.roughness = finish.roughness;
-      material.clearcoat = finish.clearcoat;
-      material.sheen = finish.metalness < 0.5 ? 0.18 : 0;
+      const color = material.color.clone();
+      applyRingFinish(material, finish);
+      material.color.copy(color);
     }
   }, [cloned, finish, original]);
 

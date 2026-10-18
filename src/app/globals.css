@@ -319,6 +319,10 @@ body {
   box-shadow: 0 0 0 1px rgba(22, 20, 31, 0.06);
 }
 
+.check-steps-2 {
+  grid-template-columns: 1fr 1fr;
+}
+
 .check-step {
   display: flex;
   flex-direction: column;
@@ -612,6 +616,10 @@ body {
   background: rgba(22, 20, 31, 0.06);
 }
 
+.size-seg-inline {
+  flex: 0 0 auto;
+}
+
 .size-seg button {
   flex: 1;
   height: 40px;
@@ -620,6 +628,14 @@ body {
   letter-spacing: -0.016em;
   color: var(--soft);
   transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.size-seg-inline button {
+  flex: 0 0 auto;
+  height: 30px;
+  min-width: 2.4rem;
+  padding: 0 0.7rem;
+  font-size: 13px;
 }
 
 .size-seg button[aria-pressed="true"] {
@@ -799,12 +815,204 @@ body {
   }
 }
 
+.look-stage {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  animation: look-stage-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.look-frame {
+  position: relative;
+  width: calc(100% - 1.75rem);
+  height: min(58%, 20rem);
+  flex: none;
+  overflow: hidden;
+  border-radius: 22px;
+  touch-action: pan-x;
+}
+
+.look-slide {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  margin: 0;
+  place-items: center;
+}
+
+.look-slide img {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  transform-origin: 50% 50%;
+}
+
+.look-enter-next {
+  animation: look-enter-next 0.78s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.look-enter-prev {
+  animation: look-enter-prev 0.78s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.look-leave-next {
+  animation: look-leave-next 0.62s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.look-leave-prev {
+  animation: look-leave-prev 0.62s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.look-bar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  padding: 0.7rem 0.75rem 0.15rem;
+  animation: look-bar-in 0.75s 0.12s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.look-nav {
+  display: grid;
+  height: 2.15rem;
+  width: 2.15rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 999px;
+  background: #fff;
+  color: #1d1d1f;
+  box-shadow: 0 0 0 1px rgba(22, 20, 31, 0.08);
+  transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.look-nav svg {
+  display: block;
+  height: 15px;
+  width: 15px;
+}
+
+.look-chev-next {
+  transform: scaleX(-1);
+}
+
+.look-nav:hover {
+  box-shadow: 0 0 0 1px rgba(22, 20, 31, 0.18);
+  transform: scale(1.04);
+}
+
+.look-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.look-dots button {
+  height: 6px;
+  width: 6px;
+  border-radius: 999px;
+  background: rgba(29, 29, 31, 0.18);
+  transition:
+    width 0.4s cubic-bezier(0.22, 1, 0.36, 1),
+    background 0.3s ease;
+}
+
+.look-dots button.on {
+  width: 18px;
+  background: #1d1d1f;
+}
+
+.look-back {
+  flex-shrink: 0;
+  align-self: center;
+  min-height: 2rem;
+  padding: 0.15rem 0.75rem 0.45rem;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  color: #6e6e73;
+  animation: look-bar-in 0.75s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.look-back:hover {
+  color: #1d1d1f;
+}
+
+@keyframes look-stage-in {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    filter: none;
+  }
+}
+
+@keyframes look-enter-next {
+  from {
+    opacity: 0;
+    transform: translateX(8%) scale(1.045);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes look-enter-prev {
+  from {
+    opacity: 0;
+    transform: translateX(-8%) scale(1.045);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes look-leave-next {
+  to {
+    opacity: 0;
+    transform: translateX(-10%) scale(0.98);
+  }
+}
+
+@keyframes look-leave-prev {
+  to {
+    opacity: 0;
+    transform: translateX(10%) scale(0.98);
+  }
+}
+
+@keyframes look-bar-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .gallery-image-in,
   .gallery-panel-in,
   .gallery-veil,
-  .gallery-veil-leave {
+  .gallery-veil-leave,
+  .look-stage,
+  .look-slide,
+  .look-bar,
+  .look-back {
     animation: none;
+    transition: none;
+    filter: none;
   }
 }
 

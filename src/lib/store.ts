@@ -155,7 +155,7 @@ export const useMoraStore = create<Store>()(
                   qty,
                 },
               ];
-          return { cart, cartOpen: true };
+          return { cart, cartOpen: false };
         });
       },
       setQty: (key, qty) =>

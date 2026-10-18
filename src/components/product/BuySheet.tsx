@@ -1,5 +1,7 @@
 "use client";
 
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import {
   finishLabel,
   finishes,
@@ -19,21 +21,28 @@ export function BuySheet({
   modelId: ModelId;
   onGallery?: () => void;
 }) {
-  const { selection, setFinish, setSize, setSizing, addSelectionToCart } =
+  const router = useRouter();
+  const { selection, setFinish, setSize, setSizing, addSelectionToCart, closeCart } =
     useMoraStore();
   const model = products[modelId];
   const finishId = model.finishes.includes(selection.finishId)
     ? selection.finishId
     : model.finishes[0];
-  const finish = finishes[finishId];
   const sizing = selection.sizing;
-  const canAdd =
-    sizing === "kit" ||
-    (sizing === "self" && model.sizes.includes(selection.size));
+  const [need, setNeed] = useState("");
 
   function add() {
-    if (!canAdd) return;
+    if (!sizing) {
+      setNeed("Elige si quieres pedir un medidor.");
+      return;
+    }
+    if (sizing === "self" && !model.sizes.includes(selection.size)) {
+      setNeed("Elige tu talla para reservar.");
+      return;
+    }
+    setNeed("");
     addSelectionToCart(1);
+    closeCart();
     track("AddToCart", {
       content_ids: [model.id],
       content_name: `Mora ${model.name} ${finishLabel(modelId, finishId)}`,
@@ -42,14 +51,16 @@ export function BuySheet({
       currency: "COP",
       num_items: 1,
     });
+    router.push("/checkout");
   }
 
   const hint =
-    sizing === "kit"
+    need ||
+    (sizing === "kit"
       ? "Reservar con medidor. Confirmas la talla después."
       : sizing === "self"
         ? `Se entrega el ${PRESALE.deliveryLabel}.`
-        : "Elige si quieres medidor para reservar.";
+        : "");
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -62,9 +73,8 @@ export function BuySheet({
             {formatMoney(model.price)}
           </p>
         </div>
-        <p className="mt-1.5 text-[15px] leading-6 text-soft">{model.promise}</p>
         <p className="mt-2 text-[12px] text-soft">
-          {model.line} · {model.weight} · {model.battery}
+          {model.line} · {model.weight}
         </p>
 
         <fieldset className="mt-7">
@@ -93,17 +103,22 @@ export function BuySheet({
               );
             })}
           </div>
-          <p className="mt-2.5 text-[12px] leading-5 text-soft">{finish.whisper}</p>
         </fieldset>
 
         {model.kind === "ring" ? (
           <div className="mt-6">
             <SizeChoice
               sizing={sizing}
-              onSizing={setSizing}
+              onSizing={(method) => {
+                setNeed("");
+                setSizing(method);
+              }}
               sizes={model.sizes}
               size={selection.size}
-              onSize={setSize}
+              onSize={(size) => {
+                setNeed("");
+                setSize(size);
+              }}
             />
           </div>
         ) : null}
@@ -122,13 +137,14 @@ export function BuySheet({
       <div className="shrink-0 border-t border-line bg-white/80 px-5 py-3 backdrop-blur-xl pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-8">
         <button
           type="button"
-          disabled={!canAdd}
           onClick={add}
-          className="flex h-11 w-full items-center justify-center rounded-full bg-[#1d1d1f] text-[17px] tracking-[-0.022em] text-white transition-colors hover:bg-[#3a3a3c] disabled:opacity-35"
+          className="flex h-11 w-full items-center justify-center rounded-full bg-[#1d1d1f] text-[17px] tracking-[-0.022em] text-white transition-colors hover:bg-[#3a3a3c]"
         >
           Reservar {model.name}
         </button>
-        <p className="mt-2 text-center text-[11px] leading-4 text-soft">{hint}</p>
+        {hint ? (
+          <p className="mt-2 text-center text-[11px] leading-4 text-soft">{hint}</p>
+        ) : null}
       </div>
     </div>
   );

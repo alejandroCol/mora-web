@@ -64,7 +64,7 @@ export function Atelier() {
                 </div>
               </div>
               {index === 0 ? (
-                <p className="world-hint" aria-hidden>
+                <p className="world-hint lg:hidden" aria-hidden>
                   Desliza hacia Ultra
                 </p>
               ) : null}

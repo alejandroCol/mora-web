@@ -59,6 +59,7 @@ export async function POST(
         name,
         language: template?.language || body.language || "es",
         params: body.params,
+        billingCategory: template?.billingCategory ?? "marketing",
         ...actor,
       });
       return Response.json({ ok: true, message });

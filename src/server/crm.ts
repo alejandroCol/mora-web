@@ -123,6 +123,11 @@ function sanitizeTemplates(templates: CrmTemplate[]): CrmTemplate[] {
       language: String(item.language ?? "es").trim() || "es",
       label: String(item.label ?? "").trim(),
       desk: (item.desk === "sales" || item.desk === "support" ? item.desk : "both") as CrmTemplate["desk"],
+      billingCategory: (
+        item.billingCategory === "utility" || item.billingCategory === "authentication"
+          ? item.billingCategory
+          : "marketing"
+      ) as CrmTemplate["billingCategory"],
     }))
     .filter((item) => item.name && item.label)
     .slice(0, 20);

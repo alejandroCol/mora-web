@@ -109,6 +109,8 @@ export type WhatsAppConversation = {
   supportTopic?: SupportTopic;
 };
 
+export type WhatsAppBillingCategory = "marketing" | "utility" | "authentication" | "service";
+
 export type WhatsAppMessage = {
   id: string;
   waId?: string;
@@ -119,6 +121,50 @@ export type WhatsAppMessage = {
   status?: string;
   mediaId?: string;
   mimeType?: string;
+  billingCategory?: WhatsAppBillingCategory;
+  templateName?: string;
+  by?: string;
+};
+
+export type WhatsAppUsageCategoryRow = {
+  count: number;
+  unitUsd: number;
+  subtotalUsd: number;
+};
+
+export type WhatsAppUsageReport = {
+  monthKey: string;
+  monthLabel: string;
+  timezone: "America/Bogota";
+  updatedAt: number;
+  source: "firestore_estimate";
+  policyNote: string;
+  totals: {
+    inbound: number;
+    outboundDelivered: number;
+    estimatedUsd: number;
+    estimatedCop: number;
+  };
+  freeAllowance: {
+    servicePerMonth: number;
+    serviceUsed: number;
+    serviceRemaining: number;
+    serviceBillingEffectiveFrom: string;
+  };
+  byCategory: {
+    marketing: WhatsAppUsageCategoryRow;
+    utility: WhatsAppUsageCategoryRow;
+    authentication: WhatsAppUsageCategoryRow;
+    service: WhatsAppUsageCategoryRow;
+    free_service_tier: WhatsAppUsageCategoryRow;
+    free_ctwa: WhatsAppUsageCategoryRow;
+  };
+  rates: {
+    market: "CO";
+    copPerUsd: number;
+    effectiveQuarter: string;
+  };
+  docUrl: string;
 };
 
 export type CrmNote = {
@@ -144,6 +190,7 @@ export type CrmTemplate = {
   language: string;
   label: string;
   desk: CrmDesk | "both";
+  billingCategory?: "marketing" | "utility" | "authentication";
 };
 
 export type CrmSettings = {

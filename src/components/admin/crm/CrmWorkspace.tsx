@@ -15,6 +15,7 @@ import type {
   MoraLead,
   WhatsAppConversation,
   WhatsAppMessage,
+  WhatsAppUsageReport,
 } from "@/growth/types";
 import { DESK_LABEL } from "@/crm/labels";
 import { useAdminAuth } from "../AdminAuth";
@@ -25,6 +26,7 @@ import { CrmContactPanel } from "./CrmContactPanel";
 import { CrmInboxList } from "./CrmInboxList";
 import { CrmSettingsPanel } from "./CrmSettings";
 import { CrmThread } from "./CrmThread";
+import { CrmUsagePanel } from "./CrmUsagePanel";
 
 type Connection = {
   ready: boolean;
@@ -87,6 +89,7 @@ export function CrmWorkspace() {
     mine: 0,
   });
   const [connection, setConnection] = useState<Connection | null>(null);
+  const [usage, setUsage] = useState<WhatsAppUsageReport | null>(null);
   const [activeId, setActiveId] = useState<string | null>(search.get("c"));
   const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
   const [contact, setContact] = useState<CrmContactState | null>(null);
@@ -101,6 +104,7 @@ export function CrmWorkspace() {
       settings?: CrmSettings;
       counts?: CrmCounts;
       connection?: Connection;
+      usage?: WhatsAppUsageReport;
     };
     if (!data.ok) return;
     setConversations(data.conversations ?? []);
@@ -108,6 +112,7 @@ export function CrmWorkspace() {
     setSettings(data.settings ?? null);
     if (data.counts) setCounts(data.counts);
     if (data.connection) setConnection(data.connection);
+    if (data.usage) setUsage(data.usage);
   }, [authorizedFetch]);
 
   const loadThread = useCallback(
@@ -353,6 +358,8 @@ export function CrmWorkspace() {
           </>
         ) : null}
       </div>
+
+      {connection?.ready ? <CrmUsagePanel usage={usage} /> : null}
 
       {view === "board" ? (
         <CrmBoard desk={desk} conversations={filtered} onOpen={openChat} />

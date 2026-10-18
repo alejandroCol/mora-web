@@ -134,6 +134,8 @@ export async function sendWhatsAppText(input: {
     text: input.text,
     at,
     status: "sent",
+    billingCategory: "service",
+    by: input.by,
   };
   await messages(to).doc(message.id).set(message, { merge: true });
   const existing = await getConversation(to);
@@ -165,6 +167,7 @@ export async function sendWhatsAppTemplate(input: {
   by?: string;
   byName?: string;
   claim?: boolean;
+  billingCategory?: "marketing" | "utility" | "authentication";
 }) {
   const settings = await loadGrowthSettings();
   if (!settings.whatsappPhoneNumberId || !settings.whatsappAccessToken) {
@@ -222,6 +225,9 @@ export async function sendWhatsAppTemplate(input: {
     text: preview,
     at,
     status: "sent",
+    templateName: input.name,
+    billingCategory: input.billingCategory ?? "marketing",
+    by: input.by,
   };
   await messages(to).doc(message.id).set(message, { merge: true });
   const existing = await getConversation(to);

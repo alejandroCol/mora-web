@@ -178,6 +178,7 @@ export function CrmSettingsPanel({
                     language: "es",
                     label: "",
                     desk: "both",
+                    billingCategory: "marketing",
                   },
                 ])
               }
@@ -188,10 +189,11 @@ export function CrmSettingsPanel({
           </div>
           <p className="mt-1 text-[12px] text-white/40">
             El <em>name</em> es el de Meta, en minúsculas con guiones bajos. El label es lo que ve el vendedor.
+            La categoría Meta define el costo en el panel del CRM.
           </p>
           <div className="mt-3 space-y-3">
             {templates.map((template, index) => (
-              <div key={template.id} className="grid gap-2 rounded-2xl bg-white/6 p-3 sm:grid-cols-4">
+              <div key={template.id} className="grid gap-2 rounded-2xl bg-white/6 p-3 sm:grid-cols-[1fr_1fr_4rem_6rem_5rem_auto]">
                 <input
                   value={template.label}
                   placeholder="Etiqueta"
@@ -222,30 +224,51 @@ export function CrmSettingsPanel({
                   }
                   className="h-10 rounded-xl bg-white/8 px-3 text-[13px] outline-none"
                 />
-                <div className="flex gap-2">
-                  <select
-                    value={template.desk}
-                    onChange={(event) =>
-                      setTemplates((current) =>
-                        current.map((item, i) =>
-                          i === index ? { ...item, desk: event.target.value as CrmTemplate["desk"] } : item,
-                        ),
-                      )
-                    }
-                    className="h-10 flex-1 rounded-xl bg-white/8 px-3 text-[13px] outline-none"
-                  >
-                    <option value="both">Ambas</option>
-                    <option value="sales">Ventas</option>
-                    <option value="support">Soporte</option>
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => setTemplates((current) => current.filter((_, i) => i !== index))}
-                    className="text-[12px] text-white/35"
-                  >
-                    Quitar
-                  </button>
-                </div>
+                <select
+                  value={template.billingCategory ?? "marketing"}
+                  onChange={(event) =>
+                    setTemplates((current) =>
+                      current.map((item, i) =>
+                        i === index
+                          ? {
+                              ...item,
+                              billingCategory: event.target.value as NonNullable<
+                                CrmTemplate["billingCategory"]
+                              >,
+                            }
+                          : item,
+                      ),
+                    )
+                  }
+                  className="h-10 rounded-xl bg-white/8 px-2 text-[12px] outline-none"
+                  title="Categoría de cobro Meta"
+                >
+                  <option value="marketing">Marketing</option>
+                  <option value="utility">Utilidad</option>
+                  <option value="authentication">Auth</option>
+                </select>
+                <select
+                  value={template.desk}
+                  onChange={(event) =>
+                    setTemplates((current) =>
+                      current.map((item, i) =>
+                        i === index ? { ...item, desk: event.target.value as CrmTemplate["desk"] } : item,
+                      ),
+                    )
+                  }
+                  className="h-10 rounded-xl bg-white/8 px-2 text-[12px] outline-none"
+                >
+                  <option value="both">Ambas</option>
+                  <option value="sales">Ventas</option>
+                  <option value="support">Soporte</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setTemplates((current) => current.filter((_, i) => i !== index))}
+                  className="text-[12px] text-white/35"
+                >
+                  Quitar
+                </button>
               </div>
             ))}
           </div>

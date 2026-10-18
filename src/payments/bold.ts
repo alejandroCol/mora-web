@@ -31,20 +31,20 @@ export function boldEnvironment(): BoldEnvironment {
   return process.env.NODE_ENV === "production" ? "prod" : "test";
 }
 
-export function boldIdentityKey() {
-  return boldEnvironment() === "prod"
+export function boldIdentityKey(environment: BoldEnvironment = boldEnvironment()) {
+  return environment === "prod"
     ? requiredEnv("BOLD_IDENTITY_KEY")
     : requiredEnv("BOLD_TEST_IDENTITY_KEY");
 }
 
-export function boldSecretKey() {
-  return boldEnvironment() === "prod"
+export function boldSecretKey(environment: BoldEnvironment = boldEnvironment()) {
+  return environment === "prod"
     ? requiredEnv("BOLD_SECRET_KEY")
     : requiredEnv("BOLD_TEST_SECRET_KEY");
 }
 
-export function boldIsConfigured() {
-  if (boldEnvironment() === "prod") {
+export function boldIsConfigured(environment: BoldEnvironment = boldEnvironment()) {
+  if (environment === "prod") {
     return Boolean(env("BOLD_IDENTITY_KEY") && env("BOLD_SECRET_KEY"));
   }
   return Boolean(env("BOLD_TEST_IDENTITY_KEY") && env("BOLD_TEST_SECRET_KEY"));
@@ -98,17 +98,30 @@ function equalHex(left: string, right: string) {
   return timingSafeEqual(a, b);
 }
 
+function webhookSecrets(environment: BoldEnvironment) {
+  if (environment === "test") {
+    const testSecret = env("BOLD_TEST_SECRET_KEY");
+    return testSecret ? ["", testSecret] : [""];
+  }
+  return [boldSecretKey("prod")];
+}
+
 /**
  * Firma del webhook: HMAC-SHA256(base64(rawBody), secret).
- * En pruebas Bold firma con secreto vacío.
+ * En pruebas Bold firma con secreto vacío (snippet oficial).
  * @see https://developers.bold.co/webhook
  */
-export function verifyWebhookSignature(rawBody: string, header: string | null) {
+export function verifyWebhookSignature(
+  rawBody: string,
+  header: string | null,
+  environment: BoldEnvironment = boldEnvironment(),
+) {
   if (!header) return false;
-  const secret = boldEnvironment() === "test" ? "" : boldSecretKey();
   const encoded = Buffer.from(rawBody, "utf8").toString("base64");
-  const hashed = createHmac("sha256", secret).update(encoded).digest("hex");
-  return equalHex(hashed, header);
+  return webhookSecrets(environment).some((secret) => {
+    const hashed = createHmac("sha256", secret).update(encoded).digest("hex");
+    return equalHex(hashed, header);
+  });
 }
 
 function httpsUrl(origin: string, path: string) {
@@ -167,10 +180,13 @@ export function toCheckoutSession(
   };
 }
 
-export async function fetchBoldVoucher(orderId: string): Promise<BoldVoucher> {
+export async function fetchBoldVoucher(
+  orderId: string,
+  environment: BoldEnvironment = boldEnvironment(),
+): Promise<BoldVoucher> {
   if (!orderId.trim()) throw new Error("Falta la referencia de Bold.");
   const res = await fetch(`${BOLD_VOUCHER_API}/${encodeURIComponent(orderId)}`, {
-    headers: { Authorization: `x-api-key ${boldIdentityKey()}` },
+    headers: { Authorization: `x-api-key ${boldIdentityKey(environment)}` },
     cache: "no-store",
   });
   const body = (await res.json()) as BoldVoucher & { message?: string };

@@ -9,8 +9,14 @@ import {
   replacePaymentIntent,
 } from "./intents";
 import { mapBoldStatus } from "./status";
-import type { AppliedPayment, BoldWebhookEvent, CreateBoldSessionInput } from "./types";
+import type {
+  AppliedPayment,
+  BoldEnvironment,
+  BoldWebhookEvent,
+  CreateBoldSessionInput,
+} from "./types";
 import {
+  boldEnvironment,
   boldIsConfigured,
   fetchBoldVoucher,
   newBoldReference,
@@ -121,10 +127,14 @@ export async function syncBoldReference(reference: string) {
   return { voucher, applied };
 }
 
-export async function handleBoldEvent(request: Request) {
+export async function handleBoldEvent(
+  request: Request,
+  options: { environment?: BoldEnvironment } = {},
+) {
+  const environment = options.environment ?? boldEnvironment();
   const raw = await request.text();
   const signature = request.headers.get("x-bold-signature");
-  if (!verifyWebhookSignature(raw, signature)) {
+  if (!verifyWebhookSignature(raw, signature, environment)) {
     return Response.json({ ok: false }, { status: 401 });
   }
 
@@ -145,7 +155,12 @@ export async function handleBoldEvent(request: Request) {
   if (!reference) return Response.json({ ok: true });
 
   try {
-    const voucher = await fetchBoldVoucher(reference).catch(() => null);
+    const voucher = await fetchBoldVoucher(reference, environment).catch(() => null);
+    // El webhook de pruebas firma con secreto vacío: no marcar pedidos
+    // reales si Bold sandbox no confirma el comprobante.
+    if (environment === "test" && !voucher) {
+      return Response.json({ ok: true, ignored: "no_test_voucher" });
+    }
     await applyBoldVoucher({
       reference,
       transactionId: voucher?.transaction_id ?? payload.data?.payment_id,

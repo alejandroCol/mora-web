@@ -62,3 +62,11 @@ env:
     secret: BOLD_SECRET_KEY
     availability:
       - RUNTIME
+  - variable: BOLD_TEST_IDENTITY_KEY
+    secret: BOLD_TEST_IDENTITY_KEY
+    availability:
+      - RUNTIME
+  - variable: BOLD_TEST_SECRET_KEY
+    secret: BOLD_TEST_SECRET_KEY
+    availability:
+      - RUNTIME

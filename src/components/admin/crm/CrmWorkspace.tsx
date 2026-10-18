@@ -33,6 +33,7 @@ type Connection = {
   displayNumber: string;
   webhook: string;
   welcome: boolean;
+  welcomeText?: string;
   webhookDebug?: {
     lastPostAt: number;
     lastIngestAt: number;
@@ -310,15 +311,7 @@ export function CrmWorkspace() {
 
   return (
     <div className="crm-app">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-white/35">Casa</p>
-          <h1 className="mt-2 font-display text-4xl tracking-[-0.05em] text-[#f4f1ea]">CRM.</h1>
-          <p className="mt-2 max-w-xl text-sm leading-6 text-white/45">
-            Un inbox para vender y otro para cuidar el pedido. Cada chat tiene dueño, nota y
-            siguiente paso.
-          </p>
-        </div>
+      <header className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex flex-wrap items-center gap-2">
           {(Object.keys(DESK_LABEL) as CrmDesk[]).map((item) => (
             <button
@@ -441,13 +434,18 @@ export function CrmWorkspace() {
           settings={settings}
           connection={connection}
           onClose={() => setSettingsOpen(false)}
-          onSave={async (next) => {
+          onSave={async (next, welcome) => {
             const res = await authorizedFetch("/api/admin/crm/settings", {
               method: "PUT",
-              body: JSON.stringify(next),
+              body: JSON.stringify({ ...next, welcome }),
             });
             const data = (await res.json()) as { ok?: boolean; settings?: CrmSettings };
             if (data.settings) setSettings(data.settings);
+            setConnection((current) =>
+              current
+                ? { ...current, welcome: Boolean(welcome.trim()), welcomeText: welcome }
+                : current,
+            );
           }}
         />
       ) : null}

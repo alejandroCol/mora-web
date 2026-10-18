@@ -28,6 +28,7 @@ export async function GET(request: Request) {
         displayNumber: growth.whatsappDisplayNumber,
         webhook: webhookUrl(siteOrigin()),
         welcome: Boolean(growth.whatsappWelcome.trim()),
+        welcomeText: growth.whatsappWelcome,
         webhookDebug,
       },
     });

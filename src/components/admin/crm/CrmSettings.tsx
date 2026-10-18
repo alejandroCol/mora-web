@@ -9,6 +9,7 @@ type Connection = {
   displayNumber: string;
   webhook: string;
   welcome: boolean;
+  welcomeText?: string;
 };
 
 export function CrmSettingsPanel({
@@ -20,11 +21,12 @@ export function CrmSettingsPanel({
   settings: CrmSettings | null;
   connection: Connection | null;
   onClose: () => void;
-  onSave: (next: CrmSettings) => Promise<void>;
+  onSave: (next: CrmSettings, welcome: string) => Promise<void>;
 }) {
   const [replies, setReplies] = useState<CrmQuickReply[]>(settings?.replies ?? defaultCrmReplies());
   const [templates, setTemplates] = useState<CrmTemplate[]>(settings?.templates ?? []);
   const [autoClaim, setAutoClaim] = useState(settings?.autoClaimOnReply !== false);
+  const [welcome, setWelcome] = useState(connection?.welcomeText ?? "");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState("");
 
@@ -35,16 +37,23 @@ export function CrmSettingsPanel({
     setAutoClaim(settings.autoClaimOnReply);
   }, [settings]);
 
+  useEffect(() => {
+    if (connection?.welcomeText !== undefined) setWelcome(connection.welcomeText);
+  }, [connection?.welcomeText]);
+
   async function persist() {
     setBusy(true);
     setSaved("");
     try {
-      await onSave({
-        replies,
-        templates,
-        autoClaimOnReply: autoClaim,
-        updatedAt: Date.now(),
-      });
+      await onSave(
+        {
+          replies,
+          templates,
+          autoClaimOnReply: autoClaim,
+          updatedAt: Date.now(),
+        },
+        welcome,
+      );
       setSaved("Guardado");
     } finally {
       setBusy(false);
@@ -97,6 +106,20 @@ export function CrmSettingsPanel({
           />
           Al responder, el chat queda a mi nombre si nadie lo tenía.
         </label>
+
+        <section className="mt-8">
+          <h3 className="text-[14px]">Primera respuesta</h3>
+          <p className="mt-1 text-[12px] leading-5 text-white/40">
+            Se envía sola la primera vez que alguien escribe. Vacío = no hay auto-respuesta.
+          </p>
+          <textarea
+            value={welcome}
+            rows={3}
+            onChange={(event) => setWelcome(event.target.value)}
+            placeholder="Hola, soy Mora…"
+            className="mt-3 w-full rounded-2xl bg-white/8 p-3 text-[13px] outline-none"
+          />
+        </section>
 
         <section className="mt-8">
           <div className="flex items-center justify-between">

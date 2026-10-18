@@ -99,13 +99,25 @@ export function CrmComposer({
           void submit();
         }}
       >
-        <input
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          placeholder={windowOpen ? "Escribe. Enter envía." : "Ventana cerrada. Usa una plantilla."}
-          disabled={!windowOpen}
-          className="h-11 flex-1 rounded-full bg-white/8 px-4 text-[13px] outline-none disabled:opacity-50"
-        />
+        <div className="relative min-w-0 flex-1">
+          <input
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder={windowOpen ? "Escribe. Enter envía." : "Ventana cerrada. Usa una plantilla."}
+            disabled={!windowOpen}
+            className="h-11 w-full rounded-full bg-white/8 py-0 pl-4 pr-10 text-[13px] outline-none disabled:opacity-50"
+          />
+          {draft ? (
+            <button
+              type="button"
+              onClick={() => setDraft("")}
+              aria-label="Borrar texto"
+              className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-[15px] leading-none text-white/45 hover:bg-white/10 hover:text-white"
+            >
+              ×
+            </button>
+          ) : null}
+        </div>
         <button
           type="submit"
           disabled={busy || !draft.trim() || !windowOpen}

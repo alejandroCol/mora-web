@@ -1,5 +1,6 @@
 import { jsonError, requirePermission } from "@/server/adminAuth";
 import { loadCrmSettings, saveCrmSettings } from "@/server/crm";
+import { saveGrowthSettings } from "@/server/growthSettings";
 import type { CrmSettings } from "@/growth/types";
 
 export async function GET(request: Request) {
@@ -15,9 +16,12 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     await requirePermission(request, "whatsapp");
-    const body = (await request.json()) as Partial<CrmSettings>;
+    const body = (await request.json()) as Partial<CrmSettings> & { welcome?: string };
     const settings = await saveCrmSettings(body);
-    return Response.json({ ok: true, settings });
+    if (typeof body.welcome === "string") {
+      await saveGrowthSettings({ whatsappWelcome: body.welcome });
+    }
+    return Response.json({ ok: true, settings, welcome: body.welcome?.trim() ?? undefined });
   } catch (error) {
     return jsonError(error);
   }

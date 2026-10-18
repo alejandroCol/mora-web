@@ -30,6 +30,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.5,
     },
     {
+      url: siteUrl("/terminos"),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
       url: siteUrl("/app/eliminar-cuenta"),
       lastModified: now,
       changeFrequency: "yearly",

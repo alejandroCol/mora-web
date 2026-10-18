@@ -25,6 +25,7 @@ const COLUMNS = [
     title: "Casa",
     links: [
       { href: "/privacidad", label: "Privacidad" },
+      { href: "/terminos", label: "Condiciones" },
       { href: "/app/eliminar-cuenta", label: "Borrar cuenta" },
     ],
   },

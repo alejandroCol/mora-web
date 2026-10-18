@@ -451,12 +451,42 @@ body {
   background: #0a090e;
 }
 
+.world-pager {
+  position: absolute;
+  top: calc(4.35rem + env(safe-area-inset-top));
+  left: 50%;
+  z-index: 5;
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border-radius: 999px;
+  background: rgba(8, 7, 12, 0.42);
+  backdrop-filter: blur(18px);
+  transform: translateX(-50%);
+}
+
+.world-pager button {
+  height: 2rem;
+  padding: 0 1rem;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 400;
+  letter-spacing: -0.016em;
+  color: rgba(255, 255, 255, 0.58);
+}
+
+.world-pager button.on {
+  background: #fff;
+  color: #1d1d1f;
+}
+
 .worlds {
   display: flex;
   min-height: 100dvh;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
+  scroll-padding-inline: 0;
 }
 
 .worlds::-webkit-scrollbar {
@@ -467,12 +497,19 @@ body {
   position: relative;
   display: block;
   min-height: 100dvh;
-  min-width: 100%;
-  flex: 0 0 100%;
+  min-width: 84vw;
+  flex: 0 0 84vw;
   overflow: hidden;
   color: #fff;
   scroll-snap-align: start;
   text-decoration: none;
+}
+
+@media (max-width: 1023px) {
+  .worlds {
+    gap: 8px;
+    padding-right: 12vw;
+  }
 }
 
 .world-photo {
@@ -567,11 +604,17 @@ body {
 }
 
 @media (min-width: 1024px) {
+  .world-pager {
+    display: none;
+  }
+
   .worlds {
     height: 100dvh;
     min-height: 100dvh;
     overflow: hidden;
     scroll-snap-type: none;
+    gap: 0;
+    padding-right: 0;
   }
 
   .world {
@@ -819,19 +862,37 @@ body {
   display: flex;
   height: 100%;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
   animation: look-stage-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
+.look-head {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.2rem;
+  align-self: flex-start;
+  min-height: 2.75rem;
+  padding: 0 0.9rem;
+  font-size: 15px;
+  letter-spacing: -0.016em;
+  color: #1d1d1f;
+}
+
+.look-head svg {
+  display: block;
+  height: 16px;
+  width: 16px;
+}
+
 .look-frame {
   position: relative;
-  width: calc(100% - 1.75rem);
-  height: min(58%, 20rem);
-  flex: none;
+  min-height: 0;
+  width: calc(100% - 1.5rem);
+  flex: 1;
+  align-self: center;
   overflow: hidden;
-  border-radius: 22px;
+  border-radius: 18px;
   touch-action: pan-x;
 }
 
@@ -875,14 +936,14 @@ body {
   align-items: center;
   justify-content: center;
   gap: 0.85rem;
-  padding: 0.7rem 0.75rem 0.15rem;
+  padding: 0.55rem 0.75rem 0.7rem;
   animation: look-bar-in 0.75s 0.12s cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .look-nav {
   display: grid;
-  height: 2.15rem;
-  width: 2.15rem;
+  height: 2.75rem;
+  width: 2.75rem;
   flex-shrink: 0;
   place-items: center;
   border-radius: 999px;
@@ -914,8 +975,8 @@ body {
 }
 
 .look-dots button {
-  height: 6px;
-  width: 6px;
+  height: 8px;
+  width: 8px;
   border-radius: 999px;
   background: rgba(29, 29, 31, 0.18);
   transition:
@@ -924,23 +985,8 @@ body {
 }
 
 .look-dots button.on {
-  width: 18px;
+  width: 20px;
   background: #1d1d1f;
-}
-
-.look-back {
-  flex-shrink: 0;
-  align-self: center;
-  min-height: 2rem;
-  padding: 0.15rem 0.75rem 0.45rem;
-  font-size: 13px;
-  letter-spacing: -0.01em;
-  color: #6e6e73;
-  animation: look-bar-in 0.75s 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-.look-back:hover {
-  color: #1d1d1f;
 }
 
 @keyframes look-stage-in {
@@ -1009,7 +1055,7 @@ body {
   .look-stage,
   .look-slide,
   .look-bar,
-  .look-back {
+  .look-head {
     animation: none;
     transition: none;
     filter: none;

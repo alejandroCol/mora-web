@@ -112,6 +112,10 @@ export function LookStage({
 
   return (
     <div className="look-stage">
+      <button type="button" className="look-head" onClick={onBack}>
+        <Chevron dir="prev" />
+        Anillo
+      </button>
       <div
         className="look-frame"
         onPointerDown={(event) => {
@@ -176,10 +180,6 @@ export function LookStage({
           </button>
         </div>
       ) : null}
-
-      <button type="button" className="look-back" onClick={onBack}>
-        Ver anillo
-      </button>
     </div>
   );
 }

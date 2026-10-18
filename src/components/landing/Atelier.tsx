@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import {
   catalog,
   formatMoney,
@@ -25,17 +26,58 @@ const LOOK: Record<ModelId, { src: string; focus: string; alt: string }> = {
 
 export function Atelier() {
   const setModel = useMoraStore((state) => state.setModel);
+  const scroller = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    const root = scroller.current;
+    if (!root) return;
+    const cards = [...root.querySelectorAll<HTMLElement>("[data-world]")];
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+        if (!visible) return;
+        const index = cards.indexOf(visible.target as HTMLElement);
+        if (index >= 0) setActive(index);
+      },
+      { root, threshold: [0.45, 0.6, 0.75] },
+    );
+    cards.forEach((card) => observer.observe(card));
+    return () => observer.disconnect();
+  }, []);
+
+  function show(index: number) {
+    const card = scroller.current?.querySelectorAll<HTMLElement>("[data-world]")[index];
+    card?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+  }
 
   return (
     <section id="coleccion" className="worlds-stage">
       <h2 className="sr-only">Elige tu Mora</h2>
-      <div className="worlds">
-        {catalog.map((item, index) => {
+      <div className="world-pager" role="tablist" aria-label="Pro o Ultra">
+        {catalog.map((item, index) => (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={active === index}
+            className={active === index ? "on" : ""}
+            onClick={() => show(index)}
+          >
+            {item.name}
+          </button>
+        ))}
+      </div>
+      <div ref={scroller} className="worlds">
+        {catalog.map((item) => {
           const look = LOOK[item.id];
           return (
             <Link
               key={item.id}
               href={productPath(item.id)}
+              data-world
               onClick={() => setModel(item.id)}
               className="world group"
             >
@@ -43,8 +85,8 @@ export function Atelier() {
                 src={look.src}
                 alt={look.alt}
                 fill
-                sizes="(min-width: 1024px) 60vw, 100vw"
-                priority={index === 0}
+                sizes="(min-width: 1024px) 60vw, 86vw"
+                priority={item.id === "aero"}
                 className="world-photo"
                 style={{ objectPosition: look.focus }}
               />
@@ -63,11 +105,6 @@ export function Atelier() {
                   </span>
                 </div>
               </div>
-              {index === 0 ? (
-                <p className="world-hint lg:hidden" aria-hidden>
-                  Desliza hacia Ultra
-                </p>
-              ) : null}
             </Link>
           );
         })}

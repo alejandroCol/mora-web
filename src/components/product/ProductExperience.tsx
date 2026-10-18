@@ -52,7 +52,7 @@ export function ProductExperience({ modelId }: { modelId: ModelId }) {
         <section
           className={`relative shrink-0 lg:h-auto lg:min-h-0 lg:flex-1 ${
             looks
-              ? "h-[min(52vh,24rem)] min-h-[220px]"
+              ? "h-[min(46dvh,22rem)] min-h-[15.5rem]"
               : "flex h-[28vh] min-h-[168px] items-center justify-center"
           }`}
         >

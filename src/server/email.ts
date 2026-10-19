@@ -1,4 +1,4 @@
-import { BRAND, absoluteBrandUrl, brandLockup } from "@/brand";
+import { BRAND } from "@/brand";
 import { commerceLineLabel, orderNeedsSize, tallaPath } from "@/commerce/sizing";
 import { finishLabel, formatMoney, products } from "@/lib/catalog";
 import { PRESALE } from "@/lib/presale";
@@ -18,10 +18,15 @@ function looksLikeEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-const INK = "#16141f";
-const PAPER = "#fbfbfd";
-const DAWN = "#f4f3f8";
-const SOFT = "#6a6580";
+const INK = "#111111";
+const WHITE = "#ffffff";
+const BLACK = "#0a0a0a";
+const MIST = "#f3f3f3";
+const LINE = "#e6e6e6";
+const SOFT = "#5c5c5c";
+const FROM_DEFAULT = "Mora <no-responder@moraring.com>";
+const LOGO = "https://moraring.com/brand/wordmark.png";
+const MARK = "https://moraring.com/brand/mark.png";
 
 function siteUrl() {
   return (
@@ -35,7 +40,7 @@ export function orderTrackingUrl(orderNumber: string) {
 }
 
 function button(href: string, label: string) {
-  return `<a href="${escapeHtml(href)}" style="display:inline-block;background:${INK};color:#fff;text-decoration:none;font-size:14px;letter-spacing:0.02em;padding:14px 26px;border-radius:999px">${escapeHtml(label)}</a>`;
+  return `<a href="${escapeHtml(href)}" style="display:inline-block;background:${BLACK};color:${WHITE};text-decoration:none;font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;padding:16px 28px">${escapeHtml(label)}</a>`;
 }
 
 function itemRows(order: MoraOrder) {
@@ -43,8 +48,8 @@ function itemRows(order: MoraOrder) {
     .map((item) => {
       const label = commerceLineLabel(item);
       return `<tr>
-        <td style="padding:12px 0;border-bottom:1px solid rgba(22,20,31,0.08);font-size:14px;color:${INK}">${escapeHtml(label)} <span style="color:${SOFT}">×${item.qty}</span></td>
-        <td style="padding:12px 0;border-bottom:1px solid rgba(22,20,31,0.08);font-size:14px;text-align:right;white-space:nowrap">${formatMoney(item.unitPrice * item.qty)}</td>
+        <td style="padding:12px 0;border-bottom:1px solid ${LINE};font-size:14px;color:${INK}">${escapeHtml(label)} <span style="color:${SOFT}">×${item.qty}</span></td>
+        <td style="padding:12px 0;border-bottom:1px solid ${LINE};font-size:14px;text-align:right;white-space:nowrap">${formatMoney(item.unitPrice * item.qty)}</td>
       </tr>`;
     })
     .join("");
@@ -62,26 +67,50 @@ function shell(opts: {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light" />
 <title>${escapeHtml(opts.title)}</title>
 </head>
-<body style="margin:0;padding:0;background:${DAWN}">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:${DAWN};padding:32px 16px">
+<body style="margin:0;padding:0;background:${MIST}">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all">${escapeHtml(opts.title)} · ${escapeHtml(BRAND.name)}</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:${MIST};padding:28px 12px">
     <tr>
       <td align="center">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:${PAPER};border-radius:24px;overflow:hidden;border:1px solid rgba(22,20,31,0.08)">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:${WHITE};border:1px solid ${LINE}">
           <tr>
-            <td style="padding:28px 28px 8px;color:${INK};font-family:Georgia,'Times New Roman',serif">
-              <img src="${absoluteBrandUrl("wordmark")}" alt="${escapeHtml(BRAND.name)}" width="148" height="47" style="display:block;border:0;height:auto;max-width:148px" />
-              <div style="margin-top:22px;font-family:ui-sans-serif,system-ui,sans-serif;font-size:11px;letter-spacing:0.16em;text-transform:uppercase;color:${SOFT}">${escapeHtml(opts.kicker)}</div>
-              <h1 style="margin:12px 0 0;font-size:32px;line-height:1.05;font-weight:400;letter-spacing:-0.03em">${escapeHtml(opts.title)}</h1>
+            <td align="center" bgcolor="${BLACK}" style="background:${BLACK};padding:36px 28px 32px">
+              <img src="${LOGO}" alt="${escapeHtml(BRAND.name)}" width="176" height="56" style="display:block;margin:0 auto;border:0;outline:none;text-decoration:none;height:auto;max-width:176px" />
             </td>
           </tr>
           <tr>
-            <td style="padding:18px 28px 32px;color:${INK};font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.6">
-              <p style="margin:0 0 20px;color:${SOFT}">${opts.intro}</p>
+            <td style="padding:36px 32px 0;color:${INK};font-family:Georgia,'Times New Roman',serif;background:${WHITE}">
+              <div style="font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;font-size:11px;letter-spacing:0.22em;text-transform:uppercase;color:${SOFT}">${escapeHtml(opts.kicker)}</div>
+              <h1 style="margin:14px 0 0;font-size:34px;line-height:1.05;font-weight:400;letter-spacing:-0.03em;color:${INK}">${escapeHtml(opts.title)}</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 32px 36px;color:${INK};font-family:ui-sans-serif,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.65;background:${WHITE}">
+              <p style="margin:0 0 22px;color:${SOFT}">${opts.intro}</p>
               ${opts.body}
-              ${opts.cta ? `<div style="margin:28px 0 8px">${opts.cta}</div>` : ""}
-              <p style="margin:28px 0 0;padding-top:18px;border-top:1px solid rgba(22,20,31,0.08);font-size:12px;color:${SOFT}">${escapeHtml(brandLockup())}</p>
+              ${opts.cta ? `<div style="margin:32px 0 4px">${opts.cta}</div>` : ""}
+            </td>
+          </tr>
+          <tr>
+            <td bgcolor="${BLACK}" style="background:${BLACK};padding:28px 32px 32px;font-family:ui-sans-serif,system-ui,-apple-system,sans-serif">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td width="28" style="vertical-align:middle">
+                    <img src="${MARK}" alt="" width="28" height="28" style="display:block;border:0;width:28px;height:auto" />
+                  </td>
+                  <td style="padding-left:14px;vertical-align:middle">
+                    <div style="color:${WHITE};font-size:13px;letter-spacing:0.18em;text-transform:uppercase">${escapeHtml(BRAND.name)}</div>
+                    <div style="margin-top:4px;color:#bdbdbd;font-size:12px">${escapeHtml(BRAND.tagline)}</div>
+                  </td>
+                </tr>
+              </table>
+              <div style="margin-top:22px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.16);font-size:12px;line-height:1.7;color:#cfcfcf">
+                <a href="https://moraring.com" style="color:${WHITE};text-decoration:none">moraring.com</a><br />
+                <a href="mailto:no-responder@moraring.com" style="color:#cfcfcf;text-decoration:none">no-responder@moraring.com</a>
+              </div>
             </td>
           </tr>
         </table>
@@ -96,7 +125,7 @@ function orderBody(order: MoraOrder, extra?: string) {
   const depto = formatoDepartamentoEtiqueta(order.shipping.departamento);
   const guia = order.shipping.trackingNumber?.trim();
   return `
-    <table role="presentation" width="100%" style="background:${DAWN};border-radius:16px">
+    <table role="presentation" width="100%" style="background:${MIST};border:1px solid ${LINE};border-left:3px solid ${BLACK}">
       <tr>
         <td style="padding:16px 18px">
           <div style="font-size:11px;letter-spacing:0.12em;text-transform:uppercase;color:${SOFT}">Número de pedido</div>
@@ -130,7 +159,7 @@ function orderBody(order: MoraOrder, extra?: string) {
 
 async function sendResend(to: string, subject: string, html: string) {
   const key = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.RESEND_FROM?.trim() || `${BRAND.name} <hola@mora.ring>`;
+  const from = process.env.RESEND_FROM?.trim() || FROM_DEFAULT;
   if (!key) {
     console.warn("[email] RESEND_API_KEY ausente; no se envió", subject, to);
     return { ok: false as const, error: "missing_resend" };
@@ -143,7 +172,13 @@ async function sendResend(to: string, subject: string, html: string) {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ from, to: [to.trim()], subject, html }),
+    body: JSON.stringify({
+      from,
+      to: [to.trim()],
+      reply_to: "no-responder@moraring.com",
+      subject,
+      html,
+    }),
   });
   if (!res.ok) {
     const text = await res.text();
@@ -226,7 +261,7 @@ export async function sendAbandonedOfferEmail(cart: AbandonedCart) {
       const model = products[item.modelId];
       const finish = finishLabel(item.modelId, item.finishId);
       return `<tr>
-        <td style="padding:10px 0;border-bottom:1px solid rgba(22,20,31,0.08);font-size:14px;color:${INK}">Mora ${escapeHtml(model?.name ?? "")} · ${escapeHtml(finish)} <span style="color:${SOFT}">×${item.qty}</span></td>
+        <td style="padding:10px 0;border-bottom:1px solid ${LINE};font-size:14px;color:${INK}">Mora ${escapeHtml(model?.name ?? "")} · ${escapeHtml(finish)} <span style="color:${SOFT}">×${item.qty}</span></td>
       </tr>`;
     })
     .join("");

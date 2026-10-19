@@ -1475,6 +1475,14 @@ body {
   }
 }
 
+.download-studio {
+  background:
+    radial-gradient(ellipse 55% 42% at 82% 0%, #e3daf8 0%, transparent 68%),
+    radial-gradient(ellipse 46% 38% at 0% 78%, #ebe4f8 0%, transparent 70%),
+    radial-gradient(ellipse 40% 32% at 48% 36%, #ffffff 0%, transparent 72%),
+    #f5f3fa;
+}
+
 @media print {
   header,
   footer,

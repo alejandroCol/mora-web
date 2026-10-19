@@ -17,6 +17,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const isProduct = pathname.startsWith("/anillo");
   const isCheckout = pathname.startsWith("/checkout");
   const isPago = pathname.startsWith("/pago");
+  const isDownload = pathname.startsWith("/descargas");
 
   if (isAdmin) {
     return <>{children}</>;
@@ -29,6 +30,10 @@ export function AppChrome({ children }: { children: ReactNode }) {
         <CartDrawer />
       </>
     );
+  }
+
+  if (isDownload) {
+    return <>{children}</>;
   }
 
   if (isPago) {

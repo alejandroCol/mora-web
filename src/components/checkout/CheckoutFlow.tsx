@@ -45,7 +45,7 @@ type QuoteResponse = {
   ok: boolean;
   error?: string;
   envioCop?: number;
-  fuente?: "envia" | "estatico";
+  fuente?: "heka" | "envia" | "estatico";
   gratis?: boolean;
   seleccionada?: ShippingQuoteOption | null;
   opciones?: ShippingQuoteOption[];

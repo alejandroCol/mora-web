@@ -17,7 +17,7 @@ export type OrderStatus =
   | "delivered"
   | "cancelled";
 export type OrderChannel = "online" | "manual" | "whatsapp";
-export type ShippingFuente = "envia" | "estatico";
+export type ShippingFuente = "heka" | "envia" | "estatico";
 export type EnviaCarrier = "coordinadora" | "servientrega" | "deprisa";
 
 export type CartLine = {
@@ -67,6 +67,9 @@ export type ShippingSnapshot = {
   service?: string;
   deliveryEstimate?: string;
   trackingNumber?: string;
+  hekaGuideId?: string;
+  hekaStatus?: string;
+  hekaStatusLabel?: string;
 };
 
 export type PaymentSnapshot = {
@@ -207,7 +210,7 @@ export type CommerceSettings = {
     altoCm: number;
   };
   quoteAutomatic: boolean;
-  favoriteCarrier?: EnviaCarrier;
+  favoriteCarrier?: string;
   freeShippingFromCop?: number;
   fallbackShippingCop: number;
   cityRates: CityShippingRate[];

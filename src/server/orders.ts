@@ -561,6 +561,26 @@ export async function transitionOrder(input: {
   return next;
 }
 
+export async function attachShippingGuide(input: {
+  orderId: string;
+  by: string;
+  shipping: Partial<MoraOrder["shipping"]>;
+  note?: string;
+}) {
+  const db = adminDb();
+  const ref = orderRef(db, input.orderId);
+  const snap = await ref.get();
+  if (!snap.exists) throw new Error("Pedido no encontrado.");
+  const order = serializeOrder(snap.id, snap.data()!);
+  const now = Date.now();
+  const shipping = { ...order.shipping, ...input.shipping };
+  const timeline = input.note
+    ? [...order.timeline, { status: order.status, at: now, by: input.by, note: input.note }]
+    : order.timeline;
+  await ref.set({ shipping, timeline, updatedAt: now }, { merge: true });
+  return { ...order, shipping, timeline, updatedAt: now };
+}
+
 export async function confirmOrderSizes(input: {
   orderNumber: string;
   sizes: { index: number; size: number }[];

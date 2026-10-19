@@ -48,6 +48,7 @@ export function VentasBoard() {
   const [tab, setTab] = useState<Tab>("pipeline");
   const [tracking, setTracking] = useState("");
   const [busy, setBusy] = useState(false);
+  const [hekaError, setHekaError] = useState("");
 
   const load = useCallback(async () => {
     const res = await authorizedFetch("/api/admin/orders");
@@ -93,6 +94,26 @@ export function VentasBoard() {
     () => orders.find((o) => o.id === selected?.id) ?? selected,
     [orders, selected],
   );
+
+  async function runHeka(order: MoraOrder, action: "create" | "refresh") {
+    setBusy(true);
+    setHekaError("");
+    try {
+      const res = await authorizedFetch(`/api/admin/orders/${order.id}/heka`, {
+        method: "POST",
+        body: JSON.stringify({ action }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string; order?: MoraOrder };
+      if (!data.ok) throw new Error(data.error);
+      setSelected(data.order ?? null);
+      if (data.order?.shipping.trackingNumber) setTracking(data.order.shipping.trackingNumber);
+      await load();
+    } catch (error) {
+      setHekaError(error instanceof Error ? error.message : "Heka no pudo crear la guía.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function changeStatus(order: MoraOrder, status: OrderStatus) {
     setBusy(true);
@@ -253,8 +274,10 @@ export function VentasBoard() {
           tracking={tracking}
           setTracking={setTracking}
           busy={busy}
+          hekaError={hekaError}
           onClose={() => setSelected(null)}
           onStatus={(status) => void changeStatus(selectedFresh, status)}
+          onHeka={(action) => void runHeka(selectedFresh, action)}
         />
       ) : null}
 
@@ -352,15 +375,19 @@ function OrderDrawer({
   tracking,
   setTracking,
   busy,
+  hekaError,
   onClose,
   onStatus,
+  onHeka,
 }: {
   order: MoraOrder;
   tracking: string;
   setTracking: (value: string) => void;
   busy: boolean;
+  hekaError: string;
   onClose: () => void;
   onStatus: (status: OrderStatus) => void;
+  onHeka: (action: "create" | "refresh") => void;
 }) {
   const pendingSize = order.status === "paid" && orderNeedsSize(order.items);
   const phone = order.customer.phone.replace(/\D/g, "");
@@ -427,10 +454,30 @@ function OrderDrawer({
           </ul>
         ) : null}
 
+        {order.shipping.hekaStatusLabel ? (
+          <p className="mt-4 text-[13px] text-[var(--admin-muted)]">
+            Heka · {order.shipping.hekaStatusLabel}
+            {order.shipping.trackingNumber ? ` · guía ${order.shipping.trackingNumber}` : ""}
+          </p>
+        ) : null}
+        {hekaError ? (
+          <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-[13px] leading-5 text-red-900">
+            {hekaError}
+          </p>
+        ) : null}
+
         {order.status === "paid" ? (
           <div className="mt-8">
-            <label className="text-[11px] uppercase tracking-[0.12em] text-[var(--admin-muted)]">
-              Guía de envío
+            <button
+              type="button"
+              disabled={busy || pendingSize}
+              onClick={() => onHeka(order.shipping.hekaGuideId ? "refresh" : "create")}
+              className="admin-cta h-11 w-full disabled:opacity-40"
+            >
+              {order.shipping.hekaGuideId ? "Pasar la guía a transporte" : "Crear guía con Heka"}
+            </button>
+            <label className="mt-5 block text-[11px] uppercase tracking-[0.12em] text-[var(--admin-muted)]">
+              Guía manual
             </label>
             <input
               value={tracking}
@@ -455,14 +502,26 @@ function OrderDrawer({
         ) : null}
 
         {order.status === "in_transit" ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => onStatus("delivered")}
-            className="admin-cta mt-8 h-11 w-full"
-          >
-            Marcar entregado
-          </button>
+          <div className="mt-8 space-y-2">
+            {order.shipping.trackingNumber ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onHeka("refresh")}
+                className="h-11 w-full rounded-full bg-[var(--admin-field)] text-[13px] disabled:opacity-40"
+              >
+                Actualizar estado en Heka
+              </button>
+            ) : null}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onStatus("delivered")}
+              className="admin-cta h-11 w-full"
+            >
+              Marcar entregado
+            </button>
+          </div>
         ) : null}
 
         {order.status === "awaiting_payment" ? (

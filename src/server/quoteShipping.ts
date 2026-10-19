@@ -8,6 +8,7 @@ import {
   selectQuoteOption,
   type EnviaPackage,
 } from "./enviaClient";
+import { hekaQuoteConfigured, quoteHeka } from "./hekaClient";
 
 const DEFAULT_PACKAGE = {
   pesoKg: 0.35,
@@ -119,7 +120,7 @@ export type QuoteInput = {
 
 export type QuoteResult = {
   envioCop: number;
-  fuente: "envia" | "estatico";
+  fuente: "heka" | "envia" | "estatico";
   gratis: boolean;
   seleccionada: ShippingQuoteOption | null;
   opciones: ShippingQuoteOption[];
@@ -139,6 +140,50 @@ export async function quoteShipping(input: QuoteInput): Promise<QuoteResult> {
       seleccionada: null,
       opciones: [],
     };
+  }
+
+  const originReady = Boolean(
+    settings.origin.departamento.trim() && settings.origin.ciudad.trim(),
+  );
+  if (hekaQuoteConfigured() && originReady && settings.quoteAutomatic) {
+    const piezas = Math.max(1, input.piezas);
+    const hekaKey = [
+      "heka",
+      settings.origin.ciudad,
+      input.ciudad,
+      input.departamento,
+      Math.round(input.subtotal),
+      piezas,
+      settings.favoriteCarrier ?? "",
+    ].join("|");
+    const hekaCached = quoteCache.get(hekaKey);
+    if (hekaCached && hekaCached.expiresAt > Date.now()) return hekaCached.result;
+    const opciones = await quoteHeka({
+      originDepartamento: settings.origin.departamento,
+      originCiudad: settings.origin.ciudad,
+      departamento: input.departamento,
+      ciudad: input.ciudad,
+      declaredValue: Math.max(0, Math.round(input.subtotal)),
+      weightKg: Math.min(30, Math.max(0.1, settings.package.pesoKg * piezas)),
+      heightCm: Math.min(80, settings.package.altoCm + Math.max(0, piezas - 1) * 2),
+      longCm: settings.package.largoCm,
+      widthCm: settings.package.anchoCm,
+    }).catch((error) => {
+      console.error("[heka quote]", error);
+      return [];
+    });
+    const seleccionada = selectQuoteOption(opciones, settings.favoriteCarrier) ?? null;
+    if (seleccionada) {
+      const result: QuoteResult = {
+        envioCop: seleccionada.totalPriceCop,
+        fuente: "heka",
+        gratis: false,
+        seleccionada,
+        opciones,
+      };
+      quoteCache.set(hekaKey, { expiresAt: Date.now() + 10 * 60 * 1000, result });
+      return result;
+    }
   }
 
   const token = process.env.ENVIA_API_TOKEN?.trim();

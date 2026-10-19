@@ -1,15 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { CommerceSettings, EnviaCarrier } from "@/commerce/types";
+import type { CommerceSettings } from "@/commerce/types";
 import { ColombiaFields } from "@/components/checkout/ColombiaFields";
 import { formatMoney } from "@/lib/catalog";
 import { useAdminAuth } from "./AdminAuth";
 
-const CARRIERS: { id: EnviaCarrier; label: string }[] = [
+const CARRIERS: { id: string; label: string }[] = [
+  { id: "interrapidisimo", label: "Interrapidísimo" },
   { id: "coordinadora", label: "Coordinadora" },
+  { id: "tcc", label: "TCC" },
   { id: "servientrega", label: "Servientrega" },
-  { id: "deprisa", label: "Deprisa" },
 ];
 
 export function ShippingSettingsView() {
@@ -48,8 +49,8 @@ export function ShippingSettingsView() {
       <p className="text-[11px] uppercase tracking-[0.16em] text-white/35">Origen</p>
       <h1 className="mt-2 font-display text-4xl tracking-[-0.05em]">De dónde salen.</h1>
       <p className="mt-2 text-sm leading-6 text-white/45">
-        El checkout cotiza contra Envia.com (Coordinadora, Servientrega, Deprisa). Si la API no
-        responde, usamos la tarifa de respaldo o por ciudad.
+        El checkout cotiza con Heka (Interrapidísimo, Coordinadora, TCC, Servientrega). Si la API
+        no responde, usamos la tarifa de respaldo o por ciudad.
       </p>
 
       <div className="mt-8 overflow-hidden rounded-3xl bg-white text-[#16141f]">
@@ -123,7 +124,7 @@ export function ShippingSettingsView() {
             void persist({ ...current, quoteAutomatic: event.target.checked })
           }
         />
-        Cotizar automático con Envia
+        Cotizar automático con Heka
       </label>
 
       <div className="mt-5 flex flex-wrap gap-2">

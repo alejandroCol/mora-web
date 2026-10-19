@@ -74,6 +74,23 @@ env:
     secret: BOLD_TEST_SECRET_KEY
     availability:
       - RUNTIME
+  # Heka Entrega. Los valores viven en Secret Manager, no en este archivo.
+  - variable: HEKA_API_KEY
+    secret: HEKA_API_KEY
+    availability:
+      - RUNTIME
+  - variable: HEKA_EMAIL
+    secret: HEKA_EMAIL
+    availability:
+      - RUNTIME
+  - variable: HEKA_PASSWORD
+    secret: HEKA_PASSWORD
+    availability:
+      - RUNTIME
+  - variable: HEKA_WAREHOUSE_ID
+    secret: HEKA_WAREHOUSE_ID
+    availability:
+      - RUNTIME
   # MATIAS (factura electrónica). Email/password/resolución van como secrets
   # cuando lleguen las credenciales. Sin ellos la venta se cobra y no se factura.
   - variable: MATIAS_API_BASE_URL

@@ -17,7 +17,7 @@ const FAQ = [
   },
   {
     q: "¿Hacen envíos en Colombia?",
-    a: "Sí. El envío se cotiza al instante en el checkout, con Coordinadora, Servientrega o Deprisa.",
+    a: "Sí. El envío se cotiza al instante en el checkout, con Coordinadora, Servientrega, Interrapidísimo o TCC.",
   },
   {
     q: "¿Cómo elijo la talla?",

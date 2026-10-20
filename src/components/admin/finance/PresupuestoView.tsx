@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { useAdminAuth } from "../AdminAuth";
 import { ExpenseLedger } from "./ExpenseLedger";
 import { FinanceOverview } from "./FinanceOverview";
@@ -100,7 +101,9 @@ export function PresupuestoView() {
 
       {error ? <p className="mt-6 text-sm text-red-300">{error}</p> : null}
       {loading ? (
-        <p className="mt-10 text-white/40">Abriendo el libro…</p>
+        <div className="mt-10 grid min-h-[40vh] place-items-center">
+          <BrandLoader label="Abriendo el libro" />
+        </div>
       ) : (
         <div className="mt-10">
           {tab === "resumen" ? (

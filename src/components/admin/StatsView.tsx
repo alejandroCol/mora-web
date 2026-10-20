@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { PAYMENT_METHOD_LABEL } from "@/commerce/labels";
 import { PAYMENT_METHODS, type DailyStats, type PaymentMethod } from "@/commerce/types";
 import { formatMoney } from "@/lib/catalog";
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { useAdminAuth } from "./AdminAuth";
 
 type Stats = {
@@ -29,7 +30,11 @@ export function StatsView() {
   }, [authorizedFetch]);
 
   if (!stats) {
-    return <p className="text-white/40">Cargando el pulso…</p>;
+    return (
+      <div className="grid min-h-[40vh] place-items-center">
+        <BrandLoader label="Cargando el pulso" />
+      </div>
+    );
   }
 
   const maxDay = Math.max(1, ...stats.series.map((day) => day.revenue));

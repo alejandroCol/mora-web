@@ -30,7 +30,8 @@ export function WhatsAppDock() {
     pathname.startsWith("/galeria") ||
     pathname.startsWith("/checkout") ||
     pathname.startsWith("/pago") ||
-    pathname.startsWith("/descargas")
+    pathname.startsWith("/descargas") ||
+    pathname.startsWith("/anim")
   )
     return null;
   if (!config?.whatsappDisplayNumber) return null;

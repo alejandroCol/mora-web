@@ -10,6 +10,7 @@ import {
   type User,
 } from "firebase/auth";
 import { useSearchParams } from "next/navigation";
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { callMoraApp, getFirebaseAuth } from "@/lib/firebase";
 
@@ -151,7 +152,7 @@ export function CirculoApp() {
   if (!ready) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-md items-center justify-center px-6">
-        <p className="text-soft">Cargando…</p>
+        <BrandLoader />
       </main>
     );
   }

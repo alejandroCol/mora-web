@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { absoluteBrandUrl } from "@/brand";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
 import type { MoraOrder } from "@/commerce/types";
@@ -352,12 +353,42 @@ export function addiWebhookHeaders() {
   };
 }
 
+function safeEqual(left: string, right: string) {
+  const a = Buffer.from(left);
+  const b = Buffer.from(right);
+  if (a.length === 0 || a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+}
+
+function parseBasicAuth(header: string) {
+  if (!header.toLowerCase().startsWith("basic ")) return null;
+  try {
+    const decoded = Buffer.from(header.slice(6).trim(), "base64").toString("utf8");
+    const sep = decoded.indexOf(":");
+    if (sep < 0) return null;
+    return { user: decoded.slice(0, sep), password: decoded.slice(sep + 1) };
+  } catch {
+    return null;
+  }
+}
+
 export function verifyAddiCallback(request: Request) {
+  const user = env("ADDI_WEBHOOK_USER");
+  const password = env("ADDI_WEBHOOK_PASSWORD");
   const secret = env("ADDI_WEBHOOK_SECRET");
-  if (!secret) return true;
-  const header = request.headers.get("authorization") ?? request.headers.get("x-addi-signature") ?? "";
-  const token = header.replace(/^Bearer\s+/i, "").trim();
-  return token === secret;
+  if (!user && !password && !secret) return true;
+
+  const header =
+    request.headers.get("authorization") ?? request.headers.get("x-addi-signature") ?? "";
+  const basic = parseBasicAuth(header);
+  if (user && password && basic && safeEqual(basic.user, user) && safeEqual(basic.password, password)) {
+    return true;
+  }
+
+  const token = header.replace(/^(Bearer|Basic)\s+/i, "").trim();
+  if (password && safeEqual(token, password)) return true;
+  if (secret && safeEqual(token, secret)) return true;
+  return false;
 }
 
 export function addiPublicConfig() {

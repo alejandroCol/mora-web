@@ -18,6 +18,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const isCheckout = pathname.startsWith("/checkout");
   const isPago = pathname.startsWith("/pago");
   const isDownload = pathname.startsWith("/descargas");
+  const isAnim = pathname.startsWith("/anim");
 
   if (isAdmin) {
     return <>{children}</>;
@@ -32,7 +33,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     );
   }
 
-  if (isDownload) {
+  if (isDownload || isAnim) {
     return <>{children}</>;
   }
 

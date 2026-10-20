@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { GrowthSettings, MoraLead } from "@/growth/types";
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { useAdminAuth } from "./AdminAuth";
 
 type AdminGrowth = GrowthSettings & {
@@ -91,7 +92,13 @@ export function CampanasView() {
     }
   }
 
-  if (!settings) return <p className="text-white/40">Cargando campañas…</p>;
+  if (!settings) {
+    return (
+      <div className="grid min-h-[40vh] place-items-center">
+        <BrandLoader label="Cargando campañas" />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl">

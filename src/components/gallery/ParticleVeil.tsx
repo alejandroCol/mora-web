@@ -1,6 +1,6 @@
 "use client";
 
-import { BrandMarkParticles } from "@/components/brand/BrandMarkParticles";
+import { SpiralParticles } from "@/components/brand/SpiralParticles";
 
 type ParticleVeilProps = {
   leaving?: boolean;
@@ -14,12 +14,7 @@ export function ParticleVeil({ leaving = false }: ParticleVeilProps) {
       }`}
       aria-hidden
     >
-      <BrandMarkParticles
-        asset="mark"
-        loop
-        density={820}
-        className="h-36 w-36 sm:h-44 sm:w-44"
-      />
+      <SpiralParticles className="h-20 w-20 sm:h-[6.5rem] sm:w-[6.5rem]" count={8400} />
     </div>
   );
 }

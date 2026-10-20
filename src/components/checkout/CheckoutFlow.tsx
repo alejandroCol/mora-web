@@ -17,6 +17,7 @@ import { useMoraStore } from "@/lib/store";
 import type { AddiCheckoutSession, BoldCheckoutSession, CheckoutPayMethod } from "@/payments/types";
 import { addiAmountAllowed } from "@/payments/public";
 import { CartLineVisual } from "@/components/cart/CartLineVisual";
+import { AddiMark } from "@/components/payments/AddiMark";
 import { AddiWidget } from "@/components/payments/AddiWidget";
 import { ColombiaFields, useDebounced } from "./ColombiaFields";
 import { currentAttribution, track } from "@/growth/track";
@@ -752,7 +753,7 @@ export function CheckoutFlow() {
                             En cuotas, con cédula. Sin tarjeta de crédito.
                           </span>
                         </span>
-                        <span className="addi-word">addi</span>
+                        <AddiMark />
                       </button>
                     </div>
                     {payMethod === "addi" ? (
@@ -814,6 +815,9 @@ export function CheckoutFlow() {
                 : current.action}
             {busy ? null : (
               <span className="elegir-cta-note">{formatMoney(shownTotal)}</span>
+            )}
+            {busy || step !== 2 || payMethod !== "addi" || !addiReady ? null : (
+              <AddiMark className="addi-mark-on-dark" />
             )}
           </button>
         </div>

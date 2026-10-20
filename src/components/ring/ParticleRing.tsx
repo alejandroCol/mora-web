@@ -6,13 +6,13 @@ import * as THREE from "three";
 
 export const PARTICLE_COUNT = 36000;
 
-function paintColors(colors: Float32Array, tint?: string) {
+function paintColors(colors: Float32Array, count: number, tint?: string) {
   const base = new THREE.Color(tint ?? "#f3eee6");
   const highlight = base.clone().lerp(new THREE.Color("#ffffff"), 0.62);
   const shade = base.clone().lerp(new THREE.Color("#ffffff"), 0.18);
   const mix = new THREE.Color();
 
-  for (let i = 0; i < PARTICLE_COUNT; i += 1) {
+  for (let i = 0; i < count; i += 1) {
     const tone = Math.random();
     if (tone < 0.55) mix.copy(shade).lerp(base, tone / 0.55);
     else mix.copy(base).lerp(highlight, (tone - 0.55) / 0.45);
@@ -65,12 +65,14 @@ export function ParticleRing({
   onProgressRef.current = onProgress;
   onAssembledRef.current = onAssembled;
 
+  const count = targets.length / 3;
+
   const { positions, start, colors } = useMemo(() => {
     void replay;
     const start = scatterFrom(targets);
     const positions = new Float32Array(start);
-    const colors = new Float32Array(PARTICLE_COUNT * 3);
-    paintColors(colors, tint);
+    const colors = new Float32Array(targets.length);
+    paintColors(colors, targets.length / 3, tint);
     return { positions, start, colors };
   }, [targets, replay, tint]);
 
@@ -101,7 +103,7 @@ export function ParticleRing({
       const attribute = geometry.getAttribute("position") as THREE.BufferAttribute;
       const array = attribute.array as Float32Array;
 
-      for (let i = 0; i < PARTICLE_COUNT; i += 1) {
+      for (let i = 0; i < count; i += 1) {
         const i3 = i * 3;
         array[i3] = start[i3] + (targets[i3] - start[i3]) * ease;
         array[i3 + 1] = start[i3 + 1] + (targets[i3 + 1] - start[i3 + 1]) * ease;

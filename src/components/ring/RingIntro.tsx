@@ -1,39 +1,30 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { ContactShadows, Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { ParticleRing, sampleMesh } from "./ParticleRing";
+import { ParticleRing } from "./ParticleRing";
 import { RING_POSE } from "./pose";
+import { preloadRingParticles, type RingParticleCloud } from "./ringParticleCloud";
 
 const MODEL_PATH = "/models/mora-ring.glb";
 
 type RingIntroProps = {
   scale: number;
+  onProgress?: (ease: number) => void;
 };
 
-export function RingIntro({ scale }: RingIntroProps) {
+function SolidRing({
+  visible,
+  onReady,
+}: {
+  visible: boolean;
+  onReady: () => void;
+}) {
   const { scene } = useGLTF(MODEL_PATH);
   const cloned = useMemo(() => scene.clone(true), [scene]);
-  const center = useMemo(() => {
-    const pose = new THREE.Group();
-    const probe = scene.clone(true);
-    pose.rotation.set(...RING_POSE.rotation);
-    pose.scale.setScalar(scale);
-    pose.add(probe);
-    pose.updateWorldMatrix(true, true);
-    return new THREE.Box3().setFromObject(pose).getCenter(new THREE.Vector3());
-  }, [scale, scene]);
-  const motion = useRef<THREE.Group>(null);
   const appear = useRef(0);
-  const targets = useMemo(() => {
-    cloned.updateWorldMatrix(true, true);
-    return sampleMesh(cloned);
-  }, [cloned]);
-  const [assembled, setAssembled] = useState(false);
-  const [ready, setReady] = useState(false);
-  const reveal = assembled && ready;
 
   useLayoutEffect(() => {
     cloned.traverse((child) => {
@@ -52,18 +43,11 @@ export function RingIntro({ scale }: RingIntroProps) {
         }
       }
     });
-    const timer = window.setTimeout(() => setReady(true), 2200);
-    return () => window.clearTimeout(timer);
-  }, [cloned]);
+    onReady();
+  }, [cloned, onReady]);
 
-  useFrame((state, delta) => {
-    if (motion.current) {
-      motion.current.rotation.y += delta * RING_POSE.spin;
-      motion.current.position.y =
-        Math.sin(state.clock.elapsedTime * RING_POSE.floatSpeed) * RING_POSE.float;
-    }
-
-    if (!reveal) return;
+  useFrame((_, delta) => {
+    if (!visible) return;
     appear.current = Math.min(1, appear.current + delta * 1.25);
     cloned.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
@@ -76,6 +60,40 @@ export function RingIntro({ scale }: RingIntroProps) {
       }
     });
   });
+
+  return <primitive object={cloned} />;
+}
+
+export function RingIntro({ scale, onProgress }: RingIntroProps) {
+  const [cloud, setCloud] = useState<RingParticleCloud | null>(null);
+  const [assembled, setAssembled] = useState(false);
+  const [meshReady, setMeshReady] = useState(false);
+  const motion = useRef<THREE.Group>(null);
+  const reveal = assembled && meshReady;
+
+  useEffect(() => {
+    void preloadRingParticles().then(setCloud);
+  }, []);
+
+  useEffect(() => {
+    if (!cloud) return;
+    useGLTF.preload(MODEL_PATH);
+  }, [cloud]);
+
+  useFrame((state, delta) => {
+    if (!motion.current) return;
+    motion.current.rotation.y += delta * RING_POSE.spin;
+    motion.current.position.y =
+      Math.sin(state.clock.elapsedTime * RING_POSE.floatSpeed) * RING_POSE.float;
+  });
+
+  const center = cloud
+    ? ([
+        cloud.center[0] * scale,
+        cloud.center[1] * scale,
+        cloud.center[2] * scale,
+      ] as const)
+    : ([0, 0, 0] as const);
 
   return (
     <>
@@ -90,18 +108,23 @@ export function RingIntro({ scale }: RingIntroProps) {
         intensity={0.48}
         color="#dce6f6"
       />
-      <group ref={motion}>
-        <group position={[-center.x, -center.y, -center.z]}>
-          <group rotation={RING_POSE.rotation} scale={scale}>
-            <ParticleRing
-              targets={targets}
-              fading={reveal}
-              onAssembled={() => setAssembled(true)}
-            />
-            <primitive object={cloned} />
+      {cloud ? (
+        <group ref={motion}>
+          <group position={[-center[0], -center[1], -center[2]]}>
+            <group rotation={RING_POSE.rotation} scale={scale}>
+              <ParticleRing
+                targets={cloud.targets}
+                fading={reveal}
+                onProgress={onProgress}
+                onAssembled={() => setAssembled(true)}
+              />
+              <Suspense fallback={null}>
+                <SolidRing visible={reveal} onReady={() => setMeshReady(true)} />
+              </Suspense>
+            </group>
           </group>
         </group>
-      </group>
+      ) : null}
       <ContactShadows
         position={[0, -0.52 * (scale / 1.08), 0]}
         opacity={0.14}
@@ -110,7 +133,9 @@ export function RingIntro({ scale }: RingIntroProps) {
         far={2.2}
         color="#1c1830"
       />
-      <Environment preset="studio" environmentIntensity={0.68} />
+      <Suspense fallback={null}>
+        <Environment preset="studio" environmentIntensity={0.68} />
+      </Suspense>
     </>
   );
 }

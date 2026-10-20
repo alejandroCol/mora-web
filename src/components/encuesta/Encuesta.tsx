@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { RINGS, isGender, isRingId, ringById, type Gender, type RingId } from "@/lib/encuesta";
 
 const STORAGE = "mora-encuesta-v1";
@@ -114,7 +115,7 @@ export function Encuesta() {
   if (!hydrated) {
     return (
       <main className="mx-auto flex min-h-dvh max-w-md items-center justify-center px-6">
-        <p className="text-soft">Cargando…</p>
+        <BrandLoader />
       </main>
     );
   }

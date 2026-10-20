@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { CommerceSettings } from "@/commerce/types";
 import { ColombiaFields } from "@/components/checkout/ColombiaFields";
 import { formatMoney } from "@/lib/catalog";
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { useAdminAuth } from "./AdminAuth";
 
 const CARRIERS: { id: string; label: string }[] = [
@@ -27,7 +28,13 @@ export function ShippingSettingsView() {
       .then((data: { settings?: CommerceSettings }) => setSettings(data.settings ?? null));
   }, [authorizedFetch]);
 
-  if (!settings) return <p className="text-white/40">Cargando origen…</p>;
+  if (!settings) {
+    return (
+      <div className="grid min-h-[40vh] place-items-center">
+        <BrandLoader label="Cargando origen" />
+      </div>
+    );
+  }
   const current = settings;
 
   async function persist(next: CommerceSettings) {

@@ -1,22 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
+import { useGLTF } from "@react-three/drei";
+import { RingCanvas } from "@/components/ring/RingCanvas";
 
-const RingCanvas = dynamic(
-  () => import("@/components/ring/RingCanvas").then((mod) => mod.RingCanvas),
-  {
-    ssr: false,
-    loading: () => <div className="h-full w-full" aria-hidden />,
-  },
-);
+useGLTF.preload("/models/mora-ring.glb");
 
 const DESKTOP_SCALE = 0.756;
 /** ~2× el tamaño móvil anterior (0.8× desktop en caja 52vw). */
 const MOBILE_SCALE = DESKTOP_SCALE * 1.6;
 
 export function Hero() {
-  const [mobile, setMobile] = useState<boolean | null>(null);
+  const [mobile, setMobile] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 639px)").matches,
+  );
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 639px)");
@@ -28,7 +27,7 @@ export function Hero() {
 
   return (
     <section className="hero-wash relative flex min-h-dvh flex-col overflow-hidden">
-      {mobile === true ? (
+      {mobile ? (
         <div className="relative flex min-h-0 flex-1 items-center justify-center pt-[calc(3.5rem+env(safe-area-inset-top))]">
           <div className="mx-auto h-[min(90vw,36rem)] w-[min(90vw,36rem)] translate-x-[2vw]">
             <RingCanvas
@@ -44,8 +43,7 @@ export function Hero() {
             className="absolute inset-0 z-[1]"
           />
         </div>
-      ) : null}
-      {mobile === false ? (
+      ) : (
         <div className="absolute inset-0 [&_canvas]:pointer-events-none">
           <RingCanvas
             original
@@ -59,8 +57,7 @@ export function Hero() {
             className="absolute left-1/2 top-[46%] z-[1] block h-[min(70vw,32rem)] w-[min(70vw,32rem)] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full"
           />
         </div>
-      ) : null}
-      {mobile === null ? <div className="min-h-0 flex-1" aria-hidden /> : null}
+      )}
 
       <div className="pointer-events-none relative z-10 mt-auto flex shrink-0 flex-col items-center px-6 pb-[max(1.75rem,env(safe-area-inset-bottom))] pt-2 sm:absolute sm:inset-x-0 sm:bottom-12 sm:pb-0">
         <a

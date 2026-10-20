@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import type {
   AbandonedCart,
@@ -17,6 +17,7 @@ import type {
   WhatsAppMessage,
   WhatsAppUsageReport,
 } from "@/growth/types";
+import { playMoraChime, unlockMoraChime } from "@/crm/chime";
 import { DESK_LABEL, isSnoozed, needsReply } from "@/crm/labels";
 import { useAdminAuth } from "../AdminAuth";
 import { ManualSaleForm } from "../ManualSaleForm";
@@ -34,6 +35,8 @@ type Connection = {
   webhook: string;
   welcome: boolean;
   welcomeText?: string;
+  twoStep?: boolean;
+  twoStepSetAt?: number;
   webhookDebug?: {
     lastPostAt: number;
     lastIngestAt: number;
@@ -104,6 +107,7 @@ export function CrmWorkspace() {
   const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
   const [contact, setContact] = useState<CrmContactState | null>(null);
   const [error, setError] = useState("");
+  const heard = useRef<Map<string, number> | null>(null);
 
   const loadWorkspace = useCallback(async () => {
     const res = await authorizedFetch("/api/admin/crm");
@@ -117,7 +121,19 @@ export function CrmWorkspace() {
       usage?: WhatsAppUsageReport;
     };
     if (!data.ok) return;
-    setConversations(data.conversations ?? []);
+    const list = data.conversations ?? [];
+    if (heard.current) {
+      const prev = heard.current;
+      if (
+        list.some(
+          (item) => item.lastDirection === "in" && item.lastAt > (prev.get(item.id) ?? 0),
+        )
+      ) {
+        playMoraChime();
+      }
+    }
+    heard.current = new Map(list.map((item) => [item.id, item.lastAt]));
+    setConversations(list);
     setSellers(data.sellers ?? []);
     setSettings(data.settings ?? null);
     if (data.counts) setCounts(data.counts);
@@ -169,9 +185,14 @@ export function CrmWorkspace() {
   useEffect(() => {
     const start = window.setTimeout(() => void loadWorkspace(), 0);
     const timer = window.setInterval(() => void loadWorkspace(), 8000);
+    const unlock = () => unlockMoraChime();
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
     return () => {
       window.clearTimeout(start);
       window.clearInterval(timer);
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
     };
   }, [loadWorkspace]);
 
@@ -462,6 +483,24 @@ export function CrmWorkspace() {
             setConnection((current) =>
               current
                 ? { ...current, welcome: Boolean(welcome.trim()), welcomeText: welcome }
+                : current,
+            );
+          }}
+          onSetPin={async (pin) => {
+            const res = await authorizedFetch("/api/admin/whatsapp/security", {
+              method: "POST",
+              body: JSON.stringify({ pin }),
+            });
+            const data = (await res.json()) as {
+              ok?: boolean;
+              error?: string;
+              twoStep?: boolean;
+              twoStepSetAt?: number;
+            };
+            if (!data.ok) throw new Error(data.error ?? "Meta no aceptó el PIN.");
+            setConnection((current) =>
+              current
+                ? { ...current, twoStep: Boolean(data.twoStep), twoStepSetAt: data.twoStepSetAt }
                 : current,
             );
           }}

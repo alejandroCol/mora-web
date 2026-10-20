@@ -1,7 +1,7 @@
 "use client";
 
 import { BRAND } from "@/brand";
-import { BrandMarkParticles } from "./BrandMarkParticles";
+import { SpiralParticles } from "./SpiralParticles";
 
 type BrandLoaderProps = {
   label?: string;
@@ -16,12 +16,7 @@ export function BrandLoader({ label, className = "" }: BrandLoaderProps) {
       aria-live="polite"
       aria-label={label ?? `Cargando ${BRAND.name}`}
     >
-      <BrandMarkParticles
-        asset="mark"
-        loop
-        density={720}
-        className="h-28 w-28 sm:h-32 sm:w-32"
-      />
+      <SpiralParticles className="h-[4.5rem] w-[4.5rem] sm:h-[5.5rem] sm:w-[5.5rem]" count={7200} />
       <span className="sr-only">{label ?? "Cargando"}</span>
     </div>
   );

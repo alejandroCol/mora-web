@@ -10,6 +10,8 @@ type Connection = {
   webhook: string;
   welcome: boolean;
   welcomeText?: string;
+  twoStep?: boolean;
+  twoStepSetAt?: number;
 };
 
 export function CrmSettingsPanel({
@@ -17,16 +19,21 @@ export function CrmSettingsPanel({
   connection,
   onClose,
   onSave,
+  onSetPin,
 }: {
   settings: CrmSettings | null;
   connection: Connection | null;
   onClose: () => void;
   onSave: (next: CrmSettings, welcome: string) => Promise<void>;
+  onSetPin: (pin: string) => Promise<void>;
 }) {
   const [replies, setReplies] = useState<CrmQuickReply[]>(settings?.replies ?? defaultCrmReplies());
   const [templates, setTemplates] = useState<CrmTemplate[]>(settings?.templates ?? []);
   const [autoClaim, setAutoClaim] = useState(settings?.autoClaimOnReply !== false);
   const [welcome, setWelcome] = useState(connection?.welcomeText ?? "");
+  const [pin, setPin] = useState("");
+  const [pinBusy, setPinBusy] = useState(false);
+  const [pinMsg, setPinMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState("");
 
@@ -86,6 +93,43 @@ export function CrmSettingsPanel({
           {connection?.webhook ? (
             <p className="mt-2 break-all text-[12px] text-white/40">{connection.webhook}</p>
           ) : null}
+
+          <div className="mt-5 rounded-2xl bg-white/6 p-3">
+            <p className="text-[13px]">
+              {connection?.twoStep ? "PIN de 2 pasos activo en Meta." : "PIN de 2 pasos · aún no está en Meta."}
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <input
+                value={pin}
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="••••••"
+                onChange={(event) => setPin(event.target.value.replace(/\D/g, "").slice(0, 6))}
+                className="h-10 w-28 rounded-full bg-white/8 px-4 text-center tracking-[0.35em] outline-none"
+              />
+              <button
+                type="button"
+                disabled={pinBusy || pin.length !== 6}
+                onClick={() => {
+                  setPinBusy(true);
+                  setPinMsg("");
+                  void onSetPin(pin)
+                    .then(() => {
+                      setPin("");
+                      setPinMsg("Listo. Guárdalo fuera de Mora.");
+                    })
+                    .catch((error: unknown) => {
+                      setPinMsg(error instanceof Error ? error.message : "Meta no lo aceptó.");
+                    })
+                    .finally(() => setPinBusy(false));
+                }}
+                className="h-10 rounded-full bg-[#1d1d1f] px-4 text-[12px] text-white disabled:opacity-40"
+              >
+                {pinBusy ? "Enviando…" : connection?.twoStep ? "Cambiar PIN" : "Activar"}
+              </button>
+            </div>
+            {pinMsg ? <p className="mt-2 text-[12px] text-white/45">{pinMsg}</p> : null}
+          </div>
           <ol className="mt-4 list-decimal space-y-2 pl-5 text-[13px] leading-6 text-white/55">
             <li>Meta Business Suite → WhatsApp → cuenta de Mora. El número no debe usarse en la app del teléfono.</li>
             <li>App de Cloud API: webhook = la URL de arriba. Verify token = el de Campañas. Suscribe <em>messages</em>.</li>

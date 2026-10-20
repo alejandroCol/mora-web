@@ -572,12 +572,30 @@ body {
   box-shadow: 0 0 0 2px #1d1d1f;
 }
 
-.addi-word {
+.addi-mark {
+  display: inline-flex;
   flex-shrink: 0;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.04em;
-  color: #1d1d1f;
+  height: 36px;
+  width: 80px;
+  overflow: hidden;
+  border-radius: 9px;
+  background: #4d7cff;
+  box-shadow: 0 0 0 1px rgba(22, 20, 31, 0.06);
+}
+
+.addi-mark img {
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+.addi-mark-on-dark {
+  height: 28px;
+  width: 62px;
+  margin-left: 0.35rem;
+  border-radius: 7px;
+  box-shadow: none;
 }
 
 .addi-slot {

@@ -476,4 +476,64 @@ export function webhookUrl(origin: string) {
   return `${origin.replace(/\/$/, "")}/api/whatsapp/webhook`;
 }
 
+export async function setWhatsAppTwoStepPin(pin: string) {
+  const digits = pin.replace(/\D/g, "");
+  if (!/^\d{6}$/.test(digits)) {
+    throw Object.assign(new Error("El PIN debe ser de 6 números."), { status: 400 });
+  }
+  const settings = await loadGrowthSettings();
+  if (!settings.whatsappPhoneNumberId || !settings.whatsappAccessToken) {
+    throw Object.assign(new Error("WhatsApp Business aún no está conectado."), {
+      status: 503,
+    });
+  }
+
+  const headers = {
+    Authorization: `Bearer ${settings.whatsappAccessToken}`,
+    "Content-Type": "application/json",
+  };
+  const id = settings.whatsappPhoneNumberId;
+  const pinBody = JSON.stringify({ pin: digits });
+
+  const setPin = await fetch(`${GRAPH}/${id}`, {
+    method: "POST",
+    headers,
+    body: pinBody,
+  });
+  const setData = (await setPin.json()) as { success?: boolean; error?: { message?: string } };
+  if (!setPin.ok) {
+    throw Object.assign(new Error(setData.error?.message ?? "WhatsApp no aceptó el PIN."), {
+      status: 400,
+    });
+  }
+
+  const register = await fetch(`${GRAPH}/${id}/register`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ messaging_product: "whatsapp", pin: digits }),
+  });
+  const registerData = (await register.json()) as { success?: boolean; error?: { message?: string } };
+  if (!register.ok) {
+    throw Object.assign(
+      new Error(registerData.error?.message ?? "WhatsApp no registró el número con ese PIN."),
+      { status: 400 },
+    );
+  }
+
+  await adminDb().doc("settings/whatsappSecurity").set(
+    { twoStepSetAt: Date.now(), method: "pin+register", isPinEnabled: true },
+    { merge: true },
+  );
+  return { ok: true as const };
+}
+
+export async function loadWhatsAppSecurity() {
+  const snap = await adminDb().doc("settings/whatsappSecurity").get();
+  const data = snap.data() as { twoStepSetAt?: number } | undefined;
+  return {
+    twoStep: Boolean(data?.twoStepSetAt),
+    twoStepSetAt: Number(data?.twoStepSetAt ?? 0),
+  };
+}
+
 export type { WhatsAppReferral };

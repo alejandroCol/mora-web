@@ -8,6 +8,12 @@ import { PresaleModule } from "@/components/presale/PresaleModule";
 export default function Home() {
   return (
     <>
+      <link
+        rel="preload"
+        href="/models/ring-particles.bin"
+        as="fetch"
+        crossOrigin="anonymous"
+      />
       <Hero />
       <PresaleModule />
       <Film />

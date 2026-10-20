@@ -1,11 +1,19 @@
 "use client";
 
 import { Suspense } from "react";
+import dynamic from "next/dynamic";
 import { Canvas } from "@react-three/fiber";
 import type { FinishId } from "@/lib/catalog";
-import { ConfigureScene } from "./ConfigureScene";
 import { RingIntro } from "./RingIntro";
-import { RingScene } from "./RingScene";
+
+const ConfigureScene = dynamic(
+  () => import("./ConfigureScene").then((mod) => mod.ConfigureScene),
+  { ssr: false },
+);
+const RingScene = dynamic(
+  () => import("./RingScene").then((mod) => mod.RingScene),
+  { ssr: false },
+);
 
 type RingCanvasProps = {
   finishId?: FinishId;

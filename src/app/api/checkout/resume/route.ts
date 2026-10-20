@@ -1,20 +1,13 @@
-import { boldSessionRetry } from "@/server/checkoutSession";
-import { boldIsConfigured, requestOrigin } from "@/payments";
-import { getOrderByNumber, setOrderBoldReference } from "@/server/orders";
+import { addiSessionRetry, boldSessionRetry } from "@/server/checkoutSession";
+import { addiIsConfigured, boldIsConfigured, requestOrigin } from "@/payments";
+import { getOrderByNumber, setOrderPaymentReference } from "@/server/orders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    if (!boldIsConfigured()) {
-      return Response.json(
-        { ok: false, error: "El pago aún no está configurado." },
-        { status: 503 },
-      );
-    }
-
-    const body = (await request.json()) as { orderNumber?: string };
+    const body = (await request.json()) as { orderNumber?: string; method?: "bold" | "addi" };
     const orderNumber = body.orderNumber?.trim().toUpperCase() ?? "";
     if (!orderNumber) {
       return Response.json({ ok: false, error: "Falta el número de pedido." }, { status: 400 });
@@ -37,15 +30,44 @@ export async function POST(request: Request) {
       );
     }
 
-    const previous = order.payment.boldReference ?? order.payment.wompiReference ?? order.id;
+    const method = body.method === "addi" || order.payment.method === "addi" ? "addi" : "bold";
+    if (method === "bold" && !boldIsConfigured()) {
+      return Response.json({ ok: false, error: "El pago en línea aún no está configurado." }, { status: 503 });
+    }
+    if (method === "addi" && !addiIsConfigured()) {
+      return Response.json({ ok: false, error: "Addi aún no está configurado." }, { status: 503 });
+    }
+
+    const previous =
+      method === "addi"
+        ? (order.payment.addiReference ?? order.id)
+        : (order.payment.boldReference ?? order.payment.wompiReference ?? order.id);
     const origin = requestOrigin(request);
+
+    if (method === "addi") {
+      const session = await addiSessionRetry(order, origin, previous);
+      if (session.reference !== previous) {
+        await setOrderPaymentReference(order.id, { method: "addi", reference: session.reference });
+      }
+      return Response.json({
+        ok: true,
+        method,
+        orderNumber: order.orderNumber,
+        orderId: order.id,
+        reference: session.reference,
+        redirectUrl: session.redirectUrl,
+        session,
+      });
+    }
+
     const session = await boldSessionRetry(order, origin, previous);
     if (session.reference !== previous) {
-      await setOrderBoldReference(order.id, session.reference);
+      await setOrderPaymentReference(order.id, { method: "bold", reference: session.reference });
     }
 
     return Response.json({
       ok: true,
+      method,
       orderNumber: order.orderNumber,
       orderId: order.id,
       session,

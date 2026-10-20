@@ -12,7 +12,7 @@ export type BoldTxStatus =
   | "PENDING"
   | "NO_TRANSACTION_FOUND";
 
-export type PaymentProvider = "bold";
+export type PaymentProvider = "bold" | "addi";
 export type PaymentPurpose = "order" | (string & {});
 
 export type PaymentIntentStatus =
@@ -137,3 +137,32 @@ export type AppliedPayment = {
   voucher: BoldVoucher;
   duplicate: boolean;
 };
+
+export type AddiEnvironment = "sandbox" | "prod";
+export type AddiIdType = "CC" | "CE" | "NIT" | "PP";
+
+export type AddiCheckoutSession = {
+  reference: string;
+  amountCop: number;
+  currency: typeof BOLD_CURRENCY;
+  purpose: PaymentPurpose;
+  redirectPath: string;
+  redirectUrl: string;
+  applicationId?: string;
+  metadata: Record<string, string>;
+};
+
+export type AddiWebhookEvent = {
+  orderId?: string;
+  order_id?: string;
+  applicationId?: string;
+  application_id?: string;
+  id?: string;
+  status?: string;
+  applicationStatus?: string;
+  totalAmount?: string | number;
+  amount?: string | number;
+  currency?: string;
+};
+
+export type CheckoutPayMethod = "bold" | "addi";

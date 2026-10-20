@@ -17,7 +17,7 @@ import {
 import { ColombiaFields } from "@/components/checkout/ColombiaFields";
 import { PAYMENT_METHOD_LABEL } from "@/commerce/labels";
 
-const MANUAL_METHODS: Exclude<PaymentMethod, "bold" | "wompi">[] = [
+const MANUAL_METHODS: Exclude<PaymentMethod, "bold" | "wompi" | "addi">[] = [
   "transferencia",
   "efectivo",
   "datafono",
@@ -52,7 +52,7 @@ export function ManualSaleForm({
   const [ciudad, setCiudad] = useState("");
   const [direccion, setDireccion] = useState("");
   const [pickup, setPickup] = useState(true);
-  const [method, setMethod] = useState<Exclude<PaymentMethod, "bold" | "wompi">>("efectivo");
+  const [method, setMethod] = useState<Exclude<PaymentMethod, "bold" | "wompi" | "addi">>("efectivo");
   const [notes, setNotes] = useState(initial?.notes ?? "");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);

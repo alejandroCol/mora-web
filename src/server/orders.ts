@@ -103,7 +103,9 @@ export async function createPendingOrder(input: {
   customer: CustomerSnapshot;
   shipping: ShippingSnapshot;
   notes?: string;
-  boldReference: string;
+  paymentMethod?: Extract<PaymentMethod, "bold" | "addi">;
+  boldReference?: string;
+  addiReference?: string;
   attribution?: AttributionSnapshot;
   discountCop?: number;
   cartSessionId?: string;
@@ -129,9 +131,10 @@ export async function createPendingOrder(input: {
     status: "awaiting_payment",
     channel: "online",
     payment: {
-      method: "bold",
+      method: input.paymentMethod ?? "bold",
       status: "pending",
-      boldReference: input.boldReference,
+      ...(input.boldReference ? { boldReference: input.boldReference } : {}),
+      ...(input.addiReference ? { addiReference: input.addiReference } : {}),
     },
     customer: input.customer,
     shipping: input.shipping,
@@ -164,7 +167,7 @@ export async function createManualOrder(input: {
   items: CartLine[];
   customer: CustomerSnapshot;
   shipping: ShippingSnapshot;
-  paymentMethod: Exclude<PaymentMethod, "bold" | "wompi">;
+  paymentMethod: Exclude<PaymentMethod, "bold" | "wompi" | "addi">;
   notes?: string;
   createdBy: string;
   skipStock?: boolean;
@@ -291,25 +294,62 @@ export async function fulfillBoldPayment(input: {
   status: string;
   orderId?: string;
 }) {
+  return fulfillOnlinePayment({ ...input, method: "bold" });
+}
+
+export async function fulfillAddiPayment(input: {
+  reference: string;
+  transactionId?: string;
+  amountCop?: number;
+  paymentType?: string;
+  status: string;
+  orderId?: string;
+}) {
+  return fulfillOnlinePayment({ ...input, method: "addi" });
+}
+
+async function fulfillOnlinePayment(input: {
+  reference: string;
+  transactionId?: string;
+  amountCop?: number;
+  paymentType?: string;
+  status: string;
+  orderId?: string;
+  method: Extract<PaymentMethod, "bold" | "addi">;
+}) {
   const db = adminDb();
   if (input.orderId) {
     const byMeta = await getOrder(input.orderId);
-    if (byMeta) return fulfillOrderDoc(byMeta, input);
+    if (byMeta) return fulfillOrderDoc(byMeta, { ...input, reference: input.reference });
   }
-  for (const field of ["payment.boldReference", "payment.wompiReference"] as const) {
+  const fields =
+    input.method === "addi"
+      ? (["payment.addiReference", "payment.boldReference"] as const)
+      : (["payment.boldReference", "payment.wompiReference", "payment.addiReference"] as const);
+  for (const field of fields) {
     const snap = await db
       .collection(COLLECTIONS.orders)
       .where(field, "==", input.reference)
       .limit(1)
       .get();
     if (!snap.empty) {
-      return fulfillOrderDoc(serializeOrder(snap.docs[0].id, snap.docs[0].data()), input);
+      return fulfillOrderDoc(serializeOrder(snap.docs[0].id, snap.docs[0].data()), {
+        ...input,
+        reference: input.reference,
+      });
     }
   }
   return null;
 }
 
 export async function setOrderBoldReference(orderId: string, boldReference: string) {
+  return setOrderPaymentReference(orderId, { method: "bold", reference: boldReference });
+}
+
+export async function setOrderPaymentReference(
+  orderId: string,
+  input: { method: Extract<PaymentMethod, "bold" | "addi">; reference: string },
+) {
   const db = adminDb();
   const ref = orderRef(db, orderId);
   await db.runTransaction(async (tx) => {
@@ -327,9 +367,11 @@ export async function setOrderBoldReference(orderId: string, boldReference: stri
       {
         payment: {
           ...order.payment,
-          method: "bold",
+          method: input.method,
           status: "pending",
-          boldReference,
+          ...(input.method === "addi"
+            ? { addiReference: input.reference }
+            : { boldReference: input.reference }),
         },
         updatedAt: Date.now(),
       },
@@ -345,6 +387,8 @@ async function fulfillOrderDoc(
     amountCop?: number;
     paymentType?: string;
     status: string;
+    method?: Extract<PaymentMethod, "bold" | "addi">;
+    reference?: string;
   },
 ) {
   const status = input.status.toUpperCase();
@@ -397,22 +441,33 @@ async function fulfillOrderDoc(
     }
 
     if (input.amountCop != null && input.amountCop !== current.totals.total) {
-      throw new Error("El monto de Bold no coincide con el pedido.");
+      throw new Error("El monto del pago no coincide con el pedido.");
     }
 
+    const method = input.method ?? current.payment.method;
     const paid: MoraOrder = {
       ...current,
       status: "paid",
       payment: {
-        method: "bold",
+        ...current.payment,
+        method: method === "addi" ? "addi" : "bold",
         status: "approved",
-        boldTransactionId: input.transactionId,
+        boldTransactionId: method === "addi" ? current.payment.boldTransactionId : input.transactionId,
         boldReference: current.payment.boldReference ?? current.payment.wompiReference,
-        boldPaymentType: input.paymentType,
+        boldPaymentType: method === "addi" ? current.payment.boldPaymentType : input.paymentType,
+        addiApplicationId: method === "addi" ? input.transactionId : current.payment.addiApplicationId,
+        addiReference:
+          method === "addi"
+            ? (current.payment.addiReference ?? input.reference)
+            : current.payment.addiReference,
+        addiStatus: method === "addi" ? input.status : current.payment.addiStatus,
       },
       paidAt: now,
       updatedAt: now,
-      timeline: [...current.timeline, { status: "paid", at: now, note: "Pago en línea" }],
+      timeline: [
+        ...current.timeline,
+        { status: "paid", at: now, note: method === "addi" ? "Pago con Addi" : "Pago en línea" },
+      ],
     };
     tx.set(ref, paid);
     return { kind: "applied" as const, order: paid };

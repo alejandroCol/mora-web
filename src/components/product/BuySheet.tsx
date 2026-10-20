@@ -12,6 +12,7 @@ import {
 import { PRESALE } from "@/lib/presale";
 import { track } from "@/growth/track";
 import { useMoraStore } from "@/lib/store";
+import { AddiWidget } from "@/components/payments/AddiWidget";
 import { SizeChoice } from "./SizeChoice";
 
 export function BuySheet({
@@ -73,6 +74,7 @@ export function BuySheet({
             {formatMoney(model.price)}
           </p>
         </div>
+        <AddiWidget price={model.price} className="mt-2" />
         <p className="mt-2 text-[12px] text-soft">
           {model.line} · {model.weight}
         </p>

@@ -3,13 +3,14 @@
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
 import { PRESALE } from "@/lib/presale";
-import type { PaymentIntentStatus } from "@/payments/types";
+import type { PaymentIntentStatus, PaymentProvider } from "@/payments/types";
 import { PurchaseSeal } from "./PurchaseSeal";
 
 type IntentView = {
   reference: string;
   status: PaymentIntentStatus;
   purpose: string;
+  provider?: PaymentProvider;
   redirectPath: string;
   metadata: Record<string, string>;
 };
@@ -24,20 +25,29 @@ function destination(intent: IntentView) {
   return "/pedido";
 }
 
-function copyFor(status: PaymentIntentStatus | "waiting") {
+function copyFor(status: PaymentIntentStatus | "waiting", provider?: PaymentProvider) {
   switch (status) {
     case "approved":
       return { title: "Ya es tuyo.", detail: PRESALE.promise };
     case "declined":
-      return { title: "Pago rechazado", detail: "No se pudo cobrar. Puedes intentarlo otra vez." };
+      return {
+        title: provider === "addi" ? "Addi no aprobó las cuotas" : "Pago rechazado",
+        detail: "No se pudo cobrar. Puedes intentarlo otra vez.",
+      };
     case "voided":
-      return { title: "Pago anulado", detail: "La transacción se anuló." };
+      return {
+        title: provider === "addi" ? "Saliste de Addi" : "Pago anulado",
+        detail: "Puedes volver al pedido e intentarlo otra vez.",
+      };
     case "error":
       return { title: "No se pudo cobrar", detail: "Hubo un error. Inténtalo de nuevo." };
     case "pending":
       return {
         title: "Confirmando el pago",
-        detail: "Nequi y PSE tardan un momento. No cierres esta pantalla.",
+        detail:
+          provider === "addi"
+            ? "Addi tarda un momento en confirmar las cuotas. No cierres esta pantalla."
+            : "Nequi y PSE tardan un momento. No cierres esta pantalla.",
       };
     default:
       return { title: "Confirmando el pago", detail: "Estamos esperando la respuesta." };
@@ -48,7 +58,11 @@ function PaymentReturnInner() {
   const params = useSearchParams();
   const demo = params.get("demo") === "seal";
   const reference =
-    params.get("bold-order-id") ?? params.get("ref") ?? params.get("orderId") ?? "";
+    params.get("bold-order-id") ??
+    params.get("ref") ??
+    params.get("orderId") ??
+    params.get("order_id") ??
+    "";
   const [status, setStatus] = useState<PaymentIntentStatus | "waiting">(
     demo ? "approved" : "waiting",
   );
@@ -134,7 +148,7 @@ function PaymentReturnInner() {
     };
   }, [reference, demo]);
 
-  const copy = copyFor(status);
+  const copy = copyFor(status, intent?.provider);
   const orderNumber = intent?.metadata.orderNumber;
   const href = intent ? destination(intent) : "/pedido";
   const failed =

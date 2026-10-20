@@ -2,7 +2,7 @@ import type { DocumentData } from "firebase-admin/firestore";
 import { COLLECTIONS, PENDING_TTL_MS } from "@/commerce/paths";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { mapBoldStatus } from "./status";
-import type { PaymentIntent, PaymentPurpose } from "./types";
+import type { PaymentIntent, PaymentProvider, PaymentPurpose } from "./types";
 
 function intents() {
   return adminDb().collection(COLLECTIONS.paymentIntents);
@@ -35,12 +35,13 @@ export async function createPaymentIntent(input: {
   metadata?: Record<string, string>;
   customerEmail?: string;
   expiresAt?: number;
+  provider?: PaymentProvider;
 }): Promise<PaymentIntent> {
   const now = Date.now();
   const intent: PaymentIntent = {
     id: input.reference,
     purpose: input.purpose,
-    provider: "bold",
+    provider: input.provider ?? "bold",
     reference: input.reference,
     amountCop: input.amountCop,
     currency: "COP",
@@ -76,7 +77,7 @@ export async function replacePaymentIntent(
     const intent: PaymentIntent = {
       id: next.reference,
       purpose: next.purpose,
-      provider: "bold",
+      provider: next.provider ?? "bold",
       reference: next.reference,
       amountCop: next.amountCop,
       currency: "COP",
@@ -142,6 +143,7 @@ export function publicIntentView(intent: PaymentIntent) {
     reference: intent.reference,
     status: intent.status,
     purpose: intent.purpose,
+    provider: intent.provider,
     redirectPath: intent.redirectPath,
     amountCop: intent.amountCop,
     currency: intent.currency,

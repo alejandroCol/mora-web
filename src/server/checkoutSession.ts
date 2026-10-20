@@ -4,8 +4,11 @@ import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
 import {
   boldDocumentType,
   colombianMobile,
+  createAddiSession,
   createBoldSession,
+  recreateAddiSession,
   recreateBoldSession,
+  type AddiCheckoutSession,
   type BoldCheckoutSession,
 } from "@/payments";
 
@@ -54,4 +57,20 @@ export async function boldSessionRetry(
     previousReference,
     sessionInput(order, origin, previousReference),
   );
+}
+
+export async function addiSessionForOrder(
+  order: MoraOrder,
+  origin: string,
+  reference: string,
+): Promise<AddiCheckoutSession> {
+  return createAddiSession({ order, origin, reference });
+}
+
+export async function addiSessionRetry(
+  order: MoraOrder,
+  origin: string,
+  previousReference: string,
+): Promise<AddiCheckoutSession> {
+  return recreateAddiSession({ order, origin, previousReference });
 }

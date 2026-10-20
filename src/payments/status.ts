@@ -5,15 +5,22 @@ export function mapBoldStatus(status: string): PaymentIntentStatus {
     case "APPROVED":
     case "SALE_APPROVED":
     case "PAID":
+    case "COMPLETED":
       return "approved";
     case "REJECTED":
     case "SALE_REJECTED":
+    case "DECLINED":
       return "declined";
     case "VOIDED":
     case "VOID_APPROVED":
+    case "ABANDONED":
+    case "EXPIRED":
+    case "CANCELLED":
+    case "CANCELED":
       return "voided";
     case "FAILED":
     case "VOID_REJECTED":
+    case "ERROR":
       return "error";
     default:
       return "pending";

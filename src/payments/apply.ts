@@ -1,4 +1,4 @@
-import { fulfillBoldPayment } from "@/server/orders";
+import { fulfillAddiPayment, fulfillBoldPayment } from "@/server/orders";
 import {
   applyVoucherToIntent,
   createPaymentIntent,
@@ -10,11 +10,19 @@ import {
 } from "./intents";
 import { mapBoldStatus } from "./status";
 import type {
+  AddiCheckoutSession,
   AppliedPayment,
   BoldEnvironment,
   BoldWebhookEvent,
   CreateBoldSessionInput,
 } from "./types";
+import {
+  addiWebhookHeaders,
+  createAddiApplication,
+  fetchAddiApplication,
+  readAddiWebhookEvent,
+  verifyAddiCallback,
+} from "./addi";
 import {
   boldEnvironment,
   boldIsConfigured,
@@ -23,8 +31,59 @@ import {
   toCheckoutSession,
   verifyWebhookSignature,
 } from "./bold";
+import type { MoraOrder } from "@/commerce/types";
 
 export { PaymentAmountMismatch };
+
+export async function createAddiSession(input: {
+  order: MoraOrder;
+  origin: string;
+  reference?: string;
+}): Promise<AddiCheckoutSession> {
+  const reference = input.reference?.trim() || newBoldReference("ADDI");
+  await createPaymentIntent({
+    purpose: "order",
+    provider: "addi",
+    reference,
+    amountCop: input.order.totals.total,
+    redirectPath: `/pedido/${input.order.orderNumber}`,
+    metadata: { orderId: input.order.id, orderNumber: input.order.orderNumber },
+    customerEmail: input.order.customer.email,
+    expiresAt: input.order.expiresAt,
+  });
+  return createAddiApplication({
+    order: input.order,
+    reference,
+    origin: input.origin,
+  });
+}
+
+export async function recreateAddiSession(input: {
+  order: MoraOrder;
+  origin: string;
+  previousReference: string;
+}): Promise<AddiCheckoutSession> {
+  const previous = await getPaymentIntent(input.previousReference);
+  if (previous?.status === "approved") {
+    throw new Error("Ese pago ya está aprobado.");
+  }
+  const reference = newBoldReference("ADDI");
+  await replacePaymentIntent(input.previousReference, {
+    purpose: "order",
+    provider: "addi",
+    reference,
+    amountCop: input.order.totals.total,
+    redirectPath: `/pedido/${input.order.orderNumber}`,
+    metadata: { orderId: input.order.id, orderNumber: input.order.orderNumber },
+    customerEmail: input.order.customer.email,
+    expiresAt: input.order.expiresAt,
+  });
+  return createAddiApplication({
+    order: input.order,
+    reference,
+    origin: input.origin,
+  });
+}
 
 export async function createBoldSession(
   input: CreateBoldSessionInput & { origin: string },
@@ -193,6 +252,113 @@ function mapWebhookType(type: string) {
     default:
       return "PENDING";
   }
+}
+
+export async function applyAddiStatus(input: {
+  reference: string;
+  status: string;
+  applicationId?: string;
+  amountCop?: number;
+}): Promise<AppliedPayment | null> {
+  const voucher = {
+    reference_id: input.reference,
+    transaction_id: input.applicationId,
+    total: input.amountCop,
+    payment_method: "addi",
+    payment_status: input.status,
+  };
+
+  const applied = await applyVoucherToIntent(input.reference, voucher);
+  await fulfillAddiPayment({
+    reference: applied?.intent.reference ?? input.reference,
+    transactionId: input.applicationId,
+    amountCop: input.amountCop,
+    paymentType: "addi",
+    status: input.status.toUpperCase() === "COMPLETED" ? "APPROVED" : input.status,
+    orderId: applied?.intent.metadata.orderId,
+  });
+
+  if (!applied) {
+    const fallback = await getPaymentIntent(input.reference);
+    if (!fallback) return null;
+    return { intent: fallback, voucher, duplicate: fallback.status === "approved" };
+  }
+  return { intent: applied.intent, voucher, duplicate: applied.duplicate };
+}
+
+export async function syncAddiReference(reference: string) {
+  const remote = await fetchAddiApplication(reference);
+  const status = remote?.status ?? remote?.applicationStatus;
+  if (!status) {
+    const intent = await getPaymentIntent(reference);
+    return {
+      voucher: { reference_id: reference, payment_status: intent?.providerStatus ?? "PENDING" },
+      applied: intent ? { intent, voucher: { reference_id: reference }, duplicate: false } : null,
+    };
+  }
+  const applied = await applyAddiStatus({
+    reference,
+    status,
+    applicationId: remote?.applicationId ?? remote?.application_id ?? remote?.id,
+    amountCop:
+      remote?.totalAmount == null && remote?.amount == null
+        ? undefined
+        : Math.round(Number(remote?.totalAmount ?? remote?.amount)),
+  });
+  return {
+    voucher: {
+      reference_id: reference,
+      payment_status: status,
+      transaction_id: remote?.applicationId ?? remote?.id,
+      payment_method: "addi",
+    },
+    applied,
+  };
+}
+
+export async function handleAddiEvent(request: Request) {
+  if (!verifyAddiCallback(request)) {
+    return Response.json({ ok: false }, { status: 401, headers: addiWebhookHeaders() });
+  }
+
+  const raw = await request.text();
+  let payload: unknown = {};
+  if (raw) {
+    try {
+      payload = JSON.parse(raw);
+    } catch {
+      payload = Object.fromEntries(new URLSearchParams(raw));
+    }
+  }
+
+  const event = readAddiWebhookEvent(payload);
+  if (!event) {
+    return Response.json({ ok: true, ignored: "empty" }, { headers: addiWebhookHeaders() });
+  }
+
+  const confirmed = await fetchAddiApplication(event.reference);
+  const status = confirmed?.status ?? confirmed?.applicationStatus ?? event.status;
+
+  try {
+    await applyAddiStatus({
+      reference: event.reference,
+      status,
+      applicationId: event.applicationId ?? confirmed?.applicationId ?? confirmed?.id,
+      amountCop: event.amountCop,
+    });
+  } catch (error) {
+    if (error instanceof PaymentAmountMismatch) {
+      console.error("[addi] monto no coincide", error.message);
+      return Response.json(
+        { ok: true, ignored: "amount_mismatch" },
+        { headers: addiWebhookHeaders() },
+      );
+    }
+    console.error("[addi] evento", error instanceof Error ? error.message : error);
+    return Response.json({ ok: false }, { status: 500, headers: addiWebhookHeaders() });
+  }
+
+  return Response.json({ ok: true }, { headers: addiWebhookHeaders() });
 }
 
 export async function readPaymentStatus(input: {

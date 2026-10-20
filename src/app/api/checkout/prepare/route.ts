@@ -13,8 +13,14 @@ import { upsertLead } from "@/server/leads";
 import { requestClient, sendMetaEvent } from "@/server/metaCapi";
 import { createPendingOrder } from "@/server/orders";
 import { quoteShipping } from "@/server/quoteShipping";
-import { boldSessionForOrder } from "@/server/checkoutSession";
-import { boldIsConfigured, newBoldReference, requestOrigin } from "@/payments";
+import { addiSessionForOrder, boldSessionForOrder } from "@/server/checkoutSession";
+import {
+  addiIsConfigured,
+  boldIsConfigured,
+  newBoldReference,
+  requestOrigin,
+  type CheckoutPayMethod,
+} from "@/payments";
 
 type Body = {
   items?: CartLine[];
@@ -30,18 +36,25 @@ type Body = {
   attribution?: AttributionSnapshot;
   sessionId?: string;
   offerCode?: string;
+  method?: CheckoutPayMethod;
 };
 
 export async function POST(request: Request) {
   try {
-    if (!boldIsConfigured()) {
+    const body = (await request.json()) as Body;
+    const method: CheckoutPayMethod = body.method === "addi" ? "addi" : "bold";
+    if (method === "bold" && !boldIsConfigured()) {
       return Response.json(
-        { ok: false, error: "El pago aún no está configurado." },
+        { ok: false, error: "El pago en línea aún no está configurado." },
         { status: 503 },
       );
     }
-
-    const body = (await request.json()) as Body;
+    if (method === "addi" && !addiIsConfigured()) {
+      return Response.json(
+        { ok: false, error: "Addi aún no está configurado." },
+        { status: 503 },
+      );
+    }
     const items = (body.items ?? [])
       .filter((item) => item.qty > 0)
       .map(normalizeCartLine);
@@ -124,7 +137,7 @@ export async function POST(request: Request) {
       ? discountOf(subtotalOf(items), offered.offer)
       : 0;
 
-    const boldReference = newBoldReference();
+    const paymentReference = newBoldReference(method === "addi" ? "ADDI" : "MORA");
     const order = await createPendingOrder({
       items,
       customer: {
@@ -137,7 +150,9 @@ export async function POST(request: Request) {
       },
       shipping: shippingSnap,
       notes: body.notes,
-      boldReference,
+      paymentMethod: method,
+      boldReference: method === "bold" ? paymentReference : undefined,
+      addiReference: method === "addi" ? paymentReference : undefined,
       attribution: body.attribution,
       discountCop,
       cartSessionId: body.sessionId || offered?.sessionId,
@@ -180,10 +195,25 @@ export async function POST(request: Request) {
       ...client,
     }).catch(() => undefined);
 
-    const session = await boldSessionForOrder(order, origin, boldReference);
+    if (method === "addi") {
+      const session = await addiSessionForOrder(order, origin, paymentReference);
+      return Response.json({
+        ok: true,
+        method,
+        orderNumber: order.orderNumber,
+        orderId: order.id,
+        totals: order.totals,
+        reference: session.reference,
+        redirectUrl: session.redirectUrl,
+        session,
+      });
+    }
+
+    const session = await boldSessionForOrder(order, origin, paymentReference);
 
     return Response.json({
       ok: true,
+      method,
       orderNumber: order.orderNumber,
       orderId: order.id,
       totals: order.totals,

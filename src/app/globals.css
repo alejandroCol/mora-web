@@ -572,6 +572,25 @@ body {
   box-shadow: 0 0 0 2px #1d1d1f;
 }
 
+.addi-word {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.04em;
+  color: #1d1d1f;
+}
+
+.addi-slot {
+  min-height: 1.25rem;
+  max-width: 22rem;
+  overflow: hidden;
+}
+
+.addi-slot addi-widget {
+  display: block;
+  width: 100%;
+}
+
 .check-dock {
   position: sticky;
   bottom: 0;

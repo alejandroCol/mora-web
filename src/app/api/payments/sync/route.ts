@@ -1,4 +1,10 @@
-import { PaymentAmountMismatch, publicIntentView, syncBoldReference } from "@/payments";
+import {
+  getPaymentIntent,
+  PaymentAmountMismatch,
+  publicIntentView,
+  syncAddiReference,
+  syncBoldReference,
+} from "@/payments";
 import { getOrderByNumber, publicOrderView } from "@/server/orders";
 
 export const runtime = "nodejs";
@@ -15,7 +21,11 @@ export async function POST(request: Request) {
       return Response.json({ ok: false, error: "Falta la referencia." }, { status: 400 });
     }
 
-    const { voucher, applied } = await syncBoldReference(reference);
+    const existing = await getPaymentIntent(reference);
+    const { voucher, applied } =
+      existing?.provider === "addi"
+        ? await syncAddiReference(reference)
+        : await syncBoldReference(reference);
     const orderNumber = applied?.intent.metadata.orderNumber;
     const order = orderNumber ? await getOrderByNumber(orderNumber) : null;
 

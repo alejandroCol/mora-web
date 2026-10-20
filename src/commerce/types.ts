@@ -3,7 +3,7 @@ import type { InvoiceSnapshot } from "@/invoices/types";
 
 export type SizingMethod = "kit" | "self";
 
-export type PaymentMethod = "bold" | "wompi" | "transferencia" | "efectivo" | "datafono";
+export type PaymentMethod = "bold" | "wompi" | "addi" | "transferencia" | "efectivo" | "datafono";
 export type PaymentStatus =
   | "pending"
   | "approved"
@@ -81,6 +81,9 @@ export type PaymentSnapshot = {
   wompiTransactionId?: string;
   wompiReference?: string;
   wompiPaymentType?: string;
+  addiApplicationId?: string;
+  addiReference?: string;
+  addiStatus?: string;
 };
 
 export type OrderTimelineEvent = {
@@ -227,6 +230,7 @@ export type DailyStats = {
 
 export const PAYMENT_METHODS: PaymentMethod[] = [
   "bold",
+  "addi",
   "transferencia",
   "efectivo",
   "datafono",

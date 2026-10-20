@@ -74,6 +74,13 @@ env:
     secret: BOLD_TEST_SECRET_KEY
     availability:
       - RUNTIME
+  # Addi. Client ID/Secret y ally-slug viven en Secret Manager.
+  # Crear ADDI_CLIENT_ID, ADDI_CLIENT_SECRET y NEXT_PUBLIC_ADDI_ALLY_SLUG
+  # antes del deploy que los lea. Sin ellos el checkout sigue solo con Bold.
+  - variable: ADDI_ENV
+    value: prod
+    availability:
+      - RUNTIME
   # Heka Entrega. Los valores viven en Secret Manager, no en este archivo.
   - variable: HEKA_API_KEY
     secret: HEKA_API_KEY

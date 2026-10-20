@@ -7,6 +7,7 @@ function emptyMethods(): DailyStats["byMethod"] {
   return {
     bold: { count: 0, revenue: 0 },
     wompi: { count: 0, revenue: 0 },
+    addi: { count: 0, revenue: 0 },
     transferencia: { count: 0, revenue: 0 },
     efectivo: { count: 0, revenue: 0 },
     datafono: { count: 0, revenue: 0 },

@@ -14,11 +14,24 @@ import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
 import { formatMoney, products } from "@/lib/catalog";
 import { PRESALE } from "@/lib/presale";
 import { useMoraStore } from "@/lib/store";
-import type { BoldCheckoutSession } from "@/payments/types";
+import type { AddiCheckoutSession, BoldCheckoutSession, CheckoutPayMethod } from "@/payments/types";
+import { addiAmountAllowed } from "@/payments/public";
 import { CartLineVisual } from "@/components/cart/CartLineVisual";
+import { AddiWidget } from "@/components/payments/AddiWidget";
 import { ColombiaFields, useDebounced } from "./ColombiaFields";
 import { currentAttribution, track } from "@/growth/track";
 import { loadBoldScript, useBoldCheckout } from "@/components/payments/useBoldCheckout";
+
+type PreparedPay =
+  | { method: "bold"; orderNumber: string; session: BoldCheckoutSession }
+  | { method: "addi"; orderNumber: string; session: AddiCheckoutSession };
+
+type GatewayAvailability = {
+  bold: boolean;
+  addi: boolean;
+  minCop: number;
+  maxCop: number;
+};
 
 const STEPS = [
   {
@@ -75,11 +88,16 @@ export function CheckoutFlow() {
   const [carrier, setCarrier] = useState<string>("");
   const [appliedOffer, setAppliedOffer] = useState<AppliedOffer | null>(null);
   const [bagOpen, setBagOpen] = useState(false);
+  const [payMethod, setPayMethod] = useState<CheckoutPayMethod>("bold");
+  const [gateways, setGateways] = useState<GatewayAvailability>({
+    bold: true,
+    addi: false,
+    minCop: 50_000,
+    maxCop: 3_000_000,
+  });
   const bold = useBoldCheckout();
   const checkoutTracked = useRef(false);
-  const pendingPay = useRef<{ orderNumber: string; session: BoldCheckoutSession } | null>(
-    null,
-  );
+  const pendingPay = useRef<PreparedPay | null>(null);
 
   const subtotal = subtotalOf(cart);
   const piezas = cartCount(cart);
@@ -237,11 +255,36 @@ export function CheckoutFlow() {
   const cartKey = JSON.stringify(cart.map((line) => [line.key, line.qty]));
   useEffect(() => {
     pendingPay.current = null;
-  }, [cartKey, destKey, carrier]);
+  }, [cartKey, destKey, carrier, payMethod]);
 
   useEffect(() => {
-    if (step === 2) void loadBoldScript().catch(() => undefined);
-  }, [step]);
+    let cancelled = false;
+    void fetch("/api/checkout/methods")
+      .then(async (res) => (await res.json()) as {
+        ok?: boolean;
+        methods?: { bold?: boolean; addi?: boolean };
+        addi?: { minCop?: number; maxCop?: number };
+      })
+      .then((data) => {
+        if (cancelled) return;
+        const next = {
+          bold: data.methods?.bold !== false,
+          addi: Boolean(data.methods?.addi),
+          minCop: data.addi?.minCop ?? 50_000,
+          maxCop: data.addi?.maxCop ?? 3_000_000,
+        };
+        setGateways(next);
+        if (!next.bold && next.addi) setPayMethod("addi");
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (step === 2 && payMethod === "bold") void loadBoldScript().catch(() => undefined);
+  }, [step, payMethod]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -253,6 +296,8 @@ export function CheckoutFlow() {
     null;
   const total = subtotal + (envioCop ?? 0) - discount;
   const shownTotal = envioCop == null ? Math.max(0, subtotal - discount) : total;
+  const addiReady =
+    gateways.addi && addiAmountAllowed(shownTotal, gateways.minCop, gateways.maxCop);
 
   function goTo(index: number) {
     if (index < step) {
@@ -305,18 +350,50 @@ export function CheckoutFlow() {
         attribution: currentAttribution(),
         sessionId: cartSessionId || ensureCartSession(),
         offerCode: appliedOffer?.code ?? offerCode,
+        method: payMethod,
       }),
     });
     const data = (await res.json()) as {
       ok: boolean;
       error?: string;
+      method?: CheckoutPayMethod;
       orderNumber?: string;
-      session?: BoldCheckoutSession;
+      session?: BoldCheckoutSession | AddiCheckoutSession;
+      redirectUrl?: string;
+      reference?: string;
     };
-    if (!data.ok || !data.session || !data.orderNumber) {
+    if (!data.ok || !data.orderNumber) {
       throw new Error(data.error ?? "No pudimos iniciar el pago.");
     }
-    const prepared = { orderNumber: data.orderNumber, session: data.session };
+    if (payMethod === "addi") {
+      const redirectUrl =
+        data.redirectUrl ??
+        (data.session && "redirectUrl" in data.session ? data.session.redirectUrl : "");
+      if (!redirectUrl) throw new Error(data.error ?? "Addi no abrió las cuotas.");
+      const prepared: PreparedPay = {
+        method: "addi",
+        orderNumber: data.orderNumber,
+        session: {
+          reference: data.reference ?? data.session?.reference ?? "",
+          amountCop: shownTotal,
+          currency: "COP",
+          purpose: "order",
+          redirectPath: `/pedido/${data.orderNumber}`,
+          redirectUrl,
+          metadata: {},
+        },
+      };
+      pendingPay.current = prepared;
+      return prepared;
+    }
+    if (!data.session || !("checkout" in data.session)) {
+      throw new Error(data.error ?? "No pudimos iniciar el pago.");
+    }
+    const prepared: PreparedPay = {
+      method: "bold",
+      orderNumber: data.orderNumber,
+      session: data.session,
+    };
     pendingPay.current = prepared;
     return prepared;
   }
@@ -326,6 +403,11 @@ export function CheckoutFlow() {
     setError("");
     try {
       const prepared = pendingPay.current ?? (await prepareCheckout());
+      if (prepared.method === "addi") {
+        clearCart();
+        window.location.assign(prepared.session.redirectUrl);
+        return;
+      }
       await bold.pay(prepared.session);
       clearCart();
       setError("Si cierras el pago, pulsa Pagar otra vez.");
@@ -634,8 +716,55 @@ export function CheckoutFlow() {
                   offerCode={appliedOffer?.code}
                   total={shownTotal}
                 />
+                {addiReady ? (
+                  <div className="mt-5">
+                    <p className="text-[12px] tracking-[-0.01em] text-[#6e6e73]">Pago</p>
+                    <div className="mt-2 space-y-2">
+                      {gateways.bold ? (
+                        <button
+                          type="button"
+                          onClick={() => setPayMethod("bold")}
+                          className={`check-ship ${payMethod === "bold" ? "check-ship-on" : ""}`}
+                        >
+                          <span>
+                            <span className="block text-[15px] tracking-[-0.016em] text-[#1d1d1f]">
+                              Pagar ahora
+                            </span>
+                            <span className="mt-0.5 block text-[12px] text-[#6e6e73]">
+                              Tarjeta, Nequi, PSE o Bancolombia
+                            </span>
+                          </span>
+                          <span className="text-[13px] tracking-[-0.01em] text-[#6e6e73]">
+                            al instante
+                          </span>
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => setPayMethod("addi")}
+                        className={`check-ship ${payMethod === "addi" ? "check-ship-on" : ""}`}
+                      >
+                        <span>
+                          <span className="block text-[15px] tracking-[-0.016em] text-[#1d1d1f]">
+                            Pagar con Addi
+                          </span>
+                          <span className="mt-0.5 block text-[12px] text-[#6e6e73]">
+                            En cuotas, con cédula. Sin tarjeta de crédito.
+                          </span>
+                        </span>
+                        <span className="addi-word">addi</span>
+                      </button>
+                    </div>
+                    {payMethod === "addi" ? (
+                      <AddiWidget price={shownTotal} className="mt-3" />
+                    ) : null}
+                  </div>
+                ) : null}
                 <p className="mt-4 text-[12px] leading-5 text-[#6e6e73]">
-                  Tarjeta, Nequi, PSE o Bancolombia. Entrega el {PRESALE.deliveryLabel}.
+                  {payMethod === "addi" && addiReady
+                    ? "Te llevamos a Addi para aprobar las cuotas. Entrega el "
+                    : "Tarjeta, Nequi, PSE o Bancolombia. Entrega el "}
+                  {PRESALE.deliveryLabel}.
                 </p>
               </div>
             </div>
@@ -676,7 +805,13 @@ export function CheckoutFlow() {
             </button>
           ) : null}
           <button type="submit" disabled={busy} className="elegir-cta min-w-0 flex-1">
-            {busy ? "Abriendo el pago…" : current.action}
+            {busy
+              ? payMethod === "addi"
+                ? "Abriendo Addi…"
+                : "Abriendo el pago…"
+              : step === 2 && payMethod === "addi" && addiReady
+                ? "Continuar con Addi"
+                : current.action}
             {busy ? null : (
               <span className="elegir-cta-note">{formatMoney(shownTotal)}</span>
             )}

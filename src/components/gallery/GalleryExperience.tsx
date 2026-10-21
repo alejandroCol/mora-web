@@ -9,7 +9,7 @@ import { ParticleVeil } from "@/components/gallery/ParticleVeil";
 import { ZoomableImage } from "@/components/gallery/ZoomableImage";
 import { BuySheet } from "@/components/product/BuySheet";
 import {
-  defaultGalleryImage,
+  defaultGalleryImages,
   products,
   productPath,
   type ModelId,
@@ -27,7 +27,7 @@ export function GalleryExperience({
   const router = useRouter();
   const { selection, closeCart } = useMoraStore();
   const model = products[modelId];
-  const [images, setImages] = useState<GalleryImage[]>([defaultGalleryImage(modelId)]);
+  const [images, setImages] = useState<GalleryImage[]>(() => defaultGalleryImages(modelId));
   const [index, setIndex] = useState(0);
   const [veil, setVeil] = useState(entrada);
 

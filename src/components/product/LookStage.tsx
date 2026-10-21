@@ -2,25 +2,27 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { GalleryImage } from "@/commerce/types";
-import { products, type ModelId } from "@/lib/catalog";
+import { PRODUCT_LOOKS, products, type ModelId } from "@/lib/catalog";
 
 type LookImage = { id: string; src: string; alt: string };
 
 function fallbackLooks(modelId: ModelId): LookImage[] {
   const name = `Mora ${products[modelId].name}`;
+  const looks = PRODUCT_LOOKS[modelId].map((item) => ({
+    id: item.id,
+    src: item.src,
+    alt: name,
+  }));
   if (modelId === "aero") {
     return [
-      { id: "pro-life", src: "/lifestyle/pro.jpg", alt: name },
-      { id: "pro-ring", src: "/gallery/rings.png", alt: name },
+      ...looks,
       { id: "pro-lilac", src: "/encuesta/lila.jpg", alt: `${name} Lila` },
       { id: "pro-white", src: "/encuesta/blanco.jpg", alt: `${name} Blanco` },
       { id: "pro-black", src: "/encuesta/mate.jpg", alt: `${name} Negro` },
     ];
   }
   return [
-    { id: "ultra-gold-life", src: "/lifestyle/ultra-gold.jpg", alt: `${name} Oro` },
-    { id: "ultra-life", src: "/lifestyle/ultra.jpg", alt: name },
-    { id: "ultra-ring", src: "/gallery/rings.png", alt: name },
+    ...looks,
     { id: "ultra-silver", src: "/encuesta/plata.jpg", alt: `${name} Plata` },
     { id: "ultra-gold", src: "/encuesta/oro.jpg", alt: `${name} Oro` },
     { id: "ultra-black", src: "/encuesta/mate.jpg", alt: `${name} Negro mate` },
@@ -34,16 +36,10 @@ function mergeLooks(modelId: ModelId, remote: GalleryImage[]): LookImage[] {
     .map((item) => ({ id: item.id, src: item.src, alt: name }));
   const seen = new Set<string>();
   const next: LookImage[] = [];
-  for (const item of [...uploaded, ...fallbackLooks(modelId)]) {
+  for (const item of [...fallbackLooks(modelId), ...uploaded]) {
     if (seen.has(item.src)) continue;
     seen.add(item.src);
     next.push(item);
-  }
-  if (modelId === "titan") {
-    const gold = next.find((item) => item.src === "/lifestyle/ultra-gold.jpg");
-    if (gold) {
-      return [gold, ...next.filter((item) => item.src !== gold.src)];
-    }
   }
   return next;
 }
@@ -58,7 +54,6 @@ export function LookStage({
   const [images, setImages] = useState<LookImage[]>(() => fallbackLooks(modelId));
   const [index, setIndex] = useState(0);
   const [prev, setPrev] = useState<number | null>(null);
-  const [dir, setDir] = useState<1 | -1>(1);
   const swipe = useRef<number | null>(null);
   const lock = useRef(false);
 
@@ -84,18 +79,13 @@ export function LookStage({
     if (!images.length || lock.current) return;
     const wrapped = (next + images.length) % images.length;
     if (wrapped === index) return;
-    const last = images.length - 1;
-    const forward =
-      wrapped === (index + 1) % images.length ||
-      (index !== last && wrapped > index && !(index === 0 && wrapped === last));
     lock.current = true;
-    setDir(forward ? 1 : -1);
     setPrev(index);
     setIndex(wrapped);
     window.setTimeout(() => {
       setPrev(null);
       lock.current = false;
-    }, 720);
+    }, 520);
   }
 
   useEffect(() => {
@@ -119,10 +109,30 @@ export function LookStage({
 
   return (
     <div className="look-stage">
+      <div className="look-atmosphere" aria-hidden>
+        {leaving ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={`bloom-leave-${leaving.id}`}
+            className="look-bloom look-bloom-leave"
+            src={leaving.src}
+            alt=""
+          />
+        ) : null}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          key={`bloom-${current.id}`}
+          className="look-bloom look-bloom-in"
+          src={current.src}
+          alt=""
+        />
+        <div className="look-veil" />
+      </div>
+
       <button type="button" className="look-head" onClick={onBack}>
-        <Chevron dir="prev" />
         Anillo
       </button>
+
       <div
         className="look-frame"
         onPointerDown={(event) => {
@@ -136,12 +146,28 @@ export function LookStage({
           else if (dx < -56) go(index + 1);
         }}
       >
+        {images.length > 1 ? (
+          <>
+            <button
+              type="button"
+              className="look-hit look-hit-prev"
+              aria-label="Foto anterior"
+              onClick={() => go(index - 1)}
+            />
+            <button
+              type="button"
+              className="look-hit look-hit-next"
+              aria-label="Foto siguiente"
+              onClick={() => go(index + 1)}
+            />
+          </>
+        ) : null}
         {leaving ? (
           <LookSlide
             key={`leave-${leaving.id}`}
             src={leaving.src}
             alt=""
-            className={`look-leave-${dir > 0 ? "next" : "prev"}`}
+            className="look-fade-out"
             hidden
           />
         ) : null}
@@ -149,19 +175,19 @@ export function LookStage({
           key={current.id}
           src={current.src}
           alt={current.alt}
-          className={`look-enter-${dir > 0 ? "next" : "prev"}`}
+          className={prev != null ? "look-fade-in" : ""}
         />
       </div>
 
       {images.length > 1 ? (
-        <div className="look-bar">
+        <nav className="look-bar" aria-label="Fotos">
           <button
             type="button"
-            className="look-nav"
+            className="look-arrow"
             aria-label="Foto anterior"
             onClick={() => go(index - 1)}
           >
-            <Chevron dir="prev" />
+            <LookArrow />
           </button>
           <div className="look-dots">
             {images.map((image, itemIndex) => (
@@ -177,13 +203,13 @@ export function LookStage({
           </div>
           <button
             type="button"
-            className="look-nav"
+            className="look-arrow look-arrow-next"
             aria-label="Foto siguiente"
             onClick={() => go(index + 1)}
           >
-            <Chevron dir="next" />
+            <LookArrow />
           </button>
-        </div>
+        </nav>
       ) : null}
     </div>
   );
@@ -205,8 +231,6 @@ function LookSlide({
       className={`look-slide ${className}`}
       aria-hidden={hidden || undefined}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img className="look-bloom" src={src} alt="" />
       <div className="look-card">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="look-photo" src={src} alt={alt} />
@@ -215,14 +239,14 @@ function LookSlide({
   );
 }
 
-function Chevron({ dir }: { dir: "prev" | "next" }) {
+function LookArrow() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden className={dir === "next" ? "look-chev-next" : ""}>
+    <svg viewBox="0 0 22 22" aria-hidden>
       <path
-        d="M14.5 5.5 8.5 12l6 6.5"
+        d="M13.2 4.8 6.6 11l6.6 6.2"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.7"
+        strokeWidth="1.05"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

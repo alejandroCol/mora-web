@@ -171,15 +171,32 @@ export function resolveProductSlug(slug: string): ModelId | null {
 
 export const DEFAULT_GALLERY_SRC = "/gallery/rings.png";
 
-export function defaultGalleryImage(modelId: ModelId) {
-  return {
-    id: `default-${modelId}`,
+export const PRODUCT_LOOKS: Record<ModelId, readonly { id: string; src: string }[]> = {
+  aero: [
+    { id: "pro-look-1", src: "/lifestyle/pro-01.jpg" },
+    { id: "pro-look-2", src: "/lifestyle/pro-02.jpg" },
+    { id: "pro-look-3", src: "/lifestyle/pro-03.jpg" },
+  ],
+  titan: [
+    { id: "ultra-look-1", src: "/lifestyle/ultra-01.jpg" },
+    { id: "ultra-look-2", src: "/lifestyle/ultra-02.jpg" },
+    { id: "ultra-look-3", src: "/lifestyle/ultra-03.jpg" },
+  ],
+};
+
+export function defaultGalleryImages(modelId: ModelId) {
+  return PRODUCT_LOOKS[modelId].map((item, index) => ({
+    id: `default-${modelId}-${item.id}`,
     modelId,
-    src: DEFAULT_GALLERY_SRC,
-    sort: 0,
+    src: item.src,
+    sort: index,
     createdAt: 0,
     system: true as const,
-  };
+  }));
+}
+
+export function defaultGalleryImage(modelId: ModelId) {
+  return defaultGalleryImages(modelId)[0]!;
 }
 
 export function finishLabel(modelId: ModelId, finishId: FinishId) {

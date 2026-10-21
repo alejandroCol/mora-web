@@ -47,12 +47,16 @@ export function ProductExperience({ modelId }: { modelId: ModelId }) {
   }, [model.id, model.line, model.name, model.price]);
 
   return (
-    <div className="hero-wash h-dvh overflow-hidden pt-[calc(3.5rem+env(safe-area-inset-top))] sm:pt-[4.25rem]">
+    <div
+      className={`hero-wash product-stage h-dvh overflow-hidden ${
+        looks ? "product-stage-looks" : ""
+      }`}
+    >
       <div className="mx-auto flex h-full max-w-[1180px] flex-col lg:flex-row">
         <section
           className={`relative shrink-0 lg:h-auto lg:min-h-0 lg:flex-1 ${
             looks
-              ? "h-[min(52dvh,26rem)] min-h-[18rem]"
+              ? "h-[min(64dvh,40rem)] min-h-[22rem]"
               : "flex h-[28vh] min-h-[168px] items-center justify-center"
           }`}
         >

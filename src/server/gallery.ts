@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import type { DocumentData } from "firebase-admin/firestore";
 import type { GalleryImage } from "@/commerce/types";
 import { COLLECTIONS } from "@/commerce/paths";
-import { defaultGalleryImage, products, type ModelId } from "@/lib/catalog";
+import { defaultGalleryImages, products, type ModelId } from "@/lib/catalog";
 import { adminDb } from "@/lib/firebaseAdmin";
 
 const MAX_IMAGES = 16;
@@ -35,9 +35,9 @@ export async function listGallery(modelId: ModelId): Promise<GalleryImage[]> {
       .map((doc) => asImage(doc.id, doc.data()))
       .filter((item): item is GalleryImage => Boolean(item && !item.system))
       .sort((a, b) => a.sort - b.sort || a.createdAt - b.createdAt);
-    return [defaultGalleryImage(modelId), ...uploaded];
+    return [...defaultGalleryImages(modelId), ...uploaded];
   } catch {
-    return [defaultGalleryImage(modelId)];
+    return defaultGalleryImages(modelId);
   }
 }
 

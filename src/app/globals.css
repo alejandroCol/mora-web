@@ -1305,8 +1305,8 @@ body {
 
 .look-thumb.on {
   opacity: 1;
-  transform: scale(1.08);
-  box-shadow: 0 0 0 2px #1d1d1f;
+  transform: scale(1.06);
+  box-shadow: 0 0 0 1px #8e8e93;
 }
 
 @media (min-width: 1024px) {

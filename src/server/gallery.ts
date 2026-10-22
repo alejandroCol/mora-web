@@ -72,7 +72,8 @@ export async function listGallery(
       .filter((item): item is GalleryImage => Boolean(item));
     const hiddenIds = new Set(docs.filter((item) => item.hidden).map((item) => item.id));
     const uploaded = docs
-      .filter((item) => !item.system && !item.hidden && matchesFinish(item, opts.finishId))
+      .filter((item) => !item.system && matchesFinish(item, opts.finishId))
+      .filter((item) => opts.includeHidden || !item.hidden)
       .sort(sortImages);
     const defaults = defaultGalleryImages(modelId, opts.finishId).map((item) => ({
       ...item,
@@ -236,26 +237,34 @@ export async function moveGalleryImage(id: string, direction: "up" | "down") {
 }
 
 export async function setGalleryHidden(id: string, hidden: boolean) {
-  if (!id.startsWith("default-")) {
-    throw Object.assign(new Error("Solo se ocultan las fotos de la casa."), { status: 400 });
+  if (id.startsWith("default-")) {
+    const modelId = id.startsWith("default-aero-")
+      ? "aero"
+      : id.startsWith("default-titan-")
+        ? "titan"
+        : null;
+    if (!modelId) {
+      throw Object.assign(new Error("Imagen inválida."), { status: 400 });
+    }
+    const base = defaultGalleryImages(modelId).find((item) => item.id === id);
+    if (!base) {
+      throw Object.assign(new Error("Imagen no encontrada."), { status: 404 });
+    }
+    if (hidden) {
+      await galleryCol().doc(id).set({ ...base, hidden: true, system: true });
+    } else {
+      await galleryCol().doc(id).delete();
+    }
+    return;
   }
-  const modelId = id.startsWith("default-aero-")
-    ? "aero"
-    : id.startsWith("default-titan-")
-      ? "titan"
-      : null;
-  if (!modelId) {
-    throw Object.assign(new Error("Imagen inválida."), { status: 400 });
-  }
-  const base = defaultGalleryImages(modelId).find((item) => item.id === id);
-  if (!base) {
+
+  const ref = galleryCol().doc(id);
+  const snap = await ref.get();
+  const current = asImage(id, snap.data());
+  if (!current) {
     throw Object.assign(new Error("Imagen no encontrada."), { status: 404 });
   }
-  if (hidden) {
-    await galleryCol().doc(id).set({ ...base, hidden: true, system: true });
-  } else {
-    await galleryCol().doc(id).delete();
-  }
+  await ref.set({ hidden }, { merge: true });
 }
 
 export async function readGalleryFile(id: string): Promise<{

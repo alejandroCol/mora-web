@@ -20,6 +20,7 @@ export const COLLECTIONS = {
 
 export const DOCS = {
   commerce: `${COLLECTIONS.settings}/commerce`,
+  productCopy: `${COLLECTIONS.settings}/productCopy`,
   growth: `${COLLECTIONS.settings}/growth`,
   crm: `${COLLECTIONS.settings}/crm`,
   orderCounter: `${COLLECTIONS.counters}/orders`,

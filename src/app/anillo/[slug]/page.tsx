@@ -8,6 +8,7 @@ import {
   resolveProductSlug,
 } from "@/lib/catalog";
 import { PRESALE } from "@/lib/presale";
+import { getProductDescriptions } from "@/server/productCopy";
 
 export function generateStaticParams() {
   return catalog.map((item) => ({ slug: item.slug }));
@@ -44,5 +45,6 @@ export default async function AnilloPage({
   if (slug !== products[modelId].slug) {
     redirect(productPath(modelId));
   }
-  return <ProductExperience modelId={modelId} />;
+  const descriptions = await getProductDescriptions();
+  return <ProductExperience modelId={modelId} description={descriptions[modelId]} />;
 }

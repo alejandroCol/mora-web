@@ -17,8 +17,10 @@ import { SizeChoice } from "./SizeChoice";
 
 export function BuySheet({
   modelId,
+  description,
 }: {
   modelId: ModelId;
+  description: string;
 }) {
   const router = useRouter();
   const { selection, setFinish, setSize, setSizing, addSelectionToCart, closeCart } =
@@ -63,21 +65,26 @@ export function BuySheet({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-4 hide-scroll sm:px-8 sm:pt-8">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-3 hide-scroll sm:px-8 sm:pt-8">
         <div className="flex items-baseline justify-between gap-4">
-          <h1 className="title-name text-[2.35rem] text-[#1d1d1f] sm:text-[2.85rem]">
-            {model.name}
-          </h1>
+          <div className="flex min-w-0 items-baseline gap-2">
+            <h1 className="title-name text-[2.35rem] text-[#1d1d1f] sm:text-[2.85rem]">
+              {model.name}
+            </h1>
+            <p className="text-[13px] tracking-[-0.01em] text-soft sm:text-[14px]">{model.line}</p>
+          </div>
           <p className="text-[17px] tracking-[-0.02em] text-[#1d1d1f]">
             {formatMoney(model.price)}
           </p>
         </div>
         <AddiWidget price={model.price} className="mt-2" />
-        <p className="mt-2 text-[12px] text-soft">
-          {model.line} · {model.weight}
-        </p>
+        {description ? (
+          <p className="mt-3 max-w-[34ch] text-[14px] leading-5 text-soft sm:mt-4 sm:text-[15px] sm:leading-6">
+            {description}
+          </p>
+        ) : null}
 
-        <fieldset className="mt-7">
+        <fieldset className="mt-4 sm:mt-7">
           <legend className="text-[12px] text-soft">Color</legend>
           <div className="mt-3 flex gap-2">
             {model.finishes.map((id) => {
@@ -106,7 +113,7 @@ export function BuySheet({
         </fieldset>
 
         {model.kind === "ring" ? (
-          <div className="mt-6">
+          <div className="mt-4 sm:mt-6">
             <SizeChoice
               sizing={sizing}
               onSizing={(method) => {

@@ -8,6 +8,7 @@ import {
   removeGalleryImage,
   setGalleryHidden,
 } from "@/server/gallery";
+import { getProductDescriptions, setProductDescription } from "@/server/productCopy";
 
 async function galleries() {
   return listAllGalleries({ includeHidden: true });
@@ -16,7 +17,8 @@ async function galleries() {
 export async function GET(request: Request) {
   try {
     await requirePermission(request, "gallery");
-    return Response.json({ ok: true, galleries: await galleries() });
+    const [rows, descriptions] = await Promise.all([galleries(), getProductDescriptions()]);
+    return Response.json({ ok: true, galleries: rows, descriptions });
   } catch (error) {
     return jsonError(error);
   }
@@ -69,7 +71,18 @@ export async function PATCH(request: Request) {
       id?: string;
       direction?: "up" | "down";
       hidden?: boolean;
+      modelId?: string;
+      description?: string;
     };
+    if (isModelId(body.modelId) && typeof body.description === "string") {
+      const description = await setProductDescription(body.modelId, body.description);
+      return Response.json({
+        ok: true,
+        galleries: await galleries(),
+        descriptions: await getProductDescriptions(),
+        description,
+      });
+    }
     if (!body.id) {
       return Response.json({ ok: false, error: "Imagen." }, { status: 400 });
     }

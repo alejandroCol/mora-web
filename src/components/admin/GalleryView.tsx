@@ -15,18 +15,21 @@ import { compressImageBlob } from "@/lib/compressImage";
 import { useAdminAuth } from "./AdminAuth";
 
 type GalleryRow = { modelId: ModelId; images: GalleryImage[] };
+type CopyMap = Record<ModelId, string>;
 
 export function GalleryView() {
   const { authorizedFetch } = useAdminAuth();
   const [rows, setRows] = useState<GalleryRow[]>([]);
+  const [copy, setCopy] = useState<CopyMap>({ aero: "", titan: "" });
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [dragOver, setDragOver] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const res = await authorizedFetch("/api/admin/gallery");
-    const data = (await res.json()) as { galleries?: GalleryRow[] };
+    const data = (await res.json()) as { galleries?: GalleryRow[]; descriptions?: CopyMap };
     setRows(data.galleries ?? []);
+    if (data.descriptions) setCopy(data.descriptions);
   }, [authorizedFetch]);
 
   useEffect(() => {
@@ -75,6 +78,7 @@ export function GalleryView() {
   }
 
   async function remove(id: string) {
+    if (!window.confirm("¿Eliminar esta foto? No se puede deshacer.")) return;
     setBusy(id);
     setError("");
     try {
@@ -122,13 +126,31 @@ export function GalleryView() {
     }
   }
 
+  async function saveDescription(modelId: ModelId) {
+    setBusy(`copy-${modelId}`);
+    setError("");
+    try {
+      const res = await authorizedFetch("/api/admin/gallery", {
+        method: "PATCH",
+        body: JSON.stringify({ modelId, description: copy[modelId] ?? "" }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string; descriptions?: CopyMap };
+      if (!res.ok || !data.ok) throw new Error(data.error || "No se pudo guardar.");
+      if (data.descriptions) setCopy(data.descriptions);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   return (
     <div className="max-w-5xl">
       <p className="text-[13px] text-[var(--admin-muted)]">Fotos</p>
       <h1 className="mt-1 text-[1.75rem] tracking-[-0.03em]">La piel de cada color</h1>
       <p className="mt-2 max-w-xl text-[14px] leading-6 text-[var(--admin-muted)]">
-        Sube la secuencia de cada color. En el detalle, al tocar Lila o Oro, solo se ven esas
-        fotos.
+        Sube la secuencia de cada color. Ocúltala si no quieres que salga, o elimínala. La
+        descripción se ve en el detalle, bajo el nombre.
       </p>
       {error ? (
         <p className="sticky top-3 z-10 mt-4 rounded-2xl bg-[#fff2f1] px-4 py-3 text-sm text-[var(--admin-danger)]">
@@ -144,21 +166,43 @@ export function GalleryView() {
               key={product.id}
               className="overflow-hidden rounded-[1.4rem] bg-white shadow-[var(--admin-shadow)]"
             >
-              <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[var(--admin-line)] px-5 py-4">
-                <div>
-                  <h2 className="text-[17px] tracking-[-0.02em]">{productTitle(product.id)}</h2>
-                  <p className="mt-0.5 text-[13px] text-[var(--admin-muted)]">
-                    {product.finishes.length} colores
-                  </p>
+              <div className="border-b border-[var(--admin-line)] px-5 py-4">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <h2 className="text-[17px] tracking-[-0.02em]">{productTitle(product.id)}</h2>
+                    <p className="mt-0.5 text-[13px] text-[var(--admin-muted)]">
+                      {product.finishes.length} colores
+                    </p>
+                  </div>
+                  <a
+                    href={productPath(product.id)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[13px] text-[var(--admin-muted)] hover:text-[var(--admin-ink)]"
+                  >
+                    Ver detalle
+                  </a>
                 </div>
-                <a
-                  href={productPath(product.id)}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-[13px] text-[var(--admin-muted)] hover:text-[var(--admin-ink)]"
+                <label className="mt-4 block">
+                  <span className="text-[12px] text-[var(--admin-muted)]">Descripción</span>
+                  <textarea
+                    value={copy[product.id] ?? ""}
+                    rows={3}
+                    maxLength={400}
+                    onChange={(event) =>
+                      setCopy((current) => ({ ...current, [product.id]: event.target.value }))
+                    }
+                    className="mt-1.5 w-full resize-none rounded-2xl border border-[var(--admin-line)] bg-[var(--admin-field)] px-3 py-2.5 text-[14px] leading-5 outline-none focus:border-[var(--admin-ink)]"
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={busy === `copy-${product.id}`}
+                  onClick={() => void saveDescription(product.id)}
+                  className="mt-2 text-[13px] text-[var(--admin-muted)] hover:text-[var(--admin-ink)]"
                 >
-                  Ver detalle
-                </a>
+                  {busy === `copy-${product.id}` ? "…" : "Guardar descripción"}
+                </button>
               </div>
 
               <div className="divide-y divide-[var(--admin-line)]">
@@ -241,6 +285,7 @@ export function GalleryView() {
                           busy={busy}
                           onMove={move}
                           onRemove={remove}
+                          onHide={hide}
                         />
                       ) : null}
 
@@ -324,24 +369,26 @@ function ImageGrid({
                   {image.hidden ? "No se ve en este color." : "Sale con este color."}
                 </span>
               )}
-              {onRemove ? (
-                <button
-                  type="button"
-                  onClick={() => onRemove(image.id)}
-                  className="text-[12px] text-[var(--admin-muted)] hover:text-[var(--admin-danger)]"
-                >
-                  {busy === image.id ? "…" : "Quitar"}
-                </button>
-              ) : null}
-              {onHide ? (
-                <button
-                  type="button"
-                  onClick={() => onHide(image.id, !image.hidden)}
-                  className="text-[12px] text-[var(--admin-muted)] hover:text-[var(--admin-ink)]"
-                >
-                  {busy === image.id ? "…" : image.hidden ? "Mostrar" : "Ocultar"}
-                </button>
-              ) : null}
+              <div className="flex shrink-0 items-center gap-3">
+                {onHide ? (
+                  <button
+                    type="button"
+                    onClick={() => onHide(image.id, !image.hidden)}
+                    className="text-[12px] text-[var(--admin-muted)] hover:text-[var(--admin-ink)]"
+                  >
+                    {busy === image.id ? "…" : image.hidden ? "Mostrar" : "Ocultar"}
+                  </button>
+                ) : null}
+                {onRemove ? (
+                  <button
+                    type="button"
+                    onClick={() => onRemove(image.id)}
+                    className="text-[12px] text-[var(--admin-danger)] hover:underline"
+                  >
+                    {busy === image.id ? "…" : "Eliminar"}
+                  </button>
+                ) : null}
+              </div>
             </div>
           </article>
         ))}

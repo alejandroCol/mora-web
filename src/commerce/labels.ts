@@ -9,6 +9,7 @@ export const ORDER_CHANNEL_LABEL: Record<OrderChannel, string> = {
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   awaiting_payment: "Esperando pago",
   paid: "Pedido pagado",
+  sizer_transit: "Medidor en camino",
   in_transit: "Pedido en camino",
   delivered: "Pedido entregado",
   cancelled: "Pedido cancelado",

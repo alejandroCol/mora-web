@@ -3,7 +3,8 @@ import { COLLECTIONS, DOCS, ORDER_SEQ_START, PENDING_TTL_MS } from "@/commerce/p
 import { demandBySku, totalsOf } from "@/commerce/cartMath";
 import { canTransition } from "@/commerce/orderMachine";
 import { inventorySku, lineToOrderItem } from "@/commerce/sku";
-import { orderNeedsSize } from "@/commerce/sizing";
+import { orderHasSizer, orderNeedsSize } from "@/commerce/sizing";
+import { legFromShipping } from "@/commerce/shipments";
 import type {
   AttributionSnapshot,
   CartLine,
@@ -27,6 +28,7 @@ import {
 } from "./inventory";
 import {
   sendDispatchedCustomerEmail,
+  sendSizerDispatchedEmail,
   sendPaidCustomerEmail,
   sendPaidStaffEmail,
 } from "./email";
@@ -575,14 +577,37 @@ export async function transitionOrder(input: {
     ],
   };
 
+  if (input.to === "sizer_transit") {
+    if (!orderHasSizer(order.items)) {
+      throw new Error("Este pedido no lleva medidor.");
+    }
+    const sizer = legFromShipping(order, "sizer", "in_transit");
+    sizer.dispatchedAt = now;
+    sizer.trackingNumber = input.trackingNumber?.trim() || sizer.trackingNumber;
+    patch.shipments = { ...(order.shipments ?? {}), sizer };
+  }
   if (input.to === "in_transit") {
+    if (orderHasSizer(order.items)) {
+      const sizerStatus = order.shipments?.sizer?.status;
+      const sizerAlready =
+        sizerStatus === "in_transit" ||
+        sizerStatus === "delivered" ||
+        order.status === "sizer_transit";
+      if (!sizerAlready) {
+        throw new Error("Primero marca el medidor en camino.");
+      }
+    }
     if (orderNeedsSize(order.items)) {
       throw new Error("Falta la talla. El cliente aún no la confirmó.");
     }
+    const rings = legFromShipping(order, "rings", "in_transit");
+    rings.dispatchedAt = now;
+    rings.trackingNumber = input.trackingNumber?.trim() || rings.trackingNumber;
     patch.dispatchedAt = now;
+    patch.shipments = { ...(order.shipments ?? {}), rings };
     patch.shipping = {
       ...order.shipping,
-      trackingNumber: input.trackingNumber?.trim() || order.shipping.trackingNumber,
+      trackingNumber: rings.trackingNumber || order.shipping.trackingNumber,
     };
   }
   if (input.to === "delivered") patch.deliveredAt = now;
@@ -600,6 +625,16 @@ export async function transitionOrder(input: {
 
   await ref.set(patch, { merge: true });
   const next = { ...order, ...patch } as MoraOrder;
+
+  if (input.to === "sizer_transit") {
+    await sendSizerDispatchedEmail(next).catch((error) =>
+      console.error("[email sizer]", error),
+    );
+    await ref.set(
+      { emails: { ...(order.emails ?? {}), sizerDispatchedSentAt: Date.now() } },
+      { merge: true },
+    );
+  }
 
   if (input.to === "in_transit") {
     await sendDispatchedCustomerEmail(next).catch((error) =>
@@ -621,7 +656,8 @@ export async function attachShippingGuide(input: {
   by: string;
   shipping: Partial<MoraOrder["shipping"]>;
   note?: string;
-}) {
+  kind?: "sizer" | "rings";
+}): Promise<MoraOrder> {
   const db = adminDb();
   const ref = orderRef(db, input.orderId);
   const snap = await ref.get();
@@ -629,11 +665,28 @@ export async function attachShippingGuide(input: {
   const order = serializeOrder(snap.id, snap.data()!);
   const now = Date.now();
   const shipping = { ...order.shipping, ...input.shipping };
+  const leg = input.kind
+    ? {
+        ...(order.shipments?.[input.kind] ?? { kind: input.kind, status: "pending" as const }),
+        kind: input.kind,
+        status: order.shipments?.[input.kind]?.status ?? ("pending" as const),
+        trackingNumber: input.shipping.trackingNumber ?? order.shipments?.[input.kind]?.trackingNumber,
+        hekaGuideId: input.shipping.hekaGuideId ?? order.shipments?.[input.kind]?.hekaGuideId,
+        hekaStatus: input.shipping.hekaStatus ?? order.shipments?.[input.kind]?.hekaStatus,
+        hekaStatusLabel: input.shipping.hekaStatusLabel ?? order.shipments?.[input.kind]?.hekaStatusLabel,
+        carrier: input.shipping.carrier ?? order.shipments?.[input.kind]?.carrier,
+        carrierLabel: input.shipping.carrierLabel ?? order.shipments?.[input.kind]?.carrierLabel,
+      }
+    : null;
+  const shipments = leg ? { ...(order.shipments ?? {}), [input.kind!]: leg } : order.shipments;
   const timeline = input.note
     ? [...order.timeline, { status: order.status, at: now, by: input.by, note: input.note }]
     : order.timeline;
-  await ref.set({ shipping, timeline, updatedAt: now }, { merge: true });
-  return { ...order, shipping, timeline, updatedAt: now };
+  await ref.set(
+    { shipping, ...(shipments ? { shipments } : {}), timeline, updatedAt: now },
+    { merge: true },
+  );
+  return { ...order, shipping, shipments, timeline, updatedAt: now };
 }
 
 export async function confirmOrderSizes(input: {
@@ -680,7 +733,7 @@ export async function confirmOrderSizes(input: {
   if (order.status === "awaiting_payment") {
     if (take.size) await assertAndReserve(db, take);
     if (back.size) await releaseReservation(db, back);
-  } else if (order.status === "paid") {
+  } else if (order.status === "paid" || order.status === "sizer_transit") {
     if (take.size) await consumeWithoutReservation(db, take);
     if (back.size) await restoreUnits(db, back);
   }
@@ -705,6 +758,9 @@ export function publicOrderView(order: MoraOrder) {
     canRetry,
     expiresAt: order.expiresAt ?? null,
     needsSize: orderNeedsSize(order.items),
+    hasSizer: orderHasSizer(order.items),
+    sizerTrackingNumber: order.shipments?.sizer?.trackingNumber ?? null,
+    sizerStatus: order.shipments?.sizer?.status ?? null,
     items: order.items.map((item) => ({
       name: item.name,
       finishTitle: item.finishTitle,

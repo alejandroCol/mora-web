@@ -2,7 +2,8 @@ import type { OrderStatus } from "./types";
 
 const FLOW: Record<OrderStatus, OrderStatus[]> = {
   awaiting_payment: ["paid", "cancelled"],
-  paid: ["in_transit", "cancelled"],
+  paid: ["sizer_transit", "in_transit", "cancelled"],
+  sizer_transit: ["in_transit", "cancelled"],
   in_transit: ["delivered", "cancelled"],
   delivered: [],
   cancelled: [],
@@ -16,7 +17,7 @@ export function fulfillmentIndex(status: OrderStatus) {
   if (status === "cancelled") return -1;
   if (status === "awaiting_payment") return 0;
   if (status === "paid") return 1;
-  if (status === "in_transit") return 2;
+  if (status === "sizer_transit" || status === "in_transit") return 2;
   return 3;
 }
 

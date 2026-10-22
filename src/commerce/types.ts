@@ -13,6 +13,7 @@ export type PaymentStatus =
 export type OrderStatus =
   | "awaiting_payment"
   | "paid"
+  | "sizer_transit"
   | "in_transit"
   | "delivered"
   | "cancelled";
@@ -70,6 +71,22 @@ export type ShippingSnapshot = {
   hekaGuideId?: string;
   hekaStatus?: string;
   hekaStatusLabel?: string;
+};
+
+export type ShipmentKind = "sizer" | "rings";
+export type ShipmentLegStatus = "pending" | "in_transit" | "delivered";
+
+export type ShipmentLeg = {
+  kind: ShipmentKind;
+  status: ShipmentLegStatus;
+  trackingNumber?: string;
+  hekaGuideId?: string;
+  hekaStatus?: string;
+  hekaStatusLabel?: string;
+  carrier?: string;
+  carrierLabel?: string;
+  dispatchedAt?: number;
+  deliveredAt?: number;
 };
 
 export type PaymentSnapshot = {
@@ -149,11 +166,12 @@ export type MoraOrder = {
   payment: PaymentSnapshot;
   customer: CustomerSnapshot;
   shipping: ShippingSnapshot;
+  shipments?: { sizer?: ShipmentLeg; rings?: ShipmentLeg };
   items: OrderItem[];
   totals: OrderTotals;
   notes?: string;
   timeline: OrderTimelineEvent[];
-  emails?: { paidSentAt?: number; dispatchedSentAt?: number };
+  emails?: { paidSentAt?: number; dispatchedSentAt?: number; sizerDispatchedSentAt?: number };
   invoice?: InvoiceSnapshot;
   attribution?: AttributionSnapshot;
   meta?: {
@@ -241,6 +259,7 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
 export const ORDER_STATUSES: OrderStatus[] = [
   "awaiting_payment",
   "paid",
+  "sizer_transit",
   "in_transit",
   "delivered",
   "cancelled",

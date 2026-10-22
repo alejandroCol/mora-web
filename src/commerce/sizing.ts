@@ -22,6 +22,10 @@ export function sizeCopy(line: { size?: number; sizing?: SizingMethod }) {
   return "Talla pendiente";
 }
 
+export function orderHasSizer(items: { sizing?: SizingMethod }[]) {
+  return items.some((item) => (item.sizing ?? "self") === "kit");
+}
+
 export function orderNeedsSize(
   items: { size?: number; sizing?: SizingMethod }[],
 ) {

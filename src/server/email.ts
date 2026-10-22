@@ -211,21 +211,40 @@ export async function sendPaidCustomerEmail(order: MoraOrder) {
   );
 }
 
+export async function sendSizerDispatchedEmail(order: MoraOrder) {
+  const guia = order.shipments?.sizer?.trackingNumber?.trim() || "";
+  const extra = `<p style="margin:16px 0 0;font-size:14px">Te enviamos el medidor de tallas${guia ? `. Tu guía es <strong>${escapeHtml(guia)}</strong>` : ""}${order.shipping.carrierLabel ? ` con ${escapeHtml(order.shipping.carrierLabel)}` : ""}.</p>
+    <p style="margin:12px 0 0;font-size:14px;color:${SOFT}">Cuando lo recibas, elige la talla de cada anillo con tu número de pedido. Después sale el anillo.</p>`;
+  const html = shell({
+    kicker: "Medidor en camino",
+    title: "Tu medidor fue despachado.",
+    intro: `Pedido ${escapeHtml(order.orderNumber)} ya va hacia ${escapeHtml(order.shipping.ciudad)}.`,
+    body: orderBody(order, extra),
+    cta: button(`${siteUrl()}${tallaPath(order.orderNumber)}`, "Elegir mi talla"),
+  });
+  return sendResend(
+    order.customer.email,
+    `Medidor en camino ${order.orderNumber}${guia ? ` · guía ${guia}` : ""} · ${BRAND.name}`,
+    html,
+  );
+}
+
 export async function sendDispatchedCustomerEmail(order: MoraOrder) {
-  const guia = order.shipping.trackingNumber?.trim();
+  const guia = order.shipments?.rings?.trackingNumber?.trim() || "";
+  const carrier = order.shipments?.rings?.carrierLabel || order.shipping.carrierLabel;
   const extra = guia
-    ? `<p style="margin:16px 0 0;font-size:14px">Tu guía es <strong>${escapeHtml(guia)}</strong>${order.shipping.carrierLabel ? ` con ${escapeHtml(order.shipping.carrierLabel)}` : ""}.</p>`
+    ? `<p style="margin:16px 0 0;font-size:14px">Tu guía es <strong>${escapeHtml(guia)}</strong>${carrier ? ` con ${escapeHtml(carrier)}` : ""}.</p>`
     : "";
   const html = shell({
     kicker: "En camino",
-    title: "Tu anillo salió.",
+    title: "Tu pedido fue despachado.",
     intro: `Pedido ${escapeHtml(order.orderNumber)} ya va hacia ${escapeHtml(order.shipping.ciudad)}.`,
     body: orderBody(order, extra),
     cta: button(orderTrackingUrl(order.orderNumber), "Ver mi pedido"),
   });
   return sendResend(
     order.customer.email,
-    `En camino ${order.orderNumber}${guia ? ` · guía ${guia}` : ""} · ${BRAND.name}`,
+    `Tu pedido fue despachado ${order.orderNumber}${guia ? ` · guía ${guia}` : ""} · ${BRAND.name}`,
     html,
   );
 }

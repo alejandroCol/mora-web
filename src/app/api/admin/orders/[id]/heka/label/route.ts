@@ -8,9 +8,23 @@ export async function GET(request: Request, ctx: Ctx) {
   try {
     await requirePermission(request, "sales");
     const { id } = await ctx.params;
+    const leg = new URL(request.url).searchParams.get("leg");
     const order = await getOrder(id);
-    const guideId = order?.shipping.hekaGuideId?.trim();
-    if (!order || !guideId) {
+    if (!order) {
+      return Response.json({ ok: false, error: "Esta venta no tiene guía." }, { status: 404 });
+    }
+    const guideId =
+      leg === "sizer"
+        ? order.shipments?.sizer?.hekaGuideId?.trim()
+        : leg === "rings"
+          ? order.shipments?.rings?.hekaGuideId?.trim() ||
+            (order.shipping.hekaGuideId !== order.shipments?.sizer?.hekaGuideId
+              ? order.shipping.hekaGuideId?.trim()
+              : "")
+          : order.shipments?.rings?.hekaGuideId?.trim() ||
+            order.shipments?.sizer?.hekaGuideId?.trim() ||
+            order.shipping.hekaGuideId?.trim();
+    if (!guideId) {
       return Response.json({ ok: false, error: "Esta venta no tiene guía." }, { status: 404 });
     }
     const pdf = await fetchHekaSticker(guideId);

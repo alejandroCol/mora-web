@@ -79,7 +79,9 @@ export async function loadStats(days = 30) {
       order.status === "cancelled" && order.createdAt >= since,
   ).length;
   const awaiting = live.filter((order) => order.status === "awaiting_payment").length;
-  const inTransit = live.filter((order) => order.status === "in_transit").length;
+  const inTransit = live.filter(
+    (order) => order.status === "in_transit" || order.status === "sizer_transit",
+  ).length;
 
   return {
     days,

@@ -8,17 +8,17 @@ import {
   PAYMENT_METHOD_LABEL,
 } from "@/commerce/labels";
 import type { CommerceSettings, MoraOrder, OrderStatus } from "@/commerce/types";
-import { commerceLineLabel, orderNeedsSize } from "@/commerce/sizing";
+import { commerceLineLabel, orderHasSizer, orderNeedsSize } from "@/commerce/sizing";
+import { enCaminoTarget, guideKindFor } from "@/commerce/shipments";
 import { formatMoney } from "@/lib/catalog";
 import { useAdminAuth } from "./AdminAuth";
 import { ManualSaleForm } from "./ManualSaleForm";
 
 type Tab = "pipeline" | "awaiting_payment" | "delivered" | "cancelled" | "all";
 
-const PIPELINE: { status: OrderStatus; hint: string; action: string }[] = [
-  { status: "paid", hint: "Pagados, listos para salir", action: "Despachar" },
-  { status: "in_transit", hint: "Con guía o en transporte", action: "Marcar entregado" },
-  { status: "delivered", hint: "Cerrados y entregados", action: "Ver detalle" },
+const PIPELINE: { id: "ready" | "transit"; hint: string; statuses: OrderStatus[] }[] = [
+  { id: "ready", hint: "Pagados, listos para salir", statuses: ["paid"] },
+  { id: "transit", hint: "Medidor o anillos en transporte", statuses: ["sizer_transit", "in_transit"] },
 ];
 
 function ago(at: number) {
@@ -28,6 +28,24 @@ function ago(at: number) {
   if (hours < 48) return `hace ${hours} h`;
   const days = Math.round(hours / 24);
   return `hace ${days} d`;
+}
+
+function guideNumberFor(order: MoraOrder, kind: "sizer" | "rings", typed = "") {
+  const sizer = order.shipments?.sizer?.trackingNumber?.trim() || "";
+  const rings = order.shipments?.rings?.trackingNumber?.trim() || "";
+  const manual = typed.trim();
+  if (kind === "sizer") {
+    if (sizer) return sizer;
+    if (manual && manual !== rings) return manual;
+    return "";
+  }
+  if (rings) return rings;
+  if (manual && manual !== sizer) return manual;
+  const shipping = order.shipping.trackingNumber?.trim() || "";
+  if (shipping && shipping !== sizer && order.shipping.hekaGuideId !== order.shipments?.sizer?.hekaGuideId) {
+    return shipping;
+  }
+  return "";
 }
 
 function formatWhen(at: number) {
@@ -82,11 +100,13 @@ export function VentasBoard() {
     });
   }
 
-  async function viewGuide(order: MoraOrder) {
+  async function viewGuide(order: MoraOrder, leg?: "sizer" | "rings") {
     setBusy(true);
     setHekaError("");
     try {
-      const res = await authorizedFetch(`/api/admin/orders/${order.id}/heka/label`);
+      const res = await authorizedFetch(
+        `/api/admin/orders/${order.id}/heka/label${leg ? `?leg=${leg}` : ""}`,
+      );
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(data.error || "No se pudo abrir la guía.");
@@ -104,7 +124,7 @@ export function VentasBoard() {
 
   const stats = useMemo(() => {
     const paid = orders.filter((o) => o.status === "paid").length;
-    const transit = orders.filter((o) => o.status === "in_transit").length;
+    const transit = orders.filter((o) => o.status === "in_transit" || o.status === "sizer_transit").length;
     const awaiting = orders.filter((o) => o.status === "awaiting_payment").length;
     const revenue = orders
       .filter((o) => o.status !== "cancelled" && o.status !== "awaiting_payment")
@@ -116,7 +136,7 @@ export function VentasBoard() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return orders.filter((order) => {
-      if (tab === "pipeline" && !["paid", "in_transit"].includes(order.status)) return false;
+      if (tab === "pipeline" && !["paid", "sizer_transit", "in_transit"].includes(order.status)) return false;
       if (tab === "awaiting_payment" && order.status !== "awaiting_payment") return false;
       if (tab === "delivered" && order.status !== "delivered") return false;
       if (tab === "cancelled" && order.status !== "cancelled") return false;
@@ -157,14 +177,14 @@ export function VentasBoard() {
     }
   }
 
-  async function changeStatus(order: MoraOrder, status: OrderStatus) {
+  async function changeStatus(order: MoraOrder, status: OrderStatus, trackingNumber?: string) {
     setBusy(true);
     try {
       const res = await authorizedFetch(`/api/admin/orders/${order.id}`, {
         method: "PATCH",
         body: JSON.stringify({
           status,
-          trackingNumber: tracking || order.shipping.trackingNumber,
+          trackingNumber: trackingNumber || undefined,
         }),
       });
       const data = (await res.json()) as { ok: boolean; error?: string; order?: MoraOrder };
@@ -172,6 +192,8 @@ export function VentasBoard() {
       setSelected(data.order ?? null);
       await load();
       setTracking("");
+    } catch (error) {
+      setHekaError(error instanceof Error ? error.message : "No se pudo cambiar el estado.");
     } finally {
       setBusy(false);
     }
@@ -277,13 +299,15 @@ export function VentasBoard() {
 
       {tab === "pipeline" ? (
         <div className="grid gap-4 xl:grid-cols-2">
-          {PIPELINE.filter((col) => col.status !== "delivered").map((column) => {
-            const list = filtered.filter((order) => order.status === column.status);
+          {PIPELINE.map((column) => {
+            const list = filtered.filter((order) => column.statuses.includes(order.status));
             return (
-              <section key={column.status} className="ventas-column">
+              <section key={column.id} className="ventas-column">
                 <div className="flex items-baseline justify-between px-1">
                   <div>
-                    <h2 className="text-[15px] font-medium">{ORDER_STATUS_LABEL[column.status]}</h2>
+                    <h2 className="text-[15px] font-medium">
+                      {column.id === "ready" ? "Por despachar" : "En camino"}
+                    </h2>
                     <p className="mt-0.5 text-[12px] text-[var(--admin-muted)]">{column.hint}</p>
                   </div>
                   <span className="text-[12px] text-[var(--admin-muted)]">{list.length}</span>
@@ -298,7 +322,6 @@ export function VentasBoard() {
                       <OrderCard
                         key={order.id}
                         order={order}
-                        action={column.action}
                         busy={busy}
                         onOpen={() => {
                           setSelected(order);
@@ -306,7 +329,12 @@ export function VentasBoard() {
                           setHekaError("");
                         }}
                         onCreate={() => void runHeka(order, "create")}
-                        onView={() => void viewGuide(order)}
+                        onView={(leg) => void viewGuide(order, leg)}
+                        onEnCamino={() => {
+                          const target = enCaminoTarget(order);
+                          if (!target) return;
+                          void changeStatus(order, target.to, guideNumberFor(order, target.kind));
+                        }}
                       />
                     ))
                   )}
@@ -333,7 +361,12 @@ export function VentasBoard() {
                   setHekaError("");
                 }}
                 onCreate={() => void runHeka(order, "create")}
-                onView={() => void viewGuide(order)}
+                onView={(leg) => void viewGuide(order, leg)}
+                onEnCamino={() => {
+                  const target = enCaminoTarget(order);
+                  if (!target) return;
+                  void changeStatus(order, target.to, guideNumberFor(order, target.kind));
+                }}
               />
             ))
           )}
@@ -350,7 +383,12 @@ export function VentasBoard() {
           onClose={() => setSelected(null)}
           onStatus={(status) => void changeStatus(selectedFresh, status)}
           onHeka={(action) => void runHeka(selectedFresh, action)}
-          onView={() => void viewGuide(selectedFresh)}
+          onView={(leg) => void viewGuide(selectedFresh, leg)}
+          onEnCamino={() => {
+            const target = enCaminoTarget(selectedFresh);
+            if (!target) return;
+            void changeStatus(selectedFresh, target.to, guideNumberFor(selectedFresh, target.kind, tracking));
+          }}
         />
       ) : null}
 
@@ -387,22 +425,28 @@ function Kpi({
 
 function OrderCard({
   order,
-  action,
   busy,
   onOpen,
   onCreate,
   onView,
+  onEnCamino,
 }: {
   order: MoraOrder;
-  action?: string;
   busy: boolean;
   onOpen: () => void;
   onCreate: () => void;
-  onView: () => void;
+  onView: (leg?: "sizer" | "rings") => void;
+  onEnCamino: () => void;
 }) {
-  const pendingSize = order.status === "paid" && orderNeedsSize(order.items);
-  const canCreate = order.status === "paid" && !order.shipping.hekaGuideId && !pendingSize;
-  const canView = Boolean(order.shipping.hekaGuideId);
+  const pendingSize = orderNeedsSize(order.items);
+  const guide = guideKindFor(order);
+  const camino = enCaminoTarget(order);
+  const sizerGuide = order.shipments?.sizer?.hekaGuideId;
+  const ringsGuide =
+    order.shipments?.rings?.hekaGuideId ||
+    (order.shipping.hekaGuideId && order.shipping.hekaGuideId !== sizerGuide
+      ? order.shipping.hekaGuideId
+      : undefined);
   return (
     <li className="ventas-row">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -427,38 +471,54 @@ function OrderCard({
               {pendingSize ? (
                 <>
                   <span>·</span>
-                  <span className="text-amber-800">Talla pendiente</span>
+                  <span className="text-amber-800">Esperando talla</span>
                 </>
               ) : null}
             </p>
         </button>
-          <div className="text-right">
+          <div className="flex flex-col items-end gap-2">
             <p className="text-[15px] font-medium">{formatMoney(order.totals.total)}</p>
-            {action ? (
-              <p className="mt-2 text-[11px] uppercase tracking-[0.08em] text-[var(--admin-muted)]">
-                {action}
-              </p>
-            ) : (
-              <p className="mt-2 text-[11px] text-[var(--admin-muted)]">
-                {ORDER_STATUS_LABEL[order.status]}
-              </p>
-            )}
-            {canCreate ? (
+            <p className="text-[11px] text-[var(--admin-muted)]">{ORDER_STATUS_LABEL[order.status]}</p>
+            {guide ? (
               <button
                 type="button"
                 disabled={busy}
                 onClick={onCreate}
-                className="mt-3 h-9 rounded-full bg-[#1d1d1f] px-4 text-[12px] text-white disabled:opacity-40"
+                className="h-9 rounded-full bg-[#1d1d1f] px-4 text-[12px] text-white disabled:opacity-40"
               >
-                Crear guía
+                {guide === "sizer"
+                  ? "Guía del medidor"
+                  : orderHasSizer(order.items)
+                    ? "Guía de los anillos"
+                    : "Crear guía"}
               </button>
             ) : null}
-            {canView ? (
+            {camino ? (
               <button
                 type="button"
                 disabled={busy}
-                onClick={onView}
-                className="mt-3 h-9 rounded-full bg-[var(--admin-field)] px-4 text-[12px] disabled:opacity-40"
+                onClick={onEnCamino}
+                className="h-9 rounded-full bg-[#1d1d1f] px-4 text-[12px] text-white disabled:opacity-40"
+              >
+                {camino.label}
+              </button>
+            ) : null}
+            {sizerGuide ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onView("sizer")}
+                className="h-9 rounded-full bg-[var(--admin-field)] px-4 text-[12px] disabled:opacity-40"
+              >
+                Ver medidor
+              </button>
+            ) : null}
+            {ringsGuide ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onView("rings")}
+                className="h-9 rounded-full bg-[var(--admin-field)] px-4 text-[12px] disabled:opacity-40"
               >
                 Ver guía
               </button>
@@ -479,6 +539,7 @@ function OrderDrawer({
   onStatus,
   onHeka,
   onView,
+  onEnCamino,
 }: {
   order: MoraOrder;
   tracking: string;
@@ -488,9 +549,9 @@ function OrderDrawer({
   onClose: () => void;
   onStatus: (status: OrderStatus) => void;
   onHeka: (action: "create" | "refresh") => void;
-  onView: () => void;
+  onView: (leg?: "sizer" | "rings") => void;
+  onEnCamino: () => void;
 }) {
-  const pendingSize = order.status === "paid" && orderNeedsSize(order.items);
   const phone = order.customer.phone.replace(/\D/g, "");
   const crmHref =
     order.conversationId || phone
@@ -561,11 +622,22 @@ function OrderDrawer({
             {order.shipping.trackingNumber ? ` · guía ${order.shipping.trackingNumber}` : ""}
           </p>
         ) : null}
-        {order.shipping.hekaGuideId ? (
+        {order.shipments?.sizer?.hekaGuideId ? (
           <button
             type="button"
             disabled={busy}
-            onClick={onView}
+            onClick={() => onView("sizer")}
+            className="mt-3 h-11 w-full rounded-full bg-[var(--admin-field)] text-[13px] disabled:opacity-40"
+          >
+            Ver medidor
+          </button>
+        ) : null}
+        {order.shipments?.rings?.hekaGuideId ||
+        (order.shipping.hekaGuideId && order.shipping.hekaGuideId !== order.shipments?.sizer?.hekaGuideId) ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onView("rings")}
             className="mt-3 h-11 w-full rounded-full bg-[var(--admin-field)] text-[13px] disabled:opacity-40"
           >
             Ver guía
@@ -577,44 +649,56 @@ function OrderDrawer({
           </p>
         ) : null}
 
-        {order.status === "paid" ? (
+        {(order.status === "paid" || order.status === "sizer_transit") ? (
           <div className="mt-8">
-            <button
-              type="button"
-              disabled={busy || pendingSize}
-              onClick={() => onHeka(order.shipping.hekaGuideId ? "refresh" : "create")}
-              className="admin-cta h-11 w-full disabled:opacity-40"
-            >
-              {order.shipping.hekaGuideId ? "Pasar la guía a transporte" : "Crear guía con Heka"}
-            </button>
-            <label className="mt-5 block text-[11px] uppercase tracking-[0.12em] text-[var(--admin-muted)]">
-              Guía manual
-            </label>
-            <input
-              value={tracking}
-              onChange={(event) => setTracking(event.target.value)}
-              placeholder="Coordinadora, Servientrega…"
-              className="mt-2 h-11 w-full rounded-2xl bg-[var(--admin-field)] px-3 text-sm outline-none"
-            />
-            {pendingSize ? (
+            {guideKindFor(order) ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onHeka("create")}
+                className="admin-cta h-11 w-full disabled:opacity-40"
+              >
+                {guideKindFor(order) === "sizer"
+                  ? "Guía del medidor"
+                  : orderHasSizer(order.items)
+                    ? "Guía de los anillos"
+                    : "Crear guía"}
+              </button>
+            ) : null}
+            {enCaminoTarget(order) ? (
+              <>
+                <label className="mt-5 block text-[11px] uppercase tracking-[0.12em] text-[var(--admin-muted)]">
+                  Guía, si ya la tienes
+                </label>
+                <input
+                  value={tracking}
+                  onChange={(event) => setTracking(event.target.value)}
+                  placeholder="Número de guía"
+                  className="mt-2 h-11 w-full rounded-2xl bg-[var(--admin-field)] px-3 text-sm outline-none"
+                />
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={onEnCamino}
+                  className="admin-cta mt-3 h-11 w-full disabled:opacity-40"
+                >
+                  {enCaminoTarget(order)?.label}
+                </button>
+              </>
+            ) : null}
+            {orderNeedsSize(order.items) ? (
               <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-[13px] leading-5 text-amber-950">
-                Falta confirmar talla. Envía el medidor antes de despachar.
+                El medidor va primero. Cuando el cliente elija la talla, aquí aparece la guía de los anillos.
               </p>
             ) : null}
-            <button
-              type="button"
-              disabled={busy || pendingSize}
-              onClick={() => onStatus("in_transit")}
-              className="admin-cta mt-4 h-11 w-full disabled:opacity-40"
-            >
-              Marcar en camino
-            </button>
           </div>
         ) : null}
 
-        {order.status === "in_transit" ? (
+        {order.status === "sizer_transit" || order.status === "in_transit" ? (
           <div className="mt-8 space-y-2">
-            {order.shipping.trackingNumber ? (
+            {order.shipments?.rings?.trackingNumber ||
+            order.shipments?.sizer?.trackingNumber ||
+            order.shipping.trackingNumber ? (
               <button
                 type="button"
                 disabled={busy}
@@ -624,14 +708,16 @@ function OrderDrawer({
                 Actualizar estado en Heka
               </button>
             ) : null}
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => onStatus("delivered")}
-              className="admin-cta h-11 w-full"
-            >
-              Marcar entregado
-            </button>
+            {order.status === "in_transit" ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => onStatus("delivered")}
+                className="admin-cta h-11 w-full"
+              >
+                Marcar entregado
+              </button>
+            ) : null}
           </div>
         ) : null}
 

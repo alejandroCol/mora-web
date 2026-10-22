@@ -22,6 +22,8 @@ type PublicOrder = {
   canRetry?: boolean;
   expiresAt?: number | null;
   needsSize?: boolean;
+  hasSizer?: boolean;
+  sizerTrackingNumber?: string | null;
   items: {
     name: string;
     finishTitle: string;
@@ -270,7 +272,26 @@ function OrderStatusCard({
         </button>
       ) : null}
 
-      {order.needsSize || orderNeedsSize(order.items) ? (
+      {order.hasSizer ? (
+        <div className="mt-6 rounded-[1.2rem] bg-white/80 px-5 py-5">
+          <p className="kicker">Medidor</p>
+          <p className="title-whisper mt-2 text-[1.25rem] text-ink">
+            {order.status === "sizer_transit" ? "El medidor va en camino." : "Primero el medidor. Luego tu talla."}
+          </p>
+          <p className="mt-2 text-[13px] leading-6 text-soft">
+            Cuando lo uses, entra con este pedido y pide el anillo. {PRESALE.promise}
+          </p>
+          {order.sizerTrackingNumber ? (
+            <p className="mt-2 text-[13px] text-ink">Guía del medidor {order.sizerTrackingNumber}</p>
+          ) : null}
+          <Link
+            href={tallaPath(order.orderNumber)}
+            className="mt-4 flex h-11 items-center justify-center rounded-full bg-ink text-[13px] text-white"
+          >
+            Pedir mi talla
+          </Link>
+        </div>
+      ) : order.needsSize || orderNeedsSize(order.items) ? (
         <div className="mt-6 rounded-[1.2rem] bg-white/80 px-5 py-5">
           <p className="kicker">Medidor</p>
           <p className="title-whisper mt-2 text-[1.25rem] text-ink">

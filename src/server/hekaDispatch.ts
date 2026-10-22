@@ -1,6 +1,7 @@
 import { codigoDaneEnviaCiudad } from "@/lib/colombiaGeo";
 import type { MoraOrder } from "@/commerce/types";
-import { orderNeedsSize } from "@/commerce/sizing";
+import { orderNeedsSize, orderHasSizer } from "@/commerce/sizing";
+import { guideKindFor } from "@/commerce/shipments";
 import {
   createHekaGuide,
   hekaGuideConfigured,
@@ -36,11 +37,21 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
   }
   const order = await getOrder(orderId);
   if (!order) throw new Error("Pedido no encontrado.");
-  if (order.status !== "paid" && order.status !== "in_transit") {
+  if (order.status !== "paid" && order.status !== "sizer_transit" && order.status !== "in_transit") {
     throw new Error("Solo se guía un pedido pagado.");
   }
-  if (orderNeedsSize(order.items)) {
-    throw new Error("Falta la talla. El cliente aún no la confirmó.");
+  const kind = guideKindFor(order);
+  if (!kind) {
+    if (orderNeedsSize(order.items)) {
+      throw new Error("Falta la talla. El cliente aún no la confirmó.");
+    }
+    throw new Error("Esta venta ya tiene la guía de este envío.");
+  }
+  if (kind === "rings" && orderHasSizer(order.items)) {
+    const sizer = order.shipments?.sizer;
+    if (sizer?.status !== "in_transit" && sizer?.status !== "delivered" && order.status !== "sizer_transit") {
+      throw new Error("Primero crea la guía del medidor y márcalo en camino.");
+    }
   }
 
   const phone = phoneDigits(order.customer.phone);
@@ -57,9 +68,10 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
     throw new Error("No encontramos el código de la ciudad de destino.");
   }
 
-  let guideId = order.shipping.hekaGuideId?.trim() ?? "";
-  let guideNumber = order.shipping.trackingNumber?.trim() ?? "";
-  let status = order.shipping.hekaStatus?.trim() ?? "";
+  const leg = kind === "sizer" ? order.shipments?.sizer : order.shipments?.rings;
+  let guideId = leg?.hekaGuideId?.trim() ?? "";
+  let guideNumber = leg?.trackingNumber?.trim() ?? "";
+  let status = leg?.hekaStatus?.trim() ?? "";
 
   if (!guideId) {
     const warehouses = await listHekaWarehouses();
@@ -78,7 +90,7 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
     }
 
     const pack = packageOf(order, settings);
-    const declared = Math.max(25000, Math.round(order.totals.subtotal));
+    const declared = kind === "sizer" ? 25000 : Math.max(25000, Math.round(order.totals.subtotal));
     const opciones = await quoteHeka({
       originDepartamento: warehouse.departamento || settings.origin.departamento,
       originCiudad: warehouse.city || settings.origin.ciudad,
@@ -112,9 +124,9 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
       collection_value: 0,
       distributor_id: chosen.carrier,
       quantity: 1,
-      note: order.orderNumber,
-      product: "Anillo Mora",
-      extra_info_product: extra || "Anillo",
+      note: kind === "sizer" ? `${order.orderNumber} medidor` : order.orderNumber,
+      product: kind === "sizer" ? "Medidor de tallas" : "Anillo Mora",
+      extra_info_product: kind === "sizer" ? "Medidor Mora" : extra || "Anillo",
       warehouse: warehouse.id,
       version: "1",
       in_order_form: false,
@@ -146,7 +158,8 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
         carrierLabel: chosen.carrierLabel,
         fuente: "heka",
       },
-      note: `Guía ${guideNumber} · ${chosen.carrierLabel}`,
+      note: `Guía ${kind === "sizer" ? "del medidor" : "de los anillos"} ${guideNumber} · ${chosen.carrierLabel}`,
+      kind,
     });
   }
 
@@ -156,22 +169,13 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
     await attachShippingGuide({
       orderId,
       by,
+      kind,
       shipping: { hekaStatus: status, hekaStatusLabel: hekaStatusLabel(status) },
       note: "Heka pasó la guía a transporte",
     });
   }
 
-  const fresh = await getOrder(orderId);
-  if (fresh && fresh.status === "paid") {
-    return transitionOrder({
-      orderId,
-      to: "in_transit",
-      by,
-      trackingNumber: guideNumber,
-      note: `En camino · guía ${guideNumber}`,
-    });
-  }
-  return fresh ?? order;
+  return (await getOrder(orderId)) ?? order;
 }
 
 export async function refreshOrderHeka(orderId: string, by: string) {
@@ -180,8 +184,20 @@ export async function refreshOrderHeka(orderId: string, by: string) {
   }
   const order = await getOrder(orderId);
   if (!order) throw new Error("Pedido no encontrado.");
-  const number = order.shipping.trackingNumber?.trim();
+  const sizerNumber = order.shipments?.sizer?.trackingNumber?.trim();
+  const ringsNumber = order.shipments?.rings?.trackingNumber?.trim();
+  const number = (
+    order.status === "sizer_transit"
+      ? sizerNumber || ringsNumber || order.shipping.trackingNumber
+      : ringsNumber || sizerNumber || order.shipping.trackingNumber
+  )?.trim();
   if (!number) throw new Error("Este pedido todavía no tiene guía.");
+  const kind =
+    sizerNumber === number && ringsNumber !== number
+      ? "sizer"
+      : ringsNumber === number
+        ? "rings"
+        : undefined;
 
   const guide = await refreshHekaGuide(number);
   const status = guide.status || order.shipping.hekaStatus || "";
@@ -189,6 +205,7 @@ export async function refreshOrderHeka(orderId: string, by: string) {
   let next = await attachShippingGuide({
     orderId,
     by,
+    kind,
     shipping: {
       hekaGuideId: guide.id || order.shipping.hekaGuideId,
       hekaStatus: status,
@@ -198,7 +215,7 @@ export async function refreshOrderHeka(orderId: string, by: string) {
     note: changed ? `Heka · ${hekaStatusLabel(status)}` : undefined,
   });
 
-  if (status === "finished" && next.status === "in_transit") {
+  if (status === "finished" && next.status === "in_transit" && kind !== "sizer") {
     next = await transitionOrder({
       orderId,
       to: "delivered",

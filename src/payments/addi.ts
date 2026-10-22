@@ -8,7 +8,6 @@ import {
   addiAmountAllowed,
   addiAllySlug,
 } from "./public";
-import { isPaymentsLive } from "@/server/paymentsPolicy";
 import { colombianMobile } from "./bold";
 import type {
   AddiCheckoutSession,
@@ -42,6 +41,7 @@ export function addiEnvironment(): AddiEnvironment {
 }
 
 export async function resolveAddiEnvironment(): Promise<AddiEnvironment> {
+  const { isPaymentsLive } = await import("@/server/paymentsPolicy");
   return (await isPaymentsLive()) ? "prod" : "sandbox";
 }
 

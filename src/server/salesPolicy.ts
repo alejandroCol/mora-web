@@ -1,5 +1,4 @@
 import { cache } from "react";
-import { revalidatePath } from "next/cache";
 import { DOCS } from "@/commerce/paths";
 import {
   DEFAULT_SALES_POLICY,
@@ -79,6 +78,5 @@ export async function saveSalesPolicy(patch: {
   }
 
   await adminDb().doc(DOCS.sales).set(next, { merge: true });
-  revalidatePath("/", "layout");
   return next;
 }

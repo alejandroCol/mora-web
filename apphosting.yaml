@@ -5,7 +5,16 @@ runConfig:
   cpu: 1
   memoryMiB: 1024
 
+# Cloud Run sets HOSTNAME to the instance name. Next standalone binds that
+# name, so the TCP probe on :8080 never connects and the rollout dies.
+scripts:
+  runCommand: sh -c "export HOSTNAME=0.0.0.0; exec node .next/standalone/server.js"
+
 env:
+  - variable: HOSTNAME
+    value: "0.0.0.0"
+    availability:
+      - RUNTIME
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY
     value: AIzaSyBRzu2XSBjP9b1AGrfyT5CRWsAdv2ByFp0
     availability:

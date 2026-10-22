@@ -1,5 +1,4 @@
 import { createHmac, createHash, randomBytes, timingSafeEqual } from "node:crypto";
-import { isPaymentsLive } from "@/server/paymentsPolicy";
 import {
   BOLD_CHECKOUT_SRC,
   BOLD_CURRENCY,
@@ -30,6 +29,7 @@ export function boldEnvironment(): BoldEnvironment {
 }
 
 export async function resolveBoldEnvironment(): Promise<BoldEnvironment> {
+  const { isPaymentsLive } = await import("@/server/paymentsPolicy");
   return (await isPaymentsLive()) ? "prod" : "test";
 }
 

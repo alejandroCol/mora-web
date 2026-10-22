@@ -33,6 +33,7 @@ import {
   sendPaidStaffEmail,
 } from "./email";
 import { bumpDailyStats } from "./stats";
+import { recordInsightsPurchase } from "./insights";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
 import { tryEmitPaidOrderInvoice } from "@/invoices";
 import { markCartRecovered } from "./abandonedCarts";
@@ -521,6 +522,7 @@ async function recordPurchase(order: MoraOrder) {
     orderId: order.id,
     orderNumber: order.orderNumber,
   }).catch(() => undefined);
+  await recordInsightsPurchase(order).catch(() => undefined);
   await sendMetaEvent({
     name: "Purchase",
     eventId: purchaseEventId,

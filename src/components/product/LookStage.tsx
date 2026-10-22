@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { GalleryImage } from "@/commerce/types";
 import {
   defaultGalleryImages,
@@ -11,6 +11,7 @@ import {
   type FinishId,
   type ModelId,
 } from "@/lib/catalog";
+import { useInsightImage } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
 
 const RingCanvas = dynamic(
@@ -64,7 +65,11 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
     setPrev(null);
   }
   const [desktop, setDesktop] = useState(false);
+  const [railOut, setRailOut] = useState(false);
+  const [belowBar, setBelowBar] = useState(false);
   const swipe = useRef<number | null>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const railOutRef = useRef(false);
   const images = asLooks(modelId, finishId, remote);
 
   const items: StageItem[] = [
@@ -96,6 +101,62 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
 
   const current = items[index] ?? items[0];
   const leaving = prev != null ? items[prev] : null;
+  useInsightImage({
+    productId: model.id,
+    productName: model.name,
+    imageId:
+      current?.kind === "ring" ? `ring-${modelId}-${finishId}` : current?.id ?? "",
+    imageSrc: current?.kind === "photo" ? current.src : undefined,
+    finishId,
+    kind: current?.kind === "ring" ? "ring" : "photo",
+    label:
+      current?.kind === "ring"
+        ? `${model.name} · anillo 3D`
+        : `${model.name} · ${finishLabel(modelId, finishId)}`,
+  });
+
+  const placeRail = useCallback(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    if (!window.matchMedia("(min-width: 1024px)").matches) {
+      railOutRef.current = false;
+      setRailOut(false);
+      setBelowBar(false);
+      stage.style.removeProperty("--look-rail-left");
+      return;
+    }
+
+    const media = stage.querySelector<HTMLElement>(".look-photo, .look-ring canvas");
+    const box = stage.getBoundingClientRect();
+    const header = 68;
+    const enter = 96;
+    const leave = 72;
+
+    let aspect = 1;
+    if (media instanceof HTMLImageElement && media.naturalWidth && media.naturalHeight) {
+      aspect = media.naturalWidth / media.naturalHeight;
+    } else if (media) {
+      const drawn = media.getBoundingClientRect();
+      if (drawn.height > 1) aspect = drawn.width / drawn.height;
+    }
+
+    const hBar = Math.max(1, box.height - header);
+    const wBar = Math.min(box.width, hBar * aspect);
+    const gapBar = box.width - wBar;
+    const wFull = Math.min(box.width, box.height * aspect);
+    const gapFull = box.width - wFull;
+    const useBar = gapBar > 12;
+    const gap = useBar ? gapBar : gapFull;
+    const nextOut = railOutRef.current ? gap >= leave : gap >= enter;
+
+    railOutRef.current = nextOut;
+    setBelowBar(useBar);
+    setRailOut(nextOut);
+    stage.style.setProperty(
+      "--look-rail-left",
+      `${nextOut ? 0 : Math.max(0, box.width - (useBar ? wBar : wFull))}px`,
+    );
+  }, []);
 
   function go(next: number) {
     if (!items.length) return;
@@ -121,35 +182,35 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const sync = () => placeRail();
+    sync();
+    const frame = window.requestAnimationFrame(sync);
+    const later = window.setTimeout(sync, 120);
+    const observer = new ResizeObserver(sync);
+    observer.observe(stage);
+    const media = stage.querySelector(".look-photo, .look-ring canvas");
+    if (media) observer.observe(media);
+    window.addEventListener("resize", sync);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.clearTimeout(later);
+      observer.disconnect();
+      window.removeEventListener("resize", sync);
+    };
+  }, [index, current?.kind, placeRail]);
+
   if (!current) return null;
 
   const leavingPhoto = leaving?.kind === "photo" ? leaving : null;
-  const currentPhoto = current.kind === "photo" ? current : null;
 
   return (
-    <div className="look-stage">
-      <div className="look-atmosphere" aria-hidden>
-        {leavingPhoto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={`bloom-leave-${leavingPhoto.id}`}
-            className="look-bloom look-bloom-leave"
-            src={leavingPhoto.src}
-            alt=""
-          />
-        ) : null}
-        {currentPhoto ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            key={`bloom-${currentPhoto.id}`}
-            className="look-bloom look-bloom-in"
-            src={currentPhoto.src}
-            alt=""
-          />
-        ) : null}
-        <div className="look-veil" />
-      </div>
-
+    <div
+      ref={stageRef}
+      className={`look-stage${belowBar ? " look-below-bar" : ""}${railOut ? " rail-out" : ""}`}
+    >
       <div
         className="look-frame"
         onPointerDown={(event) => {
@@ -207,6 +268,7 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
             src={current.src}
             alt={current.alt}
             className={prev != null ? "look-fade-in" : ""}
+            onReady={placeRail}
           />
         )}
       </div>
@@ -251,11 +313,13 @@ function LookSlide({
   alt,
   className,
   hidden,
+  onReady,
 }: {
   src: string;
   alt: string;
   className: string;
   hidden?: boolean;
+  onReady?: () => void;
 }) {
   return (
     <figure
@@ -264,7 +328,13 @@ function LookSlide({
     >
       <div className="look-card">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="look-photo" src={src} alt={alt} decoding="async" />
+        <img
+          className="look-photo"
+          src={src}
+          alt={alt}
+          decoding="async"
+          onLoad={onReady}
+        />
       </div>
     </figure>
   );

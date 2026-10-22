@@ -3,7 +3,6 @@ import { BRAND } from "@/brand";
 import { AppChrome } from "@/components/AppChrome";
 import { FirebaseAnalytics } from "@/components/FirebaseAnalytics";
 import { GrowthStack } from "@/components/growth/GrowthStack";
-import { WhatsAppDock } from "@/components/growth/WhatsAppDock";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { siteOrigin } from "@/lib/site";
 import "./globals.css";
@@ -76,7 +75,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <FirebaseAnalytics />
         <GrowthStack />
         <AppChrome>{children}</AppChrome>
-        <WhatsAppDock />
       </body>
     </html>
   );

@@ -11,6 +11,7 @@ import {
 } from "@/lib/catalog";
 import { PRESALE } from "@/lib/presale";
 import { track } from "@/growth/track";
+import { insightProductCart } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
 import { AddiWidget } from "@/components/payments/AddiWidget";
 import { SizeChoice } from "./SizeChoice";
@@ -53,6 +54,7 @@ export function BuySheet({
       currency: "COP",
       num_items: 1,
     });
+    insightProductCart(model.id, model.name);
     router.push("/checkout");
   }
 

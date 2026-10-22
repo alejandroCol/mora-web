@@ -10,11 +10,13 @@ import { ZoomableImage } from "@/components/gallery/ZoomableImage";
 import { BuySheet } from "@/components/product/BuySheet";
 import {
   defaultGalleryImages,
+  finishLabel,
   products,
   productPath,
   type ModelId,
 } from "@/lib/catalog";
 import { track } from "@/growth/track";
+import { useInsightImage, useInsightProduct } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
 
 export function GalleryExperience({
@@ -105,6 +107,18 @@ export function GalleryExperience({
   }, [images.length, modelId, router]);
 
   const current = images[index] ?? images[0];
+  useInsightProduct(model.id, model.name);
+  useInsightImage({
+    productId: model.id,
+    productName: model.name,
+    imageId: current?.id ?? "",
+    imageSrc: current?.src,
+    finishId: current?.finishId ?? finishId,
+    kind: "photo",
+    label: current
+      ? `${model.name} · ${current.finishId ? finishLabel(modelId, current.finishId) : `foto ${index + 1}`}`
+      : model.name,
+  });
 
   function step(delta: number) {
     setIndex((value) => (value + delta + images.length) % images.length);
@@ -189,7 +203,7 @@ export function GalleryExperience({
           </Link>
         </div>
         <div className="min-h-0 flex-1 lg:pb-0">
-          <BuySheet modelId={modelId} />
+          <BuySheet modelId={modelId} description="" />
         </div>
       </aside>
     </div>

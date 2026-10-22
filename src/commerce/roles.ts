@@ -11,7 +11,8 @@ export type StaffPermission =
   | "team"
   | "whatsapp"
   | "growth"
-  | "budget";
+  | "budget"
+  | "insights";
 
 const SUPERADMIN_PERMISSIONS: StaffPermission[] = [
   "sales",
@@ -23,6 +24,7 @@ const SUPERADMIN_PERMISSIONS: StaffPermission[] = [
   "team",
   "whatsapp",
   "growth",
+  "insights",
 ];
 
 export const ROLE_LABEL: Record<StaffRole, string> = {
@@ -34,13 +36,13 @@ export const ROLE_LABEL: Record<StaffRole, string> = {
 export const ROLE_BLURB: Record<StaffRole, string> = {
   founder: "Operación completa más el presupuesto de la casa.",
   superadmin: "Equipo, inventario, galería, envíos, campañas, CRM y ventas.",
-  vendedor: "CRM, ventas manuales y despacho de pedidos.",
+  vendedor: "CRM, ventas, analítica de la tienda y despacho de pedidos.",
 };
 
 const ROLE_PERMISSIONS: Record<StaffRole, StaffPermission[]> = {
   founder: [...SUPERADMIN_PERMISSIONS, "budget"],
   superadmin: SUPERADMIN_PERMISSIONS,
-  vendedor: ["sales", "sales_manual", "whatsapp"],
+  vendedor: ["sales", "sales_manual", "whatsapp", "insights"],
 };
 
 export function isStaffRole(value: unknown): value is StaffRole {

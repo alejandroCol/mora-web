@@ -4,28 +4,20 @@ import { siteOrigin, siteUrl } from "@/lib/site";
 
 const FAQ = [
   {
-    q: "¿Qué es Mora?",
-    a: "Mora es un smart ring de lujo silencioso. Mide pulso, oxígeno, HRV, sueño y movimiento sin una pantalla que pida atención.",
-  },
-  {
-    q: "¿Cuál es la diferencia entre Pro y Ultra?",
-    a: "Mora Pro es cerámica de alta densidad. Mora Ultra es titanio grado médico, el más ligero de la casa. Los dos cuestan lo mismo y miden lo mismo.",
+    q: "¿Pro o Ultra?",
+    a: "Pro es cerámica. Ultra es titanio, el más ligero. Los dos cuestan igual y miden lo mismo.",
   },
   {
     q: "¿Cuánto dura la batería?",
-    a: "Entre cinco y siete días, según el modelo. Pro llega a siete. Ultra, a seis.",
-  },
-  {
-    q: "¿Hacen envíos en Colombia?",
-    a: "Sí. El envío se cotiza al instante en el checkout, con Coordinadora, Servientrega, Interrapidísimo o TCC.",
+    a: "Cinco a siete días. Pro llega a siete. Ultra, a seis.",
   },
   {
     q: "¿Cómo elijo la talla?",
-    a: "Puedes pedir el medidor de tallas —te llega primero, y con tu pedido confirmas el número— o medirte en casa con la guía en video. El precio no cambia.",
+    a: "Pides el medidor —llega primero— o te mides en casa con la guía. El precio no cambia.",
   },
   {
-    q: "¿Cuándo llega el anillo?",
-    a: "Estamos en preventa. El anillo se entrega el 20 de noviembre.",
+    q: "¿Cuándo llega?",
+    a: "Preventa. El anillo se entrega el 20 de noviembre.",
   },
 ];
 
@@ -41,7 +33,7 @@ export function JsonLd() {
         url: origin,
         logo: `${origin}${BRAND.assets.icon512}`,
         description: BRAND.description,
-        sameAs: [],
+        sameAs: [BRAND.contact.instagram],
       },
       {
         "@type": "WebSite",

@@ -4,9 +4,13 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 import { CartButton } from "@/components/cart/CartDrawer";
 import { IconOrder } from "@/components/icons/NavIcons";
 
-export function SiteHeader() {
+export function SiteHeader({ solid = false }: { solid?: boolean }) {
   return (
-    <header className="fixed inset-x-0 top-0 z-40 pt-[env(safe-area-inset-top)]">
+    <header
+      className={`fixed inset-x-0 top-0 z-40 pt-[env(safe-area-inset-top)] ${
+        solid ? "border-b border-[rgba(22,20,31,0.06)] bg-[#f5f5f7]" : ""
+      }`}
+    >
       <div className="flex h-14 items-center justify-between px-5 sm:h-[4.25rem] sm:px-6 lg:px-8">
         <Link href="/" aria-label={BRAND.name} className="flex items-center">
           <BrandLogo

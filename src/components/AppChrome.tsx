@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { useInsightHome } from "@/insights/client";
 
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -44,7 +45,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   if (isProduct || isCheckout) {
     return (
       <>
-        <SiteHeader />
+        <SiteHeader solid={isCheckout} />
         <main className="flex-1">{children}</main>
         <CartDrawer />
       </>
@@ -53,10 +54,16 @@ export function AppChrome({ children }: { children: ReactNode }) {
 
   return (
     <>
+      {pathname === "/" ? <HomeInsight /> : null}
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter />
       <CartDrawer />
     </>
   );
+}
+
+function HomeInsight() {
+  useInsightHome();
+  return null;
 }

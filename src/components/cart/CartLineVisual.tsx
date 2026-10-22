@@ -1,14 +1,16 @@
+"use client";
+
 import type { ReactNode } from "react";
 import { sizeCopy } from "@/commerce/sizing";
 import type { SizingMethod } from "@/commerce/types";
 import {
   finishLabel,
-  finishPhoto,
   finishes,
   products,
   type FinishId,
   type ModelId,
 } from "@/lib/catalog";
+import { useLookPhoto } from "./useLookPhoto";
 
 type Line = {
   modelId: ModelId;
@@ -43,10 +45,11 @@ export function RingThumb({
   modelId: ModelId;
   size?: "sm" | "md" | "lg";
 }) {
+  const src = useLookPhoto(modelId, finishId);
   return (
     <span className={`ring-thumb ring-thumb-${size}`} aria-hidden>
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={finishPhoto(finishId)} alt="" />
+      <img src={src} alt="" />
     </span>
   );
 }
@@ -64,26 +67,26 @@ export function CartLineVisual({
 }) {
   const model = products[line.modelId];
   return (
-    <div className={`flex gap-3.5 ${compact ? "items-center" : "items-start"}`}>
+    <div className={`cart-line ${compact ? "cart-line-compact" : ""}`}>
       <RingThumb
         modelId={line.modelId}
         finishId={line.finishId}
         size={compact ? "sm" : "md"}
       />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-baseline justify-between gap-3">
-          <p className="min-w-0 text-[15px] leading-5 tracking-[-0.018em] text-ink">
+      <div className="cart-line-body">
+        <div className="cart-line-row">
+          <p className="cart-line-name">
             Mora {model.name}
             {line.qty && line.qty > 1 ? ` ×${line.qty}` : ""}
           </p>
-          {price ? (
-            <p className="shrink-0 text-[13px] tracking-[-0.016em] text-ink">{price}</p>
-          ) : null}
+          {price ? <p className="cart-line-price">{price}</p> : null}
         </div>
-        <div className="mt-1.5">
-          <ColorChip modelId={line.modelId} finishId={line.finishId} />
-        </div>
-        <p className="mt-1 text-[12px] leading-4 tracking-[-0.01em] text-soft">
+        <p className="cart-line-meta">
+          <span className="ring-dot" style={{ background: finishes[line.finishId].swatch }} />
+          {finishLabel(line.modelId, line.finishId)}
+          <span aria-hidden className="cart-line-sep">
+            ·
+          </span>
           {sizeCopy(line)}
         </p>
         {children}

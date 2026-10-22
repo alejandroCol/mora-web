@@ -20,6 +20,7 @@ const NAV: NavItem[] = [
   { href: "/superadmin/crm", label: "CRM", permission: "whatsapp", icon: <ChatIcon /> },
   { href: "/superadmin/campanas", label: "Campañas", permission: "growth", icon: <MegaphoneIcon /> },
   { href: "/superadmin/estadisticas", label: "Estadísticas", permission: "stats", icon: <ChartIcon /> },
+  { href: "/superadmin/analitica", label: "Analítica", permission: "insights", icon: <PulseIcon /> },
   { href: "/superadmin/inventario", label: "Inventario", permission: "inventory", icon: <BoxIcon /> },
   { href: "/superadmin/galeria", label: "Galería", permission: "gallery", icon: <ImageIcon /> },
   { href: "/superadmin/envios", label: "Origen y envíos", permission: "shipping", icon: <TruckIcon /> },
@@ -28,7 +29,7 @@ const NAV: NavItem[] = [
 
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: "Casa", hrefs: ["/superadmin/ventas", "/superadmin/carritos", "/superadmin/presupuesto"] },
-  { label: "Alcance", hrefs: ["/superadmin/crm", "/superadmin/campanas", "/superadmin/estadisticas"] },
+  { label: "Alcance", hrefs: ["/superadmin/crm", "/superadmin/campanas", "/superadmin/estadisticas", "/superadmin/analitica"] },
   { label: "Operación", hrefs: ["/superadmin/inventario", "/superadmin/galeria", "/superadmin/envios", "/superadmin/equipo"] },
 ];
 
@@ -339,6 +340,14 @@ function ChartIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
       <path d="M4 19h16" strokeLinecap="round" />
       <path d="M7 16v-5M12 16V7M17 16v-8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function PulseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+      <path d="M3 12h4l2.2-6 3.6 12 2.4-6H21" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

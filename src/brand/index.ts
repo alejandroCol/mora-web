@@ -20,6 +20,12 @@ export const BRAND = {
     apple: "/brand/apple-touch-icon.png",
     icon512: "/brand/icon-512.png",
   },
+  contact: {
+    email: "comunicaciones@moraring.com",
+    instagram: "https://www.instagram.com/moraringco",
+    instagramHandle: "moraringco",
+    whatsapp: "https://wa.me/573122562735?text=Mora%20Ring",
+  },
 } as const;
 
 export type BrandAsset = keyof typeof BRAND.assets;

@@ -5,6 +5,7 @@ import { BuySheet } from "@/components/product/BuySheet";
 import { LookStage } from "@/components/product/LookStage";
 import { products, type ModelId } from "@/lib/catalog";
 import { track } from "@/growth/track";
+import { useInsightProduct } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
 
 export function ProductExperience({
@@ -44,6 +45,8 @@ export function ProductExperience({
     if (selection.modelId !== modelId) setModel(modelId);
     else if (selection.finishId !== finishId) setFinish(finishId);
   }, [finishId, modelId, selection.finishId, selection.modelId, setFinish, setModel]);
+
+  useInsightProduct(model.id, model.name);
 
   useEffect(() => {
     track("ViewContent", {

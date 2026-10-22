@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { ParticleVeil } from "@/components/gallery/ParticleVeil";
 import { catalog, formatMoney, products, resolveFinish } from "@/lib/catalog";
 import { track } from "@/growth/track";
+import { insightProductCart, useInsightProduct } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
 
 export function Configurator() {
@@ -15,6 +16,8 @@ export function Configurator() {
   const model = products[selection.modelId];
   const finish = resolveFinish(selection.modelId, selection.finishId);
   const [leaving, setLeaving] = useState(false);
+
+  useInsightProduct(model.id, model.name);
 
   useEffect(() => {
     track("ViewContent", {
@@ -140,6 +143,7 @@ export function Configurator() {
             type="button"
             onClick={() => {
               addSelectionToCart(1);
+              insightProductCart(model.id, model.name);
               track("AddToCart", {
                 content_ids: [model.id],
                 content_name: `Mora ${model.name} ${finish.title}`,

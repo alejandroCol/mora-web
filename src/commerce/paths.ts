@@ -16,6 +16,8 @@ export const COLLECTIONS = {
   encuestaVotes: "encuestaVotes",
   paymentIntents: "paymentIntents",
   abandonedCarts: "abandonedCarts",
+  insightsDaily: "insightsDaily",
+  insightsSeen: "insightsSeen",
 } as const;
 
 export const DOCS = {

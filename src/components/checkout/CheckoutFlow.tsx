@@ -21,6 +21,7 @@ import { AddiMark } from "@/components/payments/AddiMark";
 import { AddiWidget } from "@/components/payments/AddiWidget";
 import { ColombiaFields, useDebounced } from "./ColombiaFields";
 import { currentAttribution, track } from "@/growth/track";
+import { insightFunnel, insightProductCheckout } from "@/insights/client";
 import { loadBoldScript, useBoldCheckout } from "@/components/payments/useBoldCheckout";
 
 type PreparedPay =
@@ -203,6 +204,10 @@ export function CheckoutFlow() {
       currency: "COP",
       num_items: piezas,
     });
+    insightFunnel("checkout");
+    for (const line of cart) {
+      insightProductCheckout(line.modelId, products[line.modelId].name);
+    }
   }, [cart, piezas, subtotal]);
 
   const destKey = useDebounced(
@@ -437,6 +442,7 @@ export function CheckoutFlow() {
           firstName: draft.firstName,
         },
       );
+      insightFunnel("info");
       setStep(1);
       return;
     }
@@ -446,9 +452,11 @@ export function CheckoutFlow() {
         currency: "COP",
         num_items: piezas,
       });
+      insightFunnel("shipping");
       setStep(2);
       return;
     }
+    insightFunnel("pay");
     void pay();
   }
 
@@ -474,7 +482,7 @@ export function CheckoutFlow() {
 
   return (
     <form onSubmit={onContinue} className="check-flow">
-      <div className="flex items-center justify-between gap-4 px-1 pt-3 sm:pt-6">
+      <div className="check-top sm:pt-3">
         <Link
           href="/#coleccion"
           className="text-[13px] tracking-[-0.01em] text-[#6e6e73] hover:text-[#1d1d1f]"
@@ -500,7 +508,7 @@ export function CheckoutFlow() {
       </div>
 
       {bagOpen ? (
-        <div className="check-card mt-3 px-5 py-4 lg:hidden">
+        <div className="check-card check-bag-panel lg:hidden">
           <OrderLines cart={cart} />
           <Totals
             subtotal={subtotal}
@@ -513,7 +521,7 @@ export function CheckoutFlow() {
         </div>
       ) : null}
 
-      <ol className="check-steps mt-4">
+      <ol className="check-steps">
         {STEPS.map((item, index) => {
           const state = index === step ? "on" : index < step ? "done" : "wait";
           return (
@@ -861,7 +869,7 @@ function Totals({
   total: number;
 }) {
   return (
-    <div className="mt-4 border-t border-[rgba(22,20,31,0.06)] pt-4">
+    <div className="check-totals mt-4 border-t border-[rgba(22,20,31,0.06)] pt-4">
       <div className="flex justify-between text-[14px] text-[#6e6e73]">
         <span>Subtotal</span>
         <span className="text-[#1d1d1f]">{formatMoney(subtotal)}</span>

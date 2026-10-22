@@ -1,34 +1,30 @@
 import { BrandSignature } from "@/components/brand/BrandSignature";
 
 const rows = [
-  ["Sensores", "Pulso, oxígeno, HRV, sueño, movimiento"],
   ["Autonomía", "Cinco a siete días"],
-  ["Agua", "IP67 / 5 ATM"],
-  ["Compañero", "App Mora para iOS"],
-  ["Talla", "6 a 13 · medidor o guía en video"],
+  ["Talla", "6 a 13 · medidor o guía"],
   ["Preventa", "Entrega el 20 de noviembre"],
-  ["Envío", "Según destino, cotizado al instante"],
 ];
 
 export function Close() {
   return (
     <section className="border-t border-line bg-white">
-      <div className="mx-auto max-w-2xl px-6 py-16 sm:py-28">
-        <p className="display text-[clamp(2rem,8vw,3.8rem)] leading-[1.08] text-ink">
+      <div className="mx-auto max-w-xl px-6 py-16 sm:py-24">
+        <p className="display text-[clamp(2rem,8vw,3.4rem)] leading-[1.08] text-ink">
           Cabe en un dedo.
         </p>
-        <dl className="mt-10 divide-y divide-line sm:mt-16">
+        <dl className="mt-10 divide-y divide-line sm:mt-12">
           {rows.map(([label, value]) => (
             <div
               key={label}
-              className="grid grid-cols-[5.5rem_1fr] gap-4 py-4 sm:grid-cols-[8rem_1fr] sm:gap-6 sm:py-5"
+              className="grid grid-cols-[6.5rem_1fr] items-baseline gap-4 py-3.5 sm:grid-cols-[7.5rem_1fr]"
             >
               <dt className="text-[13px] text-soft">{label}</dt>
-              <dd className="text-[15px] text-ink">{value}</dd>
+              <dd className="text-[15px] tracking-[-0.018em] text-ink">{value}</dd>
             </div>
           ))}
         </dl>
-        <BrandSignature className="mt-14 sm:mt-20" />
+        <BrandSignature className="mt-12 sm:mt-16" />
       </div>
     </section>
   );

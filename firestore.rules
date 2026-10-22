@@ -85,6 +85,14 @@ service cloud.firestore {
       allow read, write: if isStaff();
     }
 
+    match /insightsDaily/{day} {
+      allow read, write: if false;
+    }
+
+    match /insightsSeen/{id} {
+      allow read, write: if false;
+    }
+
     match /gallery/{id} {
       allow read, write: if isStaff();
     }

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { IconCart } from "@/components/icons/NavIcons";
 import { formatMoney, products } from "@/lib/catalog";
-import { PRESALE } from "@/lib/presale";
 import { useCartCount, useCartSubtotal, useMoraStore } from "@/lib/store";
 import { CartLineVisual } from "./CartLineVisual";
 
@@ -75,7 +74,7 @@ export function CartDrawer() {
                 return (
                   <li key={line.key} className="py-5">
                     <CartLineVisual line={line} price={formatMoney(model.price * line.qty)}>
-                      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+                      <div className="cart-line-actions">
                         <div className="flex items-center rounded-full bg-white/80">
                           <button
                             type="button"
@@ -116,9 +115,6 @@ export function CartDrawer() {
             <span className="text-[13px] text-soft">Subtotal</span>
             <span className="text-[15px] text-ink">{formatMoney(subtotal)}</span>
           </div>
-          <p className="mt-1 text-[12px] text-soft">
-            {PRESALE.promise} El envío se calcula en el checkout.
-          </p>
           <Link
             href="/checkout"
             onClick={closeCart}
@@ -150,7 +146,7 @@ export function CartButton() {
     >
       <IconCart className="h-[19px] w-[19px] sm:h-5 sm:w-5" />
       {count > 0 ? (
-        <span className="absolute -right-2.5 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-[#ece8f6] px-1 text-[10px] font-medium text-[#7a6eae]">
+        <span className="absolute -right-2.5 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-[#5c4d96] px-1 text-[10px] font-medium text-white">
           {count}
         </span>
       ) : null}

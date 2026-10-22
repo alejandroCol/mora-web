@@ -188,8 +188,8 @@ export function GalleryView() {
                         </div>
                       </div>
 
-                      <label
-                        className={`mt-4 flex min-h-[6.5rem] cursor-pointer flex-col items-center justify-center rounded-[1.15rem] border border-dashed px-4 text-center transition-colors ${
+                      <div
+                        className={`relative mt-4 flex min-h-[6.5rem] flex-col items-center justify-center rounded-[1.15rem] border border-dashed px-4 text-center transition-colors ${
                           over
                             ? "border-[var(--admin-ink)] bg-[var(--admin-field)]"
                             : "border-[var(--admin-line)] bg-[var(--admin-field)]/70"
@@ -204,30 +204,35 @@ export function GalleryView() {
                         onDrop={(event) => {
                           event.preventDefault();
                           setDragOver(null);
-                          void uploadFiles(product.id, finishId, event.dataTransfer.files);
+                          void uploadFiles(
+                            product.id,
+                            finishId,
+                            Array.from(event.dataTransfer.files),
+                          );
                         }}
                       >
-                        <span className="text-[14px] tracking-[-0.02em]">
+                        <input
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          disabled={busy === key}
+                          className="absolute inset-0 z-10 cursor-pointer opacity-0"
+                          onChange={(event) => {
+                            const input = event.currentTarget;
+                            const picked = Array.from(input.files ?? []);
+                            input.value = "";
+                            if (picked.length) void uploadFiles(product.id, finishId, picked);
+                          }}
+                        />
+                        <span className="pointer-events-none text-[14px] tracking-[-0.02em]">
                           {busy === key
                             ? "Subiendo…"
                             : `Fotos de ${finishLabel(product.id, finishId)}`}
                         </span>
-                        <span className="mt-1 text-[12px] text-[var(--admin-muted)]">
+                        <span className="pointer-events-none mt-1 text-[12px] text-[var(--admin-muted)]">
                           Arrastra o elige. Varias a la vez.
                         </span>
-                        <input
-                          type="file"
-                          accept="image/png,image/jpeg,image/webp,image/heic,image/heif,image/*"
-                          multiple
-                          className="sr-only"
-                          disabled={busy === key}
-                          onChange={(event) => {
-                            const files = event.target.files;
-                            event.target.value = "";
-                            if (files) void uploadFiles(product.id, finishId, files);
-                          }}
-                        />
-                      </label>
+                      </div>
 
                       {custom.length ? (
                         <ImageGrid

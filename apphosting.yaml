@@ -3,7 +3,7 @@ runConfig:
   maxInstances: 10
   concurrency: 80
   cpu: 1
-  memoryMiB: 512
+  memoryMiB: 1024
 
 env:
   - variable: NEXT_PUBLIC_FIREBASE_API_KEY

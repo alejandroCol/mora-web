@@ -7,8 +7,8 @@ import {
   products,
   resolveProductSlug,
 } from "@/lib/catalog";
+import { FALLBACK_SALES } from "@/commerce/sales";
 import { getProductDescriptions } from "@/server/productCopy";
-import { getSalesPresentation } from "@/server/salesPolicy";
 
 export function generateStaticParams() {
   return catalog.map((item) => ({ slug: item.slug }));
@@ -23,7 +23,7 @@ export async function generateMetadata({
   const modelId = resolveProductSlug(slug);
   if (!modelId) return { title: "Anillo" };
   const model = products[modelId];
-  const sales = await getSalesPresentation();
+  const sales = FALLBACK_SALES;
   const delivery = sales.deliveryFull
     ? `Preventa: entrega el ${sales.deliveryFull}.`
     : sales.promise;

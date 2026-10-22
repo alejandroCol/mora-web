@@ -1,12 +1,12 @@
 import type { Metadata, Viewport } from "next";
 import { BRAND } from "@/brand";
+import { FALLBACK_SALES } from "@/commerce/sales";
 import { AppChrome } from "@/components/AppChrome";
 import { FirebaseAnalytics } from "@/components/FirebaseAnalytics";
 import { GrowthStack } from "@/components/growth/GrowthStack";
 import { SalesProvider } from "@/components/sales/SalesProvider";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { siteOrigin } from "@/lib/site";
-import { getSalesPresentation } from "@/server/salesPolicy";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -15,19 +15,18 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-export async function generateMetadata(): Promise<Metadata> {
+export function generateMetadata(): Metadata {
   const origin = siteOrigin();
   const google = process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
-  const sales = await getSalesPresentation();
   return {
     metadataBase: new URL(origin),
     title: {
       default: `${BRAND.name} — ${BRAND.tagline}`,
       template: `%s — ${BRAND.name}`,
     },
-    description: sales.brandDescription,
+    description: FALLBACK_SALES.brandDescription,
     applicationName: BRAND.name,
-    keywords: sales.keywords,
+    keywords: FALLBACK_SALES.keywords,
     authors: [{ name: BRAND.name }],
     creator: BRAND.name,
     publisher: BRAND.name,
@@ -38,12 +37,12 @@ export async function generateMetadata(): Promise<Metadata> {
       url: origin,
       siteName: BRAND.name,
       title: `${BRAND.name} — ${BRAND.tagline}`,
-      description: sales.brandDescription,
+      description: FALLBACK_SALES.brandDescription,
     },
     twitter: {
       card: "summary_large_image",
       title: `${BRAND.name} — ${BRAND.tagline}`,
-      description: sales.brandDescription,
+      description: FALLBACK_SALES.brandDescription,
     },
     robots: {
       index: true,
@@ -58,18 +57,17 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default async function RootLayout({ children }: LayoutProps<"/">) {
-  const sales = await getSalesPresentation();
+export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es-CO"
       className="h-full scroll-smooth antialiased"
     >
       <body className="flex min-h-full flex-col bg-paper text-ink">
-        <JsonLd sales={sales} />
+        <JsonLd sales={FALLBACK_SALES} />
         <FirebaseAnalytics />
         <GrowthStack />
-        <SalesProvider initial={sales}>
+        <SalesProvider initial={FALLBACK_SALES}>
           <AppChrome>{children}</AppChrome>
         </SalesProvider>
       </body>

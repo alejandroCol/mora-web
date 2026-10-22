@@ -108,6 +108,8 @@ export function storeFaq(sales: SalesPresentation) {
   ];
 }
 
+export const FALLBACK_SALES = resolveSalesPresentation(DEFAULT_SALES_POLICY);
+
 export function resolveSalesPresentation(
   policy: SalesPolicy = DEFAULT_SALES_POLICY,
 ): SalesPresentation {

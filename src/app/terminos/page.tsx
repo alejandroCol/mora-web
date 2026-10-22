@@ -2,17 +2,16 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { BRAND } from "@/brand";
-import type { SalesPresentation } from "@/commerce/sales";
+import { FALLBACK_SALES, type SalesPresentation } from "@/commerce/sales";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { siteUrl } from "@/lib/site";
-import { getSalesPresentation } from "@/server/salesPolicy";
 
 const UPDATED = "22 de octubre de 2026";
 const CONTACT = "hola@mora.ring";
 const LEGAL_NAME = "PALMAPAY S.A.S.";
 
-export async function generateMetadata(): Promise<Metadata> {
-  const sales = await getSalesPresentation();
+export function generateMetadata(): Metadata {
+  const sales = FALLBACK_SALES;
   return {
     title: "Condiciones del servicio",
     description:
@@ -197,8 +196,8 @@ function legalSections(sales: SalesPresentation): Section[] {
   ];
 }
 
-export default async function TerminosPage() {
-  const sales = await getSalesPresentation();
+export default function TerminosPage() {
+  const sales = FALLBACK_SALES;
   const sections = legalSections(sales);
 
   return (

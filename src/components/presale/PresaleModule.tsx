@@ -34,6 +34,8 @@ export function PresaleModule() {
     return () => window.clearInterval(id);
   }, [saleAt]);
 
+  if (!sales.showPresaleModule) return null;
+
   const units = unitsFrom(remaining ?? 0);
   const open = remaining == null || remaining > 0;
   const ticks = [

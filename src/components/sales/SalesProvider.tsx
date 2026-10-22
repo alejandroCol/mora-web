@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import {
   DEFAULT_SALES_POLICY,
   resolveSalesPresentation,
@@ -16,7 +16,22 @@ export function SalesProvider({
   initial: SalesPresentation;
   children: ReactNode;
 }) {
-  return <Ctx.Provider value={initial}>{children}</Ctx.Provider>;
+  const [sales, setSales] = useState(initial);
+
+  useEffect(() => {
+    let alive = true;
+    void fetch("/api/sales")
+      .then((res) => res.json())
+      .then((data: { ok?: boolean; sales?: SalesPresentation }) => {
+        if (alive && data.ok && data.sales) setSales(data.sales);
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return <Ctx.Provider value={sales}>{children}</Ctx.Provider>;
 }
 
 export function useSales() {

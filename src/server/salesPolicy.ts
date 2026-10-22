@@ -1,5 +1,5 @@
 import { cache } from "react";
-import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
+import { revalidatePath } from "next/cache";
 import { DOCS } from "@/commerce/paths";
 import {
   DEFAULT_SALES_POLICY,
@@ -10,8 +10,6 @@ import {
   type SalesPolicy,
 } from "@/commerce/sales";
 import { adminDb } from "@/lib/firebaseAdmin";
-
-export const SALES_CACHE_TAG = "sales-policy";
 
 function asPolicy(data: Partial<SalesPolicy> | undefined): SalesPolicy {
   const saleOn =
@@ -38,11 +36,7 @@ export async function fetchFreshSalesPolicy(): Promise<SalesPolicy> {
   }
 }
 
-const readCachedSalesPolicy = unstable_cache(fetchFreshSalesPolicy, ["mora-sales-policy"], {
-  tags: [SALES_CACHE_TAG],
-});
-
-export const loadSalesPolicy = cache(readCachedSalesPolicy);
+export const loadSalesPolicy = cache(fetchFreshSalesPolicy);
 
 export async function getSalesPresentation() {
   return resolveSalesPresentation(await loadSalesPolicy());
@@ -85,7 +79,6 @@ export async function saveSalesPolicy(patch: {
   }
 
   await adminDb().doc(DOCS.sales).set(next, { merge: true });
-  revalidateTag(SALES_CACHE_TAG, { expire: 0 });
   revalidatePath("/", "layout");
   return next;
 }

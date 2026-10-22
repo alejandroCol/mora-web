@@ -4,10 +4,8 @@ import { Faq } from "@/components/landing/Faq";
 import { Film } from "@/components/landing/Film";
 import { Hero } from "@/components/landing/Hero";
 import { PresaleModule } from "@/components/presale/PresaleModule";
-import { getSalesPresentation } from "@/server/salesPolicy";
 
-export default async function Home() {
-  const sales = await getSalesPresentation();
+export default function Home() {
   return (
     <>
       <link
@@ -17,7 +15,7 @@ export default async function Home() {
         crossOrigin="anonymous"
       />
       <Hero />
-      {sales.showPresaleModule ? <PresaleModule /> : null}
+      <PresaleModule />
       <Film />
       <Atelier />
       <Close />

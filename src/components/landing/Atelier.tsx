@@ -16,13 +16,13 @@ import { useMoraStore } from "@/lib/store";
 const LOOK: Record<ModelId, { src: string; focus: string; alt: string }> = {
   aero: {
     src: "/lifestyle/pro-home.jpg",
-    focus: "50% 58%",
-    alt: "Mora Pro sobre piedra clara.",
+    focus: "58% 54%",
+    alt: "Mora Pro en cerámica lila, sobre pedestal blanco.",
   },
   titan: {
-    src: "/lifestyle/ultra.jpg",
-    focus: "48% 58%",
-    alt: "Mora Ultra en titanio, durante el movimiento.",
+    src: "/lifestyle/ultra-home.jpg",
+    focus: "50% 58%",
+    alt: "Mora Ultra en titanio, sobre piedra clara.",
   },
 };
 
@@ -81,7 +81,7 @@ export function Atelier() {
               href={productPath(item.id)}
               data-world
               onClick={() => setModel(item.id)}
-              className={`world group ${item.id === "aero" ? "world-light" : ""}`}
+              className="world group world-light"
             >
               <Image
                 src={look.src}

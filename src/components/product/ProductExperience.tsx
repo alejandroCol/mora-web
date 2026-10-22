@@ -58,11 +58,11 @@ export function ProductExperience({
 
   return (
     <div className="hero-wash product-stage h-dvh overflow-hidden">
-      <div className="mx-auto flex h-full max-w-[1180px] flex-col lg:flex-row">
-        <section className="relative h-[min(46dvh,32rem)] min-h-[18rem] shrink-0 lg:h-auto lg:min-h-0 lg:flex-1">
+      <div className="flex h-full flex-col lg:flex-row">
+        <section className="relative h-[min(46dvh,32rem)] min-h-[18rem] shrink-0 lg:h-auto lg:min-h-0 lg:min-w-0 lg:flex-1">
           <LookStage modelId={modelId} />
         </section>
-        <aside className="relative min-h-0 flex-1 bg-white/70 lg:w-[24.5rem] lg:flex-none lg:border-l lg:border-line lg:bg-transparent">
+        <aside className="relative min-h-0 flex-1 bg-white/70 lg:w-[26rem] lg:flex-none lg:border-l lg:border-line lg:bg-transparent xl:w-[28rem]">
           <BuySheet modelId={modelId} description={copy} />
         </aside>
       </div>

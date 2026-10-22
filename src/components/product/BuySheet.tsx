@@ -31,6 +31,7 @@ export function BuySheet({
     : model.finishes[0];
   const sizing = selection.sizing;
   const [need, setNeed] = useState("");
+  const [showCopy, setShowCopy] = useState(false);
 
   function add() {
     if (!sizing) {
@@ -79,9 +80,23 @@ export function BuySheet({
         </div>
         <AddiWidget price={model.price} className="mt-2" />
         {description ? (
-          <p className="mt-3 max-w-[34ch] text-[14px] leading-5 text-soft sm:mt-4 sm:text-[15px] sm:leading-6">
-            {description}
-          </p>
+          <div className="mt-3 sm:mt-4">
+            {showCopy ? (
+              <p className="max-w-[36ch] text-[14px] leading-5 text-soft sm:text-[15px] sm:leading-6">
+                {description}
+              </p>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setShowCopy((value) => !value)}
+              className="mt-0.5 text-[13px] tracking-[-0.018em] text-[#6e6e73] transition-colors hover:text-[#1d1d1f]"
+            >
+              {showCopy ? "Cerrar descripción" : "Ver toda la descripción"}
+              <span aria-hidden className="ml-0.5">
+                {showCopy ? "‹" : "›"}
+              </span>
+            </button>
+          </div>
         ) : null}
 
         <fieldset className="mt-4 sm:mt-7">

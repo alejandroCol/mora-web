@@ -46,9 +46,14 @@ function asLooks(modelId: ModelId, finishId: FinishId, remote: GalleryImage[]): 
 export function LookStage({ modelId }: { modelId: ModelId }) {
   const { selection } = useMoraStore();
   const model = products[modelId];
-  const finishId = model.finishes.includes(selection.finishId)
-    ? selection.finishId
-    : model.finishes[0];
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    setReady(true);
+  }, []);
+  const finishId =
+    ready && model.finishes.includes(selection.finishId)
+      ? selection.finishId
+      : model.finishes[0];
   const [remote, setRemote] = useState<GalleryImage[]>([]);
   const [index, setIndex] = useState(0);
   const [seenFinish, setSeenFinish] = useState(finishId);

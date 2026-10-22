@@ -7,7 +7,7 @@ import { IconOrder } from "@/components/icons/NavIcons";
 export function SiteHeader() {
   return (
     <header className="fixed inset-x-0 top-0 z-40 pt-[env(safe-area-inset-top)]">
-      <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-5 sm:h-[4.25rem] sm:px-6">
+      <div className="flex h-14 items-center justify-between px-5 sm:h-[4.25rem] sm:px-6 lg:px-8">
         <Link href="/" aria-label={BRAND.name} className="flex items-center">
           <BrandLogo
             variant="wordmark"

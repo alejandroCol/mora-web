@@ -87,7 +87,7 @@ export function CrmWorkspace() {
   const [view, setView] = useState<View>("inbox");
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
-  const [pane, setPane] = useState<Pane>("list");
+  const [pane, setPane] = useState<Pane>(search.get("c") ? "thread" : "list");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sale, setSale] = useState(false);
   const [conversations, setConversations] = useState<WhatsAppConversation[]>([]);
@@ -342,68 +342,81 @@ export function CrmWorkspace() {
   }
 
   const filters = desk === "support" ? SUPPORT_FILTERS : SALES_FILTERS;
+  const chatting = view === "inbox" && pane !== "list";
 
   return (
-    <div className="crm-app">
-      <header className="crm-toolbar">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {(Object.keys(DESK_LABEL) as CrmDesk[]).map((item) => (
-            <button
-              key={item}
-              type="button"
-              onClick={() => switchDesk(item)}
-              className={`rounded-full px-3 py-1.5 text-[12px] ${
-                desk === item ? "bg-[#1d1d1f] text-white" : "bg-white/8 text-white/55"
-              }`}
-            >
-              {DESK_LABEL[item]}
-              {item === "support" && counts.supportOpen > 0 ? ` ${counts.supportOpen}` : ""}
-              {item === "sales" && counts.waitingOnUs > 0 ? ` ${counts.waitingOnUs}` : ""}
+    <div className={`crm-app ${chatting ? "is-chat" : ""} ${view === "board" ? "is-board" : ""}`}>
+      <header className="crm-chrome">
+        <div className="crm-toolbar">
+          <button
+            type="button"
+            className="admin-icon-btn crm-menu lg:hidden"
+            aria-label="Abrir menú"
+            onClick={() => window.dispatchEvent(new Event("mora-admin-menu"))}
+          >
+            <MenuGlyph />
+          </button>
+          <div className="crm-desks">
+            {(Object.keys(DESK_LABEL) as CrmDesk[]).map((item) => (
+              <button
+                key={item}
+                type="button"
+                onClick={() => switchDesk(item)}
+                className={`crm-desk ${desk === item ? "is-on" : ""}`}
+              >
+                {DESK_LABEL[item]}
+                {item === "support" && counts.supportOpen > 0 ? ` ${counts.supportOpen}` : ""}
+                {item === "sales" && counts.waitingOnUs > 0 ? ` ${counts.waitingOnUs}` : ""}
+              </button>
+            ))}
+          </div>
+          <div className="crm-toolbar-extra">
+            <button type="button" onClick={() => setView(view === "inbox" ? "board" : "inbox")} className="crm-ghost">
+              {view === "inbox" ? "Tablero" : "Inbox"}
             </button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setView(view === "inbox" ? "board" : "inbox")}
-            className="rounded-full bg-white/8 px-3 py-1.5 text-[12px] text-white/55"
-          >
-            {view === "inbox" ? "Tablero" : "Inbox"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            className="rounded-full bg-white/8 px-3 py-1.5 text-[12px] text-white/55"
-          >
-            Ajustes
-          </button>
+            <button type="button" onClick={() => setSettingsOpen(true)} className="crm-ghost">
+              Ajustes
+            </button>
+          </div>
         </div>
+        <p className="crm-pulse">
+          {counts.waitingOnUs ? <span>{counts.waitingOnUs} te toca</span> : null}
+          {counts.waitingOnUs ? <span>·</span> : null}
+          <span>{counts.unassigned} libres</span>
+          {counts.followUpDue ? (
+            <>
+              <span>·</span>
+              <span>{counts.followUpDue} hoy</span>
+            </>
+          ) : null}
+          {connection && !connection.ready ? (
+            <>
+              <span>·</span>
+              <button type="button" className="underline" onClick={() => setSettingsOpen(true)}>
+                Conecta WhatsApp
+              </button>
+            </>
+          ) : null}
+        </p>
+        {connection?.ready ? (
+          <div className="crm-usage">
+            <CrmUsagePanel usage={usage} />
+          </div>
+        ) : null}
       </header>
-
-      <div className="flex flex-wrap gap-2 text-[12px] text-white/45">
-        {counts.waitingOnUs ? <span>{counts.waitingOnUs} te toca</span> : null}
-        {counts.waitingOnUs ? <span>·</span> : null}
-        <span>{counts.unassigned} libres</span>
-        {counts.followUpDue ? (
-          <>
-            <span>·</span>
-            <span>{counts.followUpDue} hoy</span>
-          </>
-        ) : null}
-        {connection && !connection.ready ? (
-          <>
-            <span>·</span>
-            <button type="button" className="underline" onClick={() => setSettingsOpen(true)}>
-              Conecta WhatsApp
-            </button>
-          </>
-        ) : null}
-      </div>
-
-      {connection?.ready ? <CrmUsagePanel usage={usage} /> : null}
 
       {view === "board" ? (
         <CrmBoard desk={desk} conversations={filtered} onOpen={openChat} />
       ) : (
-        <div className={`crm-frame ${pane !== "list" ? "is-open" : ""}`}>
+        <div className={`crm-frame ${pane === "list" ? "is-browsing" : "is-open"}`}>
+          {pane === "list" && activeId ? (
+            <button
+              type="button"
+              className="crm-list-scrim"
+              aria-label="Cerrar lista de chats"
+              onClick={() => setPane("thread")}
+            />
+          ) : null}
           <CrmInboxList
             conversations={filtered}
             activeId={activeId}
@@ -416,7 +429,7 @@ export function CrmWorkspace() {
             onOpen={openChat}
             onClaim={(id) => void patch(id, { assignedTo: me?.uid })}
           />
-          <section className={`crm-thread ${pane === "list" ? "max-lg:hidden" : ""}`}>
+          <section className="crm-thread">
             {active ? (
               <>
                 <CrmThread
@@ -531,6 +544,14 @@ export function CrmWorkspace() {
         />
       ) : null}
     </div>
+  );
+}
+
+function MenuGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M4 7h16M4 12h16M4 17h16" strokeLinecap="round" />
+    </svg>
   );
 }
 

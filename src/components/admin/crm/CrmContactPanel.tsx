@@ -61,9 +61,9 @@ export function CrmContactPanel({
 
   return (
     <aside className={`crm-panel ${open ? "is-open" : ""}`}>
-      <div className="flex items-center justify-between px-5 pt-5">
-        <p className="text-[13px] text-white/45">Ficha</p>
-        <button type="button" onClick={onClose} className="text-[12px] text-white/40 xl:hidden">
+      <div className="crm-ficha-head">
+        <p>Ficha</p>
+        <button type="button" onClick={onClose} className="crm-ficha-close xl:hidden">
           Cerrar
         </button>
       </div>

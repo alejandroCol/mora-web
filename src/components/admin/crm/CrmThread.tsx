@@ -47,69 +47,92 @@ export function CrmThread({
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const support = (conversation.desk ?? "sales") === "support";
+  const [more, setMore] = useState(false);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
   }, [messages.length, conversation.id]);
 
+  useEffect(() => {
+    setMore(false);
+  }, [conversation.id]);
+
+  const tools = (
+    <>
+      <select
+        value={conversation.assignedTo || ""}
+        onChange={(event) => onPatch({ assignedTo: event.target.value || null })}
+        className="crm-chat-select"
+      >
+        <option value="">Sin dueño</option>
+        {sellers.map((seller) => (
+          <option key={seller.uid} value={seller.uid}>
+            {seller.uid === meUid ? `Yo · ${seller.name}` : seller.name}
+          </option>
+        ))}
+      </select>
+      <button type="button" onClick={() => onPatch({ pinned: !conversation.pinned })} className="crm-chat-chip">
+        {conversation.pinned ? "Fijo" : "Fijar"}
+      </button>
+      {isSnoozed(conversation.snoozedUntil) ? (
+        <button type="button" onClick={() => onPatch({ snoozedUntil: null })} className="crm-chat-chip">
+          Despertar
+        </button>
+      ) : (
+        <>
+          <button type="button" onClick={() => onPatch({ snoozedUntil: snoozeAt("1h") })} className="crm-chat-chip">
+            1 h
+          </button>
+          <button type="button" onClick={() => onPatch({ snoozedUntil: snoozeAt("manana") })} className="crm-chat-chip">
+            Mañana
+          </button>
+          <button type="button" onClick={() => onPatch({ snoozedUntil: snoozeAt("sem") })} className="crm-chat-chip">
+            Sem
+          </button>
+        </>
+      )}
+      <button type="button" onClick={() => onPatch({ desk: support ? "sales" : "support" })} className="crm-chat-chip">
+        {support ? "A ventas" : "A soporte"}
+      </button>
+    </>
+  );
+
   return (
     <>
       <header className="crm-chat-head">
         <div className="crm-chat-who">
-          <button type="button" onClick={onBack} className="crm-chat-back lg:hidden">
-            Inbox
+          <button type="button" onClick={onBack} className="crm-chat-back lg:hidden" aria-label="Volver al inbox">
+            <BackGlyph />
           </button>
           <span className="crm-chat-mark" aria-hidden>
             {initial(conversation.name, conversation.phone)}
           </span>
           <div className="min-w-0">
             <p className="crm-chat-name">{conversation.name || conversation.phone}</p>
-            <p className="crm-chat-phone">+{conversation.phone}</p>
+            <a href={`tel:+${conversation.phone}`} className="crm-chat-phone">
+              +{conversation.phone}
+            </a>
           </div>
         </div>
         <div className="crm-chat-tools">
-          <select
-            value={conversation.assignedTo || ""}
-            onChange={(event) => onPatch({ assignedTo: event.target.value || null })}
-            className="crm-chat-select"
-          >
-            <option value="">Sin dueño</option>
-            {sellers.map((seller) => (
-              <option key={seller.uid} value={seller.uid}>
-                {seller.uid === meUid ? `Yo · ${seller.name}` : seller.name}
-              </option>
-            ))}
-          </select>
-          <button type="button" onClick={() => onPatch({ pinned: !conversation.pinned })} className="crm-chat-chip">
-            {conversation.pinned ? "Fijo" : "Fijar"}
-          </button>
-          {isSnoozed(conversation.snoozedUntil) ? (
-            <button type="button" onClick={() => onPatch({ snoozedUntil: null })} className="crm-chat-chip">
-              Despertar
-            </button>
-          ) : (
-            <>
-              <button type="button" onClick={() => onPatch({ snoozedUntil: snoozeAt("1h") })} className="crm-chat-chip">
-                1 h
-              </button>
-              <button type="button" onClick={() => onPatch({ snoozedUntil: snoozeAt("manana") })} className="crm-chat-chip">
-                Mañana
-              </button>
-              <button type="button" onClick={() => onPatch({ snoozedUntil: snoozeAt("sem") })} className="crm-chat-chip">
-                Sem
-              </button>
-            </>
-          )}
-          <button type="button" onClick={() => onPatch({ desk: support ? "sales" : "support" })} className="crm-chat-chip">
-            {support ? "Ventas" : "Soporte"}
-          </button>
+          <div className="crm-chat-tools-wide">{tools}</div>
           <button type="button" onClick={onFicha} className="crm-chat-chip xl:hidden">
             Ficha
           </button>
           <button type="button" onClick={onSale} className="crm-chat-sale">
             Venta
           </button>
+          <button
+            type="button"
+            className="crm-chat-more lg:hidden"
+            aria-label={more ? "Cerrar acciones" : "Más acciones"}
+            aria-expanded={more}
+            onClick={() => setMore((open) => !open)}
+          >
+            {more ? "Cerrar" : "Más"}
+          </button>
         </div>
+        {more ? <div className="crm-chat-sheet lg:hidden">{tools}</div> : null}
         <div className="crm-chat-pipe">
           {support
             ? (["open", "waiting", "resolved"] as const).map((status) => (
@@ -152,7 +175,7 @@ export function CrmThread({
         ) : null}
       </header>
 
-      <div ref={scroller} className="crm-scroll flex-1 space-y-2 overflow-y-auto px-4 py-3 lg:px-5">
+      <div ref={scroller} className="crm-scroll flex-1 space-y-2 overflow-y-auto px-3 py-3 lg:px-5">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -202,5 +225,13 @@ function MediaBubble({
   return (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={src} alt="" className="mb-2 max-h-64 w-full rounded-xl object-cover" />
+  );
+}
+
+function BackGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M15 6l-6 6 6 6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }

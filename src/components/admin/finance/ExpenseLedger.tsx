@@ -167,7 +167,7 @@ export function ExpenseLedger({
       <ul className="mt-8 space-y-3">
         {rows.length === 0 ? (
           <li className="rounded-[1.5rem] bg-white/[0.04] px-5 py-8 text-sm text-white/40">
-            Aquí va constitución, importación, anillos y lo de todos los días.
+            Aquí va constitución, importación, anillos, marketing y lo de todos los días.
           </li>
         ) : null}
         {rows.map((row) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CrmDesk, CrmSettings } from "@/growth/types";
 import { formatClock } from "@/crm/labels";
 import { formatMoney, products } from "@/lib/catalog";
@@ -31,6 +31,16 @@ export function CrmComposer({
 }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const area = useRef<HTMLTextAreaElement>(null);
+
+  function grow(el: HTMLTextAreaElement) {
+    el.style.height = "0px";
+    el.style.height = `${Math.min(el.scrollHeight, 132)}px`;
+  }
+
+  useEffect(() => {
+    if (area.current) grow(area.current);
+  }, [draft]);
 
   const replies = useMemo(
     () =>
@@ -49,6 +59,7 @@ export function CrmComposer({
     try {
       await onSend(draft.trim());
       setDraft("");
+      if (area.current) area.current.style.height = "";
     } finally {
       setBusy(false);
     }
@@ -65,7 +76,7 @@ export function CrmComposer({
         <p className="crm-composer-note">Libre hasta las {formatClock(windowClosesAt)}</p>
       ) : null}
 
-      <div className="mb-2 flex gap-1 overflow-x-auto">
+      <div className="crm-composer-chips">
         {SELLS.map((item) => (
           <button
             key={item.id}
@@ -76,22 +87,17 @@ export function CrmComposer({
             {item.label}
           </button>
         ))}
+        {replies.map((reply) => (
+          <button
+            key={reply.id}
+            type="button"
+            onClick={() => setDraft(reply.body)}
+            className="crm-quick"
+          >
+            {reply.title}
+          </button>
+        ))}
       </div>
-
-      {replies.length > 0 ? (
-        <div className="mb-2 flex gap-1 overflow-x-auto">
-          {replies.map((reply) => (
-            <button
-              key={reply.id}
-              type="button"
-              onClick={() => setDraft(reply.body)}
-              className="shrink-0 rounded-full bg-white/8 px-2.5 py-1 text-[11px] text-white/60"
-            >
-              {reply.title}
-            </button>
-          ))}
-        </div>
-      ) : null}
 
       {!windowOpen && templates.length > 0 ? (
         <div className="mb-3 flex flex-wrap gap-1.5">
@@ -110,26 +116,38 @@ export function CrmComposer({
       ) : null}
 
       <form
-        className="flex gap-2"
+        className="crm-composer-form"
         onSubmit={(event) => {
           event.preventDefault();
           void submit();
         }}
       >
-        <div className="relative min-w-0 flex-1">
-          <input
+        <div className="crm-composer-field">
+          <textarea
+            ref={area}
             value={draft}
-            onChange={(event) => setDraft(event.target.value)}
-            placeholder={windowOpen ? "Escribe. Enter envía." : "Ventana cerrada. Usa una plantilla."}
+            rows={1}
+            enterKeyHint="enter"
+            onChange={(event) => {
+              setDraft(event.target.value);
+              grow(event.target);
+            }}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" && !event.shiftKey && window.matchMedia("(min-width: 1024px)").matches) {
+                event.preventDefault();
+                void submit();
+              }
+            }}
+            placeholder={windowOpen ? "Mensaje" : "Ventana cerrada. Usa una plantilla."}
             disabled={!windowOpen}
-            className="h-11 w-full rounded-full bg-white/8 py-0 pl-4 pr-10 text-[13px] outline-none disabled:opacity-50"
+            className="crm-composer-input"
           />
           {draft ? (
             <button
               type="button"
               onClick={() => setDraft("")}
               aria-label="Borrar texto"
-              className="absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-[15px] leading-none text-white/45 hover:bg-white/10 hover:text-white"
+              className="crm-composer-clear"
             >
               ×
             </button>
@@ -138,12 +156,21 @@ export function CrmComposer({
         <button
           type="submit"
           disabled={busy || !draft.trim() || !windowOpen}
-          className="h-11 rounded-full bg-white px-5 text-[13px] text-[#12111a] disabled:opacity-40"
+          className="crm-send"
+          aria-label="Enviar"
         >
-          Enviar
+          <SendGlyph />
         </button>
       </form>
       {error ? <p className="mt-2 text-[12px] text-red-300">{error}</p> : null}
     </div>
+  );
+}
+
+function SendGlyph() {
+  return (
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden>
+      <path d="M3.2 11.15 19.7 3.7c.85-.38 1.68.46 1.3 1.31l-7.45 16.5c-.4.88-1.66.76-1.88-.18L10.2 14.8 3.38 13.03c-.94-.22-1.06-1.5-.18-1.88Z" />
+    </svg>
   );
 }

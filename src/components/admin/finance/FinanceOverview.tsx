@@ -99,7 +99,7 @@ export function FinanceOverview({
           <div className="flex items-start justify-between gap-4">
             <div>
               <h2 className="text-[15px]">A dónde se fue</h2>
-              <p className="mt-1 text-[12px] text-white/40">Constitución, importación, anillos y el resto.</p>
+              <p className="mt-1 text-[12px] text-white/40">Constitución, importación, anillos, marketing y el resto.</p>
             </div>
             <button type="button" onClick={() => onOpen("gastos")} className="text-[12px] text-white/45 hover:text-white">
               Libro

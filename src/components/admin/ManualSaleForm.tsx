@@ -124,7 +124,7 @@ export function ManualSaleForm({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-end bg-black/50 p-0 sm:place-items-center sm:p-6">
-      <div className="max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-[#16141f] p-6 text-[#f4f1ea] sm:rounded-3xl sm:p-8">
+      <div className="max-h-[94dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-[#16141f] p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] text-[#f4f1ea] sm:rounded-3xl sm:p-8">
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-[11px] uppercase tracking-[0.14em] text-white/40">Nueva venta</p>

@@ -29,23 +29,21 @@ export function CrmInboxList({
   onClaim: (id: string) => void;
 }) {
   return (
-    <aside className={`crm-list ${hidden ? "max-lg:hidden" : ""}`}>
-      <div className="p-4 pb-2">
+    <aside className={`crm-list ${hidden ? "" : "is-open"}`}>
+      <div className="crm-list-head">
         <input
           value={query}
           onChange={(event) => onQuery(event.target.value)}
           placeholder="Nombre, teléfono o mensaje"
-          className="h-10 w-full rounded-full bg-white/8 px-4 text-[13px] outline-none"
+          className="crm-search"
         />
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="crm-filters">
           {filters.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => onFilter(item.id)}
-              className={`rounded-full px-2.5 py-1 text-[11px] ${
-                filter === item.id ? "bg-[#1d1d1f] text-white" : "bg-white/8 text-white/50"
-              }`}
+              className={`crm-filter ${filter === item.id ? "is-on" : ""}`}
             >
               {item.label}
             </button>
@@ -98,7 +96,7 @@ export function CrmInboxList({
                           event.stopPropagation();
                           onClaim(item.id);
                         }}
-                        className="rounded-full bg-white/10 px-1.5 text-white/70"
+                        className="crm-claim"
                       >
                         Tomar
                       </span>

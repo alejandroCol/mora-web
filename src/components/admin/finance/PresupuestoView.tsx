@@ -31,6 +31,7 @@ export function PresupuestoView() {
   const [snapshot, setSnapshot] = useState<FinanceSnapshot>(empty);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [adding, setAdding] = useState(false);
 
   const apply = useCallback((data: Partial<FinanceSnapshot> & { ok?: boolean; error?: string }) => {
     if (data.ok === false) throw new Error(data.error || "No se pudo guardar.");
@@ -56,6 +57,22 @@ export function PresupuestoView() {
     },
     [authorizedFetch, apply],
   );
+
+  async function addEgreso() {
+    setAdding(true);
+    setError("");
+    setTab("gastos");
+    try {
+      await mutate("/api/admin/finance/expenses", {
+        method: "POST",
+        body: JSON.stringify({ category: "other", title: "", amountCop: 0 }),
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo crear el egreso.");
+    } finally {
+      setAdding(false);
+    }
+  }
 
   useEffect(() => {
     let alive = true;
@@ -83,20 +100,30 @@ export function PresupuestoView() {
             al cerrar el mes.
           </p>
         </div>
-        <nav className="flex flex-wrap gap-1 rounded-full bg-white/6 p-1">
-          {TABS.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setTab(item.id)}
-              className={`rounded-full px-3 py-1.5 text-[12px] ${
-                tab === item.id ? "bg-white text-[#0e0d14]" : "text-white/55 hover:text-white"
-              }`}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            disabled={adding || loading}
+            onClick={() => void addEgreso()}
+            className="h-10 rounded-full bg-white px-5 text-[13px] text-[#0e0d14] disabled:opacity-40"
+          >
+            {adding ? "Abriendo…" : "Agregar egreso"}
+          </button>
+          <nav className="flex flex-wrap gap-1 rounded-full bg-white/6 p-1">
+            {TABS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTab(item.id)}
+                className={`rounded-full px-3 py-1.5 text-[12px] ${
+                  tab === item.id ? "bg-white text-[#0e0d14]" : "text-white/55 hover:text-white"
+                }`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </div>
       </div>
 
       {error ? <p className="mt-6 text-sm text-red-300">{error}</p> : null}

@@ -52,6 +52,38 @@ function Shell({ children }: { children: ReactNode }) {
     () => false,
   );
   const [mobileOpen, setMobileOpen] = useState(false);
+  const dock = NAV.filter(
+    (item) =>
+      can(item.permission) &&
+      (item.href === "/superadmin/crm" ||
+        item.href === "/superadmin/ventas" ||
+        item.href === "/superadmin/carritos"),
+  );
+
+  useEffect(() => {
+    const root = document.querySelector(".mora-admin") as HTMLElement | null;
+    const vv = window.visualViewport;
+    const sync = () => {
+      const height = Math.round(vv?.height ?? window.innerHeight);
+      root?.style.setProperty("--admin-vv", `${height}px`);
+      root?.style.setProperty("--admin-vv-off", `${Math.round(vv?.offsetTop ?? 0)}px`);
+    };
+    sync();
+    vv?.addEventListener("resize", sync);
+    vv?.addEventListener("scroll", sync);
+    window.addEventListener("orientationchange", sync);
+    return () => {
+      vv?.removeEventListener("resize", sync);
+      vv?.removeEventListener("scroll", sync);
+      window.removeEventListener("orientationchange", sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    const open = () => setMobileOpen(true);
+    window.addEventListener("mora-admin-menu", open);
+    return () => window.removeEventListener("mora-admin-menu", open);
+  }, []);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/acceso");
@@ -187,6 +219,27 @@ function Shell({ children }: { children: ReactNode }) {
           <div className="admin-main">{children}</div>
         </div>
       </div>
+      <nav className="admin-dock" aria-label="Atajos">
+        {dock.map((item) => {
+          const active = pathname.startsWith(item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`admin-dock-item ${active ? "is-active" : ""}`}
+            >
+              <span className="admin-nav-ico">{item.icon}</span>
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+        <button type="button" className="admin-dock-item" onClick={() => setMobileOpen(true)}>
+          <span className="admin-nav-ico">
+            <MenuIcon />
+          </span>
+          <span>Más</span>
+        </button>
+      </nav>
     </div>
   );
 }

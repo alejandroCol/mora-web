@@ -15,6 +15,7 @@ export const EXPENSE_CATEGORIES = [
   "product",
   "accessory",
   "operations",
+  "marketing",
   "other",
 ] as const;
 export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
@@ -25,6 +26,7 @@ export const EXPENSE_CATEGORY_LABEL: Record<ExpenseCategory, string> = {
   product: "Anillos",
   accessory: "Forros y cargadores",
   operations: "Operación",
+  marketing: "Marketing",
   other: "Otro",
 };
 
@@ -34,6 +36,7 @@ export const EXPENSE_CATEGORY_HINT: Record<ExpenseCategory, string> = {
   product: "Lo que pagas por los anillos.",
   accessory: "Forros, cargadores y extra del pedido.",
   operations: "Software, papelería, traslados, fees.",
+  marketing: "Ads, Meta, influencers, contenido.",
   other: "Lo que no cabe arriba.",
 };
 

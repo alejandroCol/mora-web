@@ -257,7 +257,7 @@ function LookSlide({
     >
       <div className="look-card">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="look-photo" src={src} alt={alt} />
+        <img className="look-photo" src={src} alt={alt} decoding="async" />
       </div>
     </figure>
   );

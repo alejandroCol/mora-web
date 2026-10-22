@@ -11,7 +11,7 @@ import {
   type FinishId,
   type ModelId,
 } from "@/lib/catalog";
-import { compressImageBlob, isImageFile } from "@/lib/compressImage";
+import { compressImageBlob } from "@/lib/compressImage";
 import { useAdminAuth } from "./AdminAuth";
 
 type GalleryRow = { modelId: ModelId; images: GalleryImage[] };
@@ -45,9 +45,9 @@ export function GalleryView() {
   }
 
   async function uploadFiles(modelId: ModelId, finishId: FinishId, files: FileList | File[]) {
-    const list = Array.from(files).filter(isImageFile);
+    const list = Array.from(files);
     if (!list.length) {
-      setError("Ese archivo no es una imagen. Usa JPG o PNG.");
+      setError("No llegó el archivo. Arrástralo a esta caja o elige de nuevo.");
       return;
     }
     const key = `${modelId}-${finishId}`;
@@ -55,11 +55,12 @@ export function GalleryView() {
     setError("");
     try {
       for (const file of list) {
-        const blob = await compressImageBlob(file);
+        const blob = await compressImageBlob(file, 2560, 0.92);
+        const ext = blob.type === "image/webp" ? "webp" : "jpg";
         const body = new FormData();
         body.append("modelId", modelId);
         body.append("finishId", finishId);
-        body.append("file", blob, file.name.replace(/\.[^.]+$/, "") + ".jpg");
+        body.append("file", blob, `${file.name.replace(/\.[^.]+$/, "") || "foto"}.${ext}`);
         const res = await authorizedFetch("/api/admin/gallery", {
           method: "POST",
           body,
@@ -216,7 +217,7 @@ export function GalleryView() {
                         </span>
                         <input
                           type="file"
-                          accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif"
+                          accept="image/png,image/jpeg,image/webp,image/heic,image/heif,image/*"
                           multiple
                           className="sr-only"
                           disabled={busy === key}

@@ -4,7 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Center, ContactShadows, Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import { finishes, type Finish, type FinishId } from "@/lib/catalog";
+import { resolveFinish, type Finish, type FinishId, type ModelId } from "@/lib/catalog";
 import { applyRingFinish } from "./finishMaterial";
 import { ParticleRing, sampleMesh } from "./ParticleRing";
 import { DETAIL_POSE, RING_POSE } from "./pose";
@@ -63,12 +63,14 @@ function applyFinish(
 
 type ConfigureSceneProps = {
   finishId: FinishId;
+  modelId?: ModelId;
   scale?: number;
   floatOnly?: boolean;
 };
 
 export function ConfigureScene({
   finishId,
+  modelId = "aero",
   scale = 0.9,
   floatOnly = false,
 }: ConfigureSceneProps) {
@@ -84,8 +86,8 @@ export function ConfigureScene({
     return sampleMesh(cloned);
   }, [cloned]);
   const [appliedId, setAppliedId] = useState(finishId);
-  const applied = finishes[appliedId];
-  const pending = finishes[finishId];
+  const applied = resolveFinish(modelId, appliedId);
+  const pending = resolveFinish(modelId, finishId);
   const pendingRef = useRef(pending);
   const finishIdRef = useRef(finishId);
   const revealed = useRef(false);
@@ -153,20 +155,20 @@ export function ConfigureScene({
 
   return (
     <>
-      <ambientLight intensity={finishId === "silver" ? 0.7 : finishId === "gold" ? 0.46 : 0.62} />
+      <ambientLight intensity={finishId === "silver" ? 0.7 : finishId === "gold" ? 0.46 : pending.clearcoat > 0.4 && finishId === "black" ? 0.38 : 0.62} />
       <directionalLight
         position={[2.6, 3.4, 2.2]}
-        intensity={finishId === "silver" ? 0.72 : finishId === "gold" ? 1.45 : 1.2}
+        intensity={finishId === "silver" ? 0.72 : finishId === "gold" ? 1.45 : pending.clearcoat > 0.4 && finishId === "black" ? 1.55 : 1.2}
         color={finishId === "silver" ? "#f4f6f8" : finishId === "gold" ? "#fff4dc" : "#fff6ea"}
       />
       <directionalLight
         position={[-2.4, 1.1, -1.6]}
-        intensity={finishId === "silver" ? 0.28 : finishId === "gold" ? 0.22 : 0.42}
+        intensity={finishId === "silver" ? 0.28 : finishId === "gold" ? 0.22 : pending.clearcoat > 0.4 && finishId === "black" ? 0.55 : 0.42}
         color="#dce6f6"
       />
       <directionalLight
         position={[0.2, -1.6, 1.4]}
-        intensity={finishId === "silver" ? 0.1 : finishId === "gold" ? 0.38 : 0.28}
+        intensity={finishId === "silver" ? 0.1 : finishId === "gold" ? 0.38 : pending.clearcoat > 0.4 && finishId === "black" ? 0.22 : 0.28}
         color="#f0d7a4"
       />
       <group ref={group}>
@@ -211,7 +213,7 @@ export function ConfigureScene({
       <Environment
         preset="studio"
         environmentIntensity={
-          finishId === "silver" ? 0.58 : finishId === "gold" ? 1.28 : 0.92
+          finishId === "silver" ? 0.58 : finishId === "gold" ? 1.28 : pending.clearcoat > 0.4 && finishId === "black" ? 1.35 : 0.92
         }
       />
     </>

@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import dynamic from "next/dynamic";
 import { Canvas } from "@react-three/fiber";
-import type { FinishId } from "@/lib/catalog";
+import type { FinishId, ModelId } from "@/lib/catalog";
 import { RingIntro } from "./RingIntro";
 
 const ConfigureScene = dynamic(
@@ -24,6 +24,7 @@ type RingCanvasProps = {
   intro?: boolean;
   configure?: boolean;
   floatOnly?: boolean;
+  modelId?: ModelId;
 };
 
 export function RingCanvas({
@@ -35,6 +36,7 @@ export function RingCanvas({
   intro = false,
   configure = false,
   floatOnly = false,
+  modelId,
 }: RingCanvasProps) {
   return (
     <div className={`relative ${className}`}>
@@ -50,6 +52,7 @@ export function RingCanvas({
           ) : configure && finishId ? (
             <ConfigureScene
               finishId={finishId}
+              modelId={modelId}
               scale={scale ?? 0.9}
               floatOnly={floatOnly}
             />

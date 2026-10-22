@@ -5,20 +5,29 @@ import type { Finish } from "@/lib/catalog";
 export function applyRingFinish(material: MeshPhysicalMaterial, next: Finish) {
   const gold = next.id === "gold";
   const silver = next.id === "silver";
-  const matte = next.id === "black";
+  const glossBlack = next.id === "black" && next.clearcoat > 0.4;
+  const matte = next.id === "black" && !glossBlack;
   const ceramic = next.id === "white" || next.id === "lilac";
 
   material.color.set(next.color);
   material.metalness = next.metalness;
   material.roughness = next.roughness;
   material.clearcoat = next.clearcoat;
-  material.clearcoatRoughness = silver ? 0.8 : gold ? 0.1 : ceramic ? 0.35 : 0.9;
+  material.clearcoatRoughness = glossBlack
+    ? 0.06
+    : silver
+      ? 0.8
+      : gold
+        ? 0.1
+        : ceramic
+          ? 0.35
+          : 0.9;
   material.envMapIntensity = next.envMapIntensity;
   material.emissive.set(next.emissive);
   material.emissiveIntensity = next.emissiveIntensity;
-  material.sheen = gold || silver || matte ? 0 : 0.16;
+  material.sheen = gold || silver || matte || glossBlack ? 0 : 0.16;
   material.sheenColor.set(next.id === "lilac" ? "#E4D7F6" : "#f4f8ff");
-  material.specularIntensity = gold ? 1 : silver ? 0.5 : matte ? 0.12 : 0.45;
+  material.specularIntensity = gold ? 1 : silver ? 0.5 : glossBlack ? 1 : matte ? 0.12 : 0.45;
   material.anisotropy = 0;
   material.vertexColors = false;
 }

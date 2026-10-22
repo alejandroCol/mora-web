@@ -37,6 +37,7 @@ export function Reserve() {
         <div className="relative h-[34vh] min-h-[220px] sm:h-[42vh] lg:h-[56vh]">
           <RingCanvas
             configure
+            modelId={selection.modelId}
             finishId={selection.finishId}
             scale={0.86}
             className="h-full w-full"

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ParticleVeil } from "@/components/gallery/ParticleVeil";
-import { catalog, finishes, formatMoney, products } from "@/lib/catalog";
+import { catalog, formatMoney, products, resolveFinish } from "@/lib/catalog";
 import { track } from "@/growth/track";
 import { useMoraStore } from "@/lib/store";
 
@@ -13,7 +13,7 @@ export function Configurator() {
   const { selection, setModel, setFinish, setSize, addSelectionToCart, closeCart } =
     useMoraStore();
   const model = products[selection.modelId];
-  const finish = finishes[selection.finishId];
+  const finish = resolveFinish(selection.modelId, selection.finishId);
   const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
@@ -86,7 +86,7 @@ export function Configurator() {
         <legend className="kicker">Acabado</legend>
         <div className="mt-3 flex items-center gap-4">
           {model.finishes.map((id) => {
-            const item = finishes[id];
+            const item = resolveFinish(selection.modelId, id);
             const active = id === selection.finishId;
             return (
               <button

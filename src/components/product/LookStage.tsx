@@ -6,8 +6,8 @@ import type { GalleryImage } from "@/commerce/types";
 import {
   defaultGalleryImages,
   finishLabel,
-  finishes,
   products,
+  resolveFinish,
   type FinishId,
   type ModelId,
 } from "@/lib/catalog";
@@ -195,6 +195,7 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
             <RingCanvas
               configure
               floatOnly
+              modelId={modelId}
               finishId={finishId}
               scale={desktop ? 0.62 : 0.66}
               className="h-full w-full max-w-[34rem]"
@@ -230,7 +231,7 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
                 {item.kind === "ring" ? (
                   <span
                     className="look-thumb-ring"
-                    style={{ background: finishes[finishId].swatch }}
+                    style={{ background: resolveFinish(modelId, finishId).swatch }}
                   />
                 ) : (
                   // eslint-disable-next-line @next/next/no-img-element

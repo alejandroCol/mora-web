@@ -4,9 +4,9 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   finishLabel,
-  finishes,
   formatMoney,
   products,
+  resolveFinish,
   type ModelId,
 } from "@/lib/catalog";
 import { PRESALE } from "@/lib/presale";
@@ -103,7 +103,7 @@ export function BuySheet({
           <legend className="text-[12px] text-soft">Color</legend>
           <div className="mt-3 flex gap-2">
             {model.finishes.map((id) => {
-              const item = finishes[id];
+              const item = resolveFinish(modelId, id);
               const on = id === finishId;
               return (
                 <button

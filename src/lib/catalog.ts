@@ -149,6 +149,24 @@ export const products: Record<ModelId, RingProduct> = {
 
 export const catalog = [products.aero, products.titan];
 
+export function resolveFinish(modelId: ModelId, finishId: FinishId): Finish {
+  const base = finishes[finishId];
+  if (modelId === "aero" && finishId === "black") {
+    return {
+      ...base,
+      title: "Negro",
+      whisper: "Negro que brilla.",
+      color: "#0B0B0D",
+      metalness: 0.46,
+      roughness: 0.08,
+      clearcoat: 1,
+      envMapIntensity: 1.38,
+      swatch: "linear-gradient(145deg, #7a7a7e 0%, #2a2a2e 38%, #070708 72%, #3a3a40 100%)",
+    };
+  }
+  return base;
+}
+
 export const SLUG_TO_MODEL: Record<ProductSlug, ModelId> = {
   pro: "aero",
   ultra: "titan",

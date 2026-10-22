@@ -189,8 +189,9 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
           <div className={`look-ring ${prev != null ? "look-fade-in" : ""}`}>
             <RingCanvas
               configure
+              floatOnly
               finishId={finishId}
-              scale={desktop ? 0.58 : 0.62}
+              scale={desktop ? 0.62 : 0.66}
               className="h-full w-full max-w-[34rem]"
             />
           </div>

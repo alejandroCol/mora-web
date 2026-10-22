@@ -23,6 +23,7 @@ type RingCanvasProps = {
   scale?: number;
   intro?: boolean;
   configure?: boolean;
+  floatOnly?: boolean;
 };
 
 export function RingCanvas({
@@ -33,6 +34,7 @@ export function RingCanvas({
   scale,
   intro = false,
   configure = false,
+  floatOnly = false,
 }: RingCanvasProps) {
   return (
     <div className={`relative ${className}`}>
@@ -46,7 +48,11 @@ export function RingCanvas({
           {intro ? (
             <RingIntro scale={scale ?? 0.756} />
           ) : configure && finishId ? (
-            <ConfigureScene finishId={finishId} scale={scale ?? 0.9} />
+            <ConfigureScene
+              finishId={finishId}
+              scale={scale ?? 0.9}
+              floatOnly={floatOnly}
+            />
           ) : (
             <RingScene
               finishId={finishId}

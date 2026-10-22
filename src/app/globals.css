@@ -1160,12 +1160,14 @@ body {
 
 .look-bloom {
   position: absolute;
-  inset: -18%;
-  width: 136%;
-  height: 136%;
+  left: 50%;
+  top: 50%;
+  width: 220%;
+  height: 220%;
   object-fit: cover;
-  filter: blur(80px) saturate(1.06) brightness(1.08);
-  opacity: 0.38;
+  transform: translate(-50%, -50%);
+  filter: blur(72px) saturate(1.12) brightness(1.06);
+  opacity: 0.7;
   user-select: none;
 }
 
@@ -1181,8 +1183,7 @@ body {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(180deg, rgba(251, 251, 253, 0.18) 0%, transparent 22%, transparent 68%, rgba(251, 251, 253, 0.42) 100%),
-    radial-gradient(ellipse 70% 62% at 50% 46%, transparent 36%, rgba(251, 251, 253, 0.28) 100%);
+    linear-gradient(180deg, rgba(251, 251, 253, 0.1) 0%, transparent 16%, transparent 92%, rgba(251, 251, 253, 0.06) 100%);
 }
 
 .look-frame {
@@ -1229,25 +1230,15 @@ body {
   z-index: 1;
   display: grid;
   place-items: center;
-  padding: 1.1rem 1.35rem 4.7rem;
 }
 
 .look-photo {
   display: block;
-  min-width: 0;
-  min-height: 0;
-  width: auto;
-  height: auto;
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
   image-rendering: auto;
   -webkit-optimize-contrast: auto;
-  border-radius: 18px;
-  box-shadow:
-    0 0 0 1px rgba(255, 255, 255, 0.28),
-    0 12px 40px rgba(40, 28, 12, 0.1);
-  transform-origin: 50% 50%;
 }
 
 .look-rail {
@@ -1259,10 +1250,10 @@ body {
   max-width: calc(100% - 1.5rem);
   transform: translateX(-50%);
   flex-direction: row;
-  gap: 0.4rem;
+  gap: 0.55rem;
   overflow-x: auto;
   overflow-y: hidden;
-  padding: 0.15rem;
+  padding: 0.4rem;
   scrollbar-width: none;
 }
 
@@ -1276,11 +1267,13 @@ body {
   width: 3.15rem;
   flex: none;
   overflow: hidden;
-  border-radius: 11px;
+  border-radius: 12px;
   background: rgba(255, 255, 255, 0.55);
-  box-shadow: 0 0 0 1px rgba(29, 29, 31, 0.08);
-  opacity: 0.58;
-  transition: opacity 0.28s ease, box-shadow 0.28s ease, transform 0.28s ease;
+  outline: none;
+  box-shadow: none;
+  opacity: 0.42;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity 0.22s ease, transform 0.22s ease, box-shadow 0.22s ease;
 }
 
 .look-thumb img {
@@ -1302,42 +1295,28 @@ body {
 }
 
 .look-thumb:hover {
-  opacity: 0.92;
+  opacity: 0.78;
+}
+
+.look-thumb:focus,
+.look-thumb:focus-visible {
+  outline: none;
 }
 
 .look-thumb.on {
   opacity: 1;
-  transform: scale(1.04);
-  box-shadow:
-    0 0 0 2px #fff,
-    0 0 0 3.5px #1d1d1f;
-}
-
-@media (min-width: 640px) {
-  .look-card {
-    padding: 1.4rem 1.6rem 5rem;
-  }
+  transform: scale(1.08);
+  box-shadow: 0 0 0 2px #1d1d1f;
 }
 
 @media (min-width: 1024px) {
   .look-bloom {
-    filter: blur(96px) saturate(1.08) brightness(1.1);
-    opacity: 0.34;
+    filter: blur(88px) saturate(1.14) brightness(1.06);
+    opacity: 0.72;
   }
 
   .look-ring {
     padding: 1.2rem 1.6rem 1.2rem 5.6rem;
-  }
-
-  .look-card {
-    padding: 1.8rem 2rem 1.8rem 5.8rem;
-  }
-
-  .look-photo {
-    border-radius: 22px;
-    box-shadow:
-      0 0 0 1px rgba(255, 255, 255, 0.34),
-      0 18px 50px rgba(40, 28, 12, 0.1);
   }
 
   .look-rail {
@@ -1372,13 +1351,13 @@ body {
     opacity: 0;
   }
   to {
-    opacity: 0.38;
+    opacity: 0.7;
   }
 }
 
 @keyframes look-bloom-leave {
   from {
-    opacity: 0.38;
+    opacity: 0.7;
   }
   to {
     opacity: 0;

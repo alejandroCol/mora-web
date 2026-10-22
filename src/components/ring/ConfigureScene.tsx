@@ -7,7 +7,7 @@ import * as THREE from "three";
 import { finishes, type Finish, type FinishId } from "@/lib/catalog";
 import { applyRingFinish } from "./finishMaterial";
 import { ParticleRing, sampleMesh } from "./ParticleRing";
-import { RING_POSE } from "./pose";
+import { DETAIL_POSE, RING_POSE } from "./pose";
 
 const MODEL_PATH = "/models/mora-superficie.glb";
 
@@ -64,9 +64,15 @@ function applyFinish(
 type ConfigureSceneProps = {
   finishId: FinishId;
   scale?: number;
+  floatOnly?: boolean;
 };
 
-export function ConfigureScene({ finishId, scale = 0.9 }: ConfigureSceneProps) {
+export function ConfigureScene({
+  finishId,
+  scale = 0.9,
+  floatOnly = false,
+}: ConfigureSceneProps) {
+  const pose = floatOnly ? DETAIL_POSE : RING_POSE;
   const { scene } = useGLTF(MODEL_PATH);
   const group = useRef<THREE.Group>(null);
   const surface = useRef<THREE.MeshPhysicalMaterial[]>([]);
@@ -140,9 +146,9 @@ export function ConfigureScene({ finishId, scale = 0.9 }: ConfigureSceneProps) {
 
   useFrame((state, delta) => {
     if (!group.current) return;
-    group.current.rotation.y += delta * RING_POSE.spin;
+    if (pose.spin) group.current.rotation.y += delta * pose.spin;
     group.current.position.y =
-      Math.sin(state.clock.elapsedTime * RING_POSE.floatSpeed) * RING_POSE.float;
+      Math.sin(state.clock.elapsedTime * pose.floatSpeed) * pose.float;
   });
 
   return (
@@ -165,7 +171,7 @@ export function ConfigureScene({ finishId, scale = 0.9 }: ConfigureSceneProps) {
       />
       <group ref={group}>
         <Center>
-          <group rotation={RING_POSE.rotation} scale={scale}>
+          <group rotation={pose.rotation} scale={scale}>
             {bursting ? (
               <ParticleRing
                 targets={targets}

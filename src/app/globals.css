@@ -1134,12 +1134,14 @@ body {
   }
 }
 
-.product-stage {
+.product-stage,
+.product-sheet {
   padding-top: calc(3.5rem + env(safe-area-inset-top));
 }
 
 @media (min-width: 640px) {
-  .product-stage {
+  .product-stage,
+  .product-sheet {
     padding-top: 4.25rem;
   }
 }
@@ -1221,7 +1223,7 @@ body {
   z-index: 1;
   display: grid;
   place-items: center;
-  padding: 0.4rem 1rem 4.6rem;
+  padding: calc(3.5rem + env(safe-area-inset-top)) 1.15rem 4.5rem;
 }
 
 .look-card {
@@ -1230,7 +1232,7 @@ body {
   z-index: 1;
   display: grid;
   place-items: center;
-  padding: 1.1rem 1.35rem 4.8rem;
+  padding: calc(3.5rem + env(safe-area-inset-top)) 1.15rem 4.5rem;
 }
 
 .look-photo {
@@ -1319,12 +1321,9 @@ body {
     opacity: 0.72;
   }
 
-  .look-ring {
-    padding: 1.2rem 1.6rem 1.2rem 5.6rem;
-  }
-
+  .look-ring,
   .look-card {
-    padding: 1.6rem 2rem 1.6rem 5.8rem;
+    padding: calc(4.25rem + env(safe-area-inset-top)) 2rem 1.5rem 5.8rem;
   }
 
   .look-rail {

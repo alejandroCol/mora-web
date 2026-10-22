@@ -41,7 +41,7 @@ export function RingCanvas({
   return (
     <div className={`relative ${className}`}>
       <Canvas
-        camera={{ position: [0, 0.12, 3.55], fov: 28 }}
+        camera={{ position: [0, floatOnly ? -0.06 : 0.12, 3.55], fov: 28 }}
         dpr={[1, 1.8]}
         gl={{ antialias: true, alpha: true }}
         style={{ background: "transparent" }}

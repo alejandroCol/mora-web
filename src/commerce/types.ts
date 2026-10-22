@@ -204,10 +204,14 @@ export type InventoryDoc = {
 export type GalleryImage = {
   id: string;
   modelId: ModelId;
+  finishId?: FinishId;
   src: string;
   sort: number;
   createdAt: number;
   system?: boolean;
+  hidden?: boolean;
+  storagePath?: string;
+  mime?: string;
 };
 
 export type CityShippingRate = {

@@ -184,11 +184,29 @@ export const PRODUCT_LOOKS: Record<ModelId, readonly { id: string; src: string }
   ],
 };
 
-export function defaultGalleryImages(modelId: ModelId) {
-  return PRODUCT_LOOKS[modelId].map((item, index) => ({
-    id: `default-${modelId}-${item.id}`,
+export function isFinishId(value: unknown): value is FinishId {
+  return (
+    value === "lilac" ||
+    value === "white" ||
+    value === "black" ||
+    value === "gold" ||
+    value === "silver"
+  );
+}
+
+export function isProductFinish(modelId: ModelId, value: unknown): value is FinishId {
+  return isFinishId(value) && products[modelId].finishes.includes(value);
+}
+
+export function defaultGalleryImages(modelId: ModelId, finishId?: FinishId) {
+  const colors = finishId
+    ? products[modelId].finishes.filter((id) => id === finishId)
+    : products[modelId].finishes;
+  return colors.map((id, index) => ({
+    id: `default-${modelId}-${id}`,
     modelId,
-    src: item.src,
+    finishId: id,
+    src: finishPhoto(id),
     sort: index,
     createdAt: 0,
     system: true as const,

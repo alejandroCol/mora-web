@@ -17,10 +17,8 @@ import { SizeChoice } from "./SizeChoice";
 
 export function BuySheet({
   modelId,
-  onGallery,
 }: {
   modelId: ModelId;
-  onGallery?: () => void;
 }) {
   const router = useRouter();
   const { selection, setFinish, setSize, setSizing, addSelectionToCart, closeCart } =
@@ -125,15 +123,6 @@ export function BuySheet({
           </div>
         ) : null}
 
-        {onGallery ? (
-          <button
-            type="button"
-            onClick={onGallery}
-            className="mt-5 hidden text-[13px] tracking-[-0.01em] text-soft hover:text-ink lg:inline"
-          >
-            Ver imágenes ›
-          </button>
-        ) : null}
       </div>
 
       <div className="shrink-0 border-t border-line bg-white/80 px-5 py-3 backdrop-blur-xl pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-8">

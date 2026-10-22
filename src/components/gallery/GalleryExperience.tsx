@@ -27,7 +27,10 @@ export function GalleryExperience({
   const router = useRouter();
   const { selection, closeCart } = useMoraStore();
   const model = products[modelId];
-  const [images, setImages] = useState<GalleryImage[]>(() => defaultGalleryImages(modelId));
+  const finishId = model.finishes.includes(selection.finishId)
+    ? selection.finishId
+    : model.finishes[0];
+  const [remote, setRemote] = useState<GalleryImage[]>([]);
   const [index, setIndex] = useState(0);
   const [veil, setVeil] = useState(entrada);
 
@@ -60,8 +63,8 @@ export function GalleryExperience({
         return (await res.json()) as { images?: GalleryImage[] };
       })
       .then((data) => {
-        if (!alive || !data.images?.length) return;
-        setImages(data.images);
+        if (!alive) return;
+        setRemote(data.images ?? []);
         setIndex(0);
       })
       .catch(() => undefined);
@@ -69,6 +72,19 @@ export function GalleryExperience({
       alive = false;
     };
   }, [modelId]);
+
+  const uploaded = remote.filter(
+    (item) => !item.system && (!item.finishId || item.finishId === finishId),
+  );
+  const house = defaultGalleryImages(modelId, finishId);
+  const houseHidden = remote.some(
+    (item) => item.hidden && house.some((entry) => entry.id === item.id),
+  );
+  const images = [...uploaded, ...(houseHidden ? [] : house)];
+
+  useEffect(() => {
+    setIndex(0);
+  }, [modelId, finishId]);
 
   useEffect(() => {
     if (!veil) return;

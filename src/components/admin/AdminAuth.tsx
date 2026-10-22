@@ -37,10 +37,11 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const authorizedFetch = useCallback(
     async (input: RequestInfo, init?: RequestInit) => {
       const fresh = user ? await user.getIdToken() : token;
+      const form = typeof FormData !== "undefined" && init?.body instanceof FormData;
       return fetch(input, {
         ...init,
         headers: {
-          "Content-Type": "application/json",
+          ...(form ? {} : { "Content-Type": "application/json" }),
           ...(init?.headers ?? {}),
           ...(fresh ? { Authorization: `Bearer ${fresh}` } : {}),
         },

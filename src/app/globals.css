@@ -1109,10 +1109,6 @@ body {
   }
 }
 
-.product-stage-looks {
-  padding-top: 0;
-}
-
 .look-stage {
   position: relative;
   height: 100%;
@@ -1154,22 +1150,6 @@ body {
     radial-gradient(ellipse 70% 62% at 50% 46%, transparent 36%, rgba(251, 251, 253, 0.28) 100%);
 }
 
-.look-head {
-  position: absolute;
-  top: calc(3.45rem + env(safe-area-inset-top));
-  left: 0.85rem;
-  z-index: 4;
-  min-height: 2.5rem;
-  padding: 0 0.15rem;
-  font-size: 13px;
-  letter-spacing: -0.01em;
-  color: rgba(29, 29, 31, 0.55);
-}
-
-.look-head:hover {
-  color: #1d1d1f;
-}
-
 .look-frame {
   position: absolute;
   inset: 0;
@@ -1199,16 +1179,22 @@ body {
   margin: 0;
 }
 
+.look-ring {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  padding: 0.4rem 1rem 4.6rem;
+}
+
 .look-card {
   position: absolute;
   inset: 0;
   z-index: 1;
   display: grid;
   place-items: center;
-  padding:
-    calc(5.6rem + env(safe-area-inset-top))
-    1.55rem
-    3.4rem;
+  padding: 1.1rem 1.35rem 4.7rem;
 }
 
 .look-photo {
@@ -1227,68 +1213,72 @@ body {
   transform-origin: 50% 50%;
 }
 
-.look-bar {
+.look-rail {
   position: absolute;
-  inset-inline: 0;
-  bottom: 0.2rem;
   z-index: 4;
+  left: 50%;
+  bottom: 0.55rem;
   display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1.15rem;
-  padding: 0 1.1rem 0.4rem;
+  max-width: calc(100% - 1.5rem);
+  transform: translateX(-50%);
+  flex-direction: row;
+  gap: 0.4rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.15rem;
+  scrollbar-width: none;
 }
 
-.look-arrow {
-  display: grid;
-  height: 2.75rem;
-  width: 2.75rem;
-  place-items: center;
-  color: rgba(29, 29, 31, 0.34);
-  transition: color 0.3s ease;
+.look-rail::-webkit-scrollbar {
+  display: none;
 }
 
-.look-arrow svg {
+.look-thumb {
+  position: relative;
+  height: 3.15rem;
+  width: 3.15rem;
+  flex: none;
+  overflow: hidden;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: 0 0 0 1px rgba(29, 29, 31, 0.08);
+  opacity: 0.58;
+  transition: opacity 0.28s ease, box-shadow 0.28s ease, transform 0.28s ease;
+}
+
+.look-thumb img {
   display: block;
-  height: 15px;
-  width: 15px;
+  height: 100%;
+  width: 100%;
+  object-fit: cover;
 }
 
-.look-arrow-next {
-  transform: scaleX(-1);
-}
-
-.look-arrow:hover {
-  color: #1d1d1f;
-}
-
-.look-dots {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-
-.look-dots button {
-  height: 5px;
-  width: 5px;
+.look-thumb-ring {
+  display: block;
+  height: 58%;
+  width: 58%;
+  margin: 21%;
   border-radius: 999px;
-  background: rgba(29, 29, 31, 0.16);
-  transition: background 0.35s ease, transform 0.35s ease;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.55),
+    inset 0 -8px 12px rgba(22, 20, 31, 0.16);
 }
 
-.look-dots button.on {
-  background: #1d1d1f;
-  transform: scale(1.15);
+.look-thumb:hover {
+  opacity: 0.92;
+}
+
+.look-thumb.on {
+  opacity: 1;
+  transform: scale(1.04);
+  box-shadow:
+    0 0 0 2px #fff,
+    0 0 0 3.5px #1d1d1f;
 }
 
 @media (min-width: 640px) {
-  .look-head {
-    top: 4.35rem;
-    left: 1.15rem;
-  }
-
   .look-card {
-    padding: 6.4rem 1.6rem 3.6rem;
+    padding: 1.4rem 1.6rem 5rem;
   }
 }
 
@@ -1298,8 +1288,12 @@ body {
     opacity: 0.34;
   }
 
+  .look-ring {
+    padding: 1.2rem 1.6rem 1.2rem 5.6rem;
+  }
+
   .look-card {
-    padding: 6.6rem 2.4rem 4rem;
+    padding: 1.8rem 2rem 1.8rem 5.8rem;
   }
 
   .look-photo {
@@ -1309,9 +1303,22 @@ body {
       0 18px 50px rgba(40, 28, 12, 0.1);
   }
 
-  .look-bar {
-    padding-inline: 1.8rem;
-    gap: 1.35rem;
+  .look-rail {
+    top: 50%;
+    bottom: auto;
+    left: 0.85rem;
+    max-height: calc(100% - 2.4rem);
+    max-width: none;
+    transform: translateY(-50%);
+    flex-direction: column;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  .look-thumb {
+    height: 3.4rem;
+    width: 3.4rem;
+    border-radius: 12px;
   }
 }
 
@@ -1374,8 +1381,8 @@ body {
   .gallery-veil-leave,
   .look-stage,
   .look-slide,
-  .look-bar,
-  .look-head,
+  .look-rail,
+  .look-thumb,
   .look-bloom-in,
   .look-bloom-leave {
     animation: none;

@@ -1,61 +1,79 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import type { GalleryImage } from "@/commerce/types";
-import { PRODUCT_LOOKS, products, type ModelId } from "@/lib/catalog";
+import {
+  defaultGalleryImages,
+  finishLabel,
+  finishes,
+  products,
+  type FinishId,
+  type ModelId,
+} from "@/lib/catalog";
+import { useMoraStore } from "@/lib/store";
+
+const RingCanvas = dynamic(
+  () => import("@/components/ring/RingCanvas").then((mod) => mod.RingCanvas),
+  { ssr: false },
+);
 
 type LookImage = { id: string; src: string; alt: string };
+type StageItem =
+  | { id: "ring"; kind: "ring" }
+  | { id: string; kind: "photo"; src: string; alt: string };
 
-function fallbackLooks(modelId: ModelId): LookImage[] {
-  const name = `Mora ${products[modelId].name}`;
-  const looks = PRODUCT_LOOKS[modelId].map((item) => ({
+function matchesFinish(image: GalleryImage, finishId: FinishId) {
+  return !image.finishId || image.finishId === finishId;
+}
+
+function asLooks(modelId: ModelId, finishId: FinishId, remote: GalleryImage[]): LookImage[] {
+  const name = `Mora ${products[modelId].name} ${finishLabel(modelId, finishId)}`;
+  const uploaded = remote.filter(
+    (item) => !item.system && matchesFinish(item, finishId) && !item.hidden,
+  );
+  const house = defaultGalleryImages(modelId, finishId);
+  const houseHidden = remote.some(
+    (item) => item.hidden && house.some((entry) => entry.id === item.id),
+  );
+  return [...uploaded, ...(houseHidden ? [] : house)].map((item) => ({
     id: item.id,
     src: item.src,
     alt: name,
   }));
-  if (modelId === "aero") {
-    return [
-      ...looks,
-      { id: "pro-lilac", src: "/encuesta/lila.jpg", alt: `${name} Lila` },
-      { id: "pro-white", src: "/encuesta/blanco.jpg", alt: `${name} Blanco` },
-      { id: "pro-black", src: "/encuesta/mate.jpg", alt: `${name} Negro` },
-    ];
-  }
-  return [
-    ...looks,
-    { id: "ultra-silver", src: "/encuesta/plata.jpg", alt: `${name} Plata` },
-    { id: "ultra-gold", src: "/encuesta/oro.jpg", alt: `${name} Oro` },
-    { id: "ultra-black", src: "/encuesta/mate.jpg", alt: `${name} Negro mate` },
-  ];
 }
 
-function mergeLooks(modelId: ModelId, remote: GalleryImage[]): LookImage[] {
-  const name = `Mora ${products[modelId].name}`;
-  const uploaded = remote
-    .filter((item) => !item.system)
-    .map((item) => ({ id: item.id, src: item.src, alt: name }));
-  const seen = new Set<string>();
-  const next: LookImage[] = [];
-  for (const item of [...fallbackLooks(modelId), ...uploaded]) {
-    if (seen.has(item.src)) continue;
-    seen.add(item.src);
-    next.push(item);
-  }
-  return next;
-}
-
-export function LookStage({
-  modelId,
-  onBack,
-}: {
-  modelId: ModelId;
-  onBack: () => void;
-}) {
-  const [images, setImages] = useState<LookImage[]>(() => fallbackLooks(modelId));
+export function LookStage({ modelId }: { modelId: ModelId }) {
+  const { selection } = useMoraStore();
+  const model = products[modelId];
+  const finishId = model.finishes.includes(selection.finishId)
+    ? selection.finishId
+    : model.finishes[0];
+  const [remote, setRemote] = useState<GalleryImage[]>([]);
   const [index, setIndex] = useState(0);
+  const [seenFinish, setSeenFinish] = useState(finishId);
   const [prev, setPrev] = useState<number | null>(null);
+  if (seenFinish !== finishId) {
+    setSeenFinish(finishId);
+    setIndex(0);
+    setPrev(null);
+  }
+  const [desktop, setDesktop] = useState(false);
   const swipe = useRef<number | null>(null);
-  const lock = useRef(false);
+  const images = asLooks(modelId, finishId, remote);
+
+  const items: StageItem[] = [
+    { id: "ring", kind: "ring" },
+    ...images.map((image) => ({ ...image, kind: "photo" as const })),
+  ];
+
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 1024px)");
+    const sync = () => setDesktop(query.matches);
+    sync();
+    query.addEventListener("change", sync);
+    return () => query.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     let alive = true;
@@ -63,8 +81,7 @@ export function LookStage({
       .then(async (res) => (await res.json()) as { images?: GalleryImage[] })
       .then((data) => {
         if (!alive) return;
-        setImages(mergeLooks(modelId, data.images ?? []));
-        setIndex(0);
+        setRemote(data.images ?? []);
       })
       .catch(() => undefined);
     return () => {
@@ -72,24 +89,19 @@ export function LookStage({
     };
   }, [modelId]);
 
-  const current = images[index];
-  const leaving = prev != null ? images[prev] : null;
+  const current = items[index] ?? items[0];
+  const leaving = prev != null ? items[prev] : null;
 
   function go(next: number) {
-    if (!images.length || lock.current) return;
-    const wrapped = (next + images.length) % images.length;
+    if (!items.length) return;
+    const wrapped = (next + items.length) % items.length;
     if (wrapped === index) return;
-    lock.current = true;
-    setPrev(index);
+    setPrev(null);
     setIndex(wrapped);
-    window.setTimeout(() => {
-      setPrev(null);
-      lock.current = false;
-    }, 520);
   }
 
   useEffect(() => {
-    const ahead = images[(index + 1) % images.length];
+    const ahead = images[index] ?? images[0];
     if (!ahead) return;
     const node = new Image();
     node.src = ahead.src;
@@ -97,7 +109,6 @@ export function LookStage({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onBack();
       if (event.key === "ArrowRight") go(index + 1);
       if (event.key === "ArrowLeft") go(index - 1);
     };
@@ -107,31 +118,32 @@ export function LookStage({
 
   if (!current) return null;
 
+  const leavingPhoto = leaving?.kind === "photo" ? leaving : null;
+  const currentPhoto = current.kind === "photo" ? current : null;
+
   return (
     <div className="look-stage">
       <div className="look-atmosphere" aria-hidden>
-        {leaving ? (
+        {leavingPhoto ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            key={`bloom-leave-${leaving.id}`}
+            key={`bloom-leave-${leavingPhoto.id}`}
             className="look-bloom look-bloom-leave"
-            src={leaving.src}
+            src={leavingPhoto.src}
             alt=""
           />
         ) : null}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          key={`bloom-${current.id}`}
-          className="look-bloom look-bloom-in"
-          src={current.src}
-          alt=""
-        />
+        {currentPhoto ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={`bloom-${currentPhoto.id}`}
+            className="look-bloom look-bloom-in"
+            src={currentPhoto.src}
+            alt=""
+          />
+        ) : null}
         <div className="look-veil" />
       </div>
-
-      <button type="button" className="look-head" onClick={onBack}>
-        Anillo
-      </button>
 
       <div
         className="look-frame"
@@ -146,7 +158,7 @@ export function LookStage({
           else if (dx < -56) go(index + 1);
         }}
       >
-        {images.length > 1 ? (
+        {items.length > 1 ? (
           <>
             <button
               type="button"
@@ -162,53 +174,65 @@ export function LookStage({
             />
           </>
         ) : null}
-        {leaving ? (
+
+        {leavingPhoto ? (
           <LookSlide
-            key={`leave-${leaving.id}`}
-            src={leaving.src}
+            key={`leave-${leavingPhoto.id}`}
+            src={leavingPhoto.src}
             alt=""
             className="look-fade-out"
             hidden
           />
         ) : null}
-        <LookSlide
-          key={current.id}
-          src={current.src}
-          alt={current.alt}
-          className={prev != null ? "look-fade-in" : ""}
-        />
+
+        {current.kind === "ring" ? (
+          <div className={`look-ring ${prev != null ? "look-fade-in" : ""}`}>
+            <RingCanvas
+              configure
+              finishId={finishId}
+              scale={desktop ? 0.58 : 0.62}
+              className="h-full w-full max-w-[34rem]"
+            />
+          </div>
+        ) : (
+          <LookSlide
+            key={current.id}
+            src={current.src}
+            alt={current.alt}
+            className={prev != null ? "look-fade-in" : ""}
+          />
+        )}
       </div>
 
-      {images.length > 1 ? (
-        <nav className="look-bar" aria-label="Fotos">
-          <button
-            type="button"
-            className="look-arrow"
-            aria-label="Foto anterior"
-            onClick={() => go(index - 1)}
-          >
-            <LookArrow />
-          </button>
-          <div className="look-dots">
-            {images.map((image, itemIndex) => (
+      {items.length > 1 ? (
+        <nav className="look-rail" aria-label="Fotos del anillo">
+          {items.map((item, itemIndex) => {
+            const on = itemIndex === index;
+            return (
               <button
-                key={image.id}
+                key={item.id}
                 type="button"
-                aria-label={image.alt}
-                aria-current={itemIndex === index}
-                className={itemIndex === index ? "on" : ""}
+                aria-label={
+                  item.kind === "ring"
+                    ? `Mora ${model.name} en 3D`
+                    : `${item.alt}, foto ${itemIndex}`
+                }
+                aria-current={on || undefined}
+                className={`look-thumb ${on ? "on" : ""}`}
                 onClick={() => go(itemIndex)}
-              />
-            ))}
-          </div>
-          <button
-            type="button"
-            className="look-arrow look-arrow-next"
-            aria-label="Foto siguiente"
-            onClick={() => go(index + 1)}
-          >
-            <LookArrow />
-          </button>
+              >
+                {item.kind === "ring" ? (
+                  <span
+                    className="look-thumb-ring"
+                    style={{ background: finishes[finishId].swatch }}
+                  />
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.src} alt="" />
+                )}
+              </button>
+            );
+          })}
         </nav>
       ) : null}
     </div>
@@ -236,20 +260,5 @@ function LookSlide({
         <img className="look-photo" src={src} alt={alt} />
       </div>
     </figure>
-  );
-}
-
-function LookArrow() {
-  return (
-    <svg viewBox="0 0 22 22" aria-hidden>
-      <path
-        d="M13.2 4.8 6.6 11l6.6 6.2"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.05"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
   );
 }

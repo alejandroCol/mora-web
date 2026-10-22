@@ -13,9 +13,9 @@ import { useMoraStore } from "@/lib/store";
 
 const LOOK: Record<ModelId, { src: string; focus: string; alt: string }> = {
   aero: {
-    src: "/lifestyle/pro.jpg",
-    focus: "50% 38%",
-    alt: "Mora Pro en cerámica, en el ritmo de cada mañana.",
+    src: "/lifestyle/pro-home.jpg",
+    focus: "58% 54%",
+    alt: "Mora Pro en cerámica lila, sobre pedestal blanco.",
   },
   titan: {
     src: "/lifestyle/ultra.jpg",
@@ -79,7 +79,7 @@ export function Atelier() {
               href={productPath(item.id)}
               data-world
               onClick={() => setModel(item.id)}
-              className="world group"
+              className={`world group ${item.id === "aero" ? "world-light" : ""}`}
             >
               <Image
                 src={look.src}

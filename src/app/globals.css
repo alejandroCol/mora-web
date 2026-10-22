@@ -773,6 +773,25 @@ body {
   pointer-events: none;
 }
 
+.world-light .world-veil {
+  background:
+    linear-gradient(to top, rgba(22, 20, 31, 0.42) 0%, rgba(22, 20, 31, 0.08) 36%, transparent 58%);
+}
+
+.world-light .world-copy {
+  color: #1d1d1f;
+}
+
+.world-light .world-kicker,
+.world-light .world-promise,
+.world-light .world-price {
+  color: rgba(29, 29, 31, 0.62);
+}
+
+.world-light .world-price {
+  color: #1d1d1f;
+}
+
 .world-copy {
   position: absolute;
   inset: auto 0 0;

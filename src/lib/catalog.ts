@@ -156,12 +156,12 @@ export function resolveFinish(modelId: ModelId, finishId: FinishId): Finish {
       ...base,
       title: "Negro",
       whisper: "Cerámica negra.",
-      color: "#1C1C1F",
-      metalness: 0.1,
-      roughness: 0.28,
-      clearcoat: 0.38,
-      envMapIntensity: 1.02,
-      swatch: "linear-gradient(145deg, #3a3a3e 0%, #1c1c1f 55%, #0c0c0e 100%)",
+      color: "#141416",
+      metalness: 0.16,
+      roughness: 0.18,
+      clearcoat: 0.62,
+      envMapIntensity: 1.12,
+      swatch: "linear-gradient(145deg, #4a4a4e 0%, #1a1a1c 48%, #0a0a0c 100%)",
     };
   }
   return base;

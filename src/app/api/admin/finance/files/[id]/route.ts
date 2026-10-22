@@ -18,7 +18,7 @@ export async function GET(request: Request, ctx: Ctx) {
       });
     }
     if (file.data) {
-      const match = file.data.match(/^data:([^;]+);base64,(.+)$/);
+      const match = file.data.match(/^data:([^;,]+)(?:;[^,]*)*;base64,([\s\S]+)$/i);
       if (!match) {
         return Response.json({ ok: false, error: "Archivo ilegible." }, { status: 404 });
       }

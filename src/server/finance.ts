@@ -188,11 +188,21 @@ function filePath(id: string) {
 }
 
 function parseDataUrl(raw: string) {
-  const match = raw.match(/^data:([^;]+);base64,(.+)$/);
+  const match = raw.match(/^data:([^;,]+)((?:;[^;,]+=[^;,]*)*);base64,([\s\S]+)$/i);
   if (!match) {
     throw Object.assign(new Error("Archivo ilegible."), { status: 400 });
   }
-  return { mime: match[1], buffer: Buffer.from(match[2], "base64") };
+  const buffer = Buffer.from(match[3].replace(/\s/g, ""), "base64");
+  if (!buffer.length) {
+    throw Object.assign(new Error("El archivo llegó vacío."), { status: 400 });
+  }
+  return { mime: match[1].trim(), buffer };
+}
+
+function safeFileName(name: string, mime: string) {
+  const clean = name.replace(/[^\w.\- ()áéíóúñÁÉÍÓÚÑ]+/g, "_").trim();
+  if (clean) return clean.slice(0, 120);
+  return mime === "application/pdf" ? "factura.pdf" : "soporte.jpg";
 }
 
 export async function listExpenses(): Promise<FinanceExpense[]> {
@@ -508,53 +518,63 @@ function toCopSafe(amount: number, order: FinancePurchaseOrder) {
   return asCop(amount * (order.fxRateToCop || 0));
 }
 
-export async function saveAttachment(input: {
+export async function saveAttachmentBuffer(input: {
   name: string;
   mime?: string;
-  data: string;
+  buffer: Buffer;
   expenseId?: string;
   actorUid: string;
 }): Promise<FinanceAttachment> {
-  if (!input.data.startsWith("data:")) {
-    throw Object.assign(new Error("Archivo inválido."), { status: 400 });
-  }
-  if (input.data.length > MAX_INLINE_CHARS * 1.4) {
-    throw Object.assign(new Error("El archivo pesa demasiado (máx. ~4 MB)."), { status: 400 });
-  }
-  const parsed = parseDataUrl(input.data);
-  const mime = input.mime?.trim() || parsed.mime;
+  const mime = (input.mime?.trim() || "").toLowerCase();
   if (!mime.startsWith("image/") && mime !== "application/pdf") {
     throw Object.assign(new Error("Solo imagen o PDF."), { status: 400 });
   }
+  if (!input.buffer.length) {
+    throw Object.assign(new Error("El archivo llegó vacío."), { status: 400 });
+  }
+  if (input.buffer.length > 8_000_000) {
+    throw Object.assign(new Error("El archivo pesa demasiado (máx. 8 MB)."), { status: 400 });
+  }
   const id = randomUUID();
   const now = Date.now();
-  let stored: "storage" | "inline" = "inline";
+  let stored: "storage" | "inline" = "storage";
   try {
-    const bucket = adminBucket();
-    await bucket.file(filePath(id)).save(parsed.buffer, {
-      contentType: mime,
-      resumable: false,
-      metadata: { cacheControl: "private, max-age=0" },
-    });
-    stored = "storage";
-  } catch {
-    if (input.data.length > MAX_INLINE_CHARS) {
-      throw Object.assign(new Error("No se pudo guardar el archivo. Prueba uno más liviano."), {
-        status: 400,
+    await adminBucket()
+      .file(filePath(id))
+      .save(input.buffer, {
+        contentType: mime,
+        resumable: false,
+        metadata: {
+          cacheControl: "private, max-age=0",
+          contentDisposition: `inline; filename="${safeFileName(input.name, mime)}"`,
+        },
       });
+  } catch (error) {
+    if (mime === "application/pdf" || input.buffer.length > 700_000) {
+      console.error("[finance attachment]", error);
+      throw Object.assign(
+        new Error("No se pudo guardar el PDF. Prueba de nuevo o un archivo más liviano."),
+        { status: 500 },
+      );
     }
+    stored = "inline";
   }
   const record = {
     id,
-    name: input.name.trim() || (mime === "application/pdf" ? "factura.pdf" : "soporte.jpg"),
+    name: safeFileName(input.name, mime),
     mime,
-    size: parsed.buffer.length,
+    size: input.buffer.length,
     expenseId: input.expenseId || undefined,
     createdAt: now,
     createdBy: input.actorUid,
     stored,
-    ...(stored === "inline" ? { data: input.data } : {}),
+    ...(stored === "inline"
+      ? { data: `data:${mime};base64,${input.buffer.toString("base64")}` }
+      : {}),
   };
+  if (stored === "inline" && (record.data?.length ?? 0) > MAX_INLINE_CHARS) {
+    throw Object.assign(new Error("El archivo pesa demasiado para guardarlo aquí."), { status: 400 });
+  }
   await filesCol().doc(id).set(firestoreDoc(record));
   if (input.expenseId) {
     const expense = asExpense(input.expenseId, (await expensesCol().doc(input.expenseId).get()).data());
@@ -571,6 +591,26 @@ export async function saveAttachment(input: {
     createdAt: record.createdAt,
     createdBy: record.createdBy,
   };
+}
+
+export async function saveAttachment(input: {
+  name: string;
+  mime?: string;
+  data: string;
+  expenseId?: string;
+  actorUid: string;
+}): Promise<FinanceAttachment> {
+  if (!input.data.startsWith("data:")) {
+    throw Object.assign(new Error("Archivo inválido."), { status: 400 });
+  }
+  const parsed = parseDataUrl(input.data);
+  return saveAttachmentBuffer({
+    name: input.name,
+    mime: input.mime || parsed.mime,
+    buffer: parsed.buffer,
+    expenseId: input.expenseId,
+    actorUid: input.actorUid,
+  });
 }
 
 export async function readAttachment(id: string): Promise<{

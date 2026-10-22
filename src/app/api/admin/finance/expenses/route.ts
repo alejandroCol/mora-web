@@ -15,8 +15,8 @@ export async function POST(request: Request) {
       attachmentIds?: string[];
       relatedOrderId?: string;
     };
-    await createExpense(body, actor.uid);
-    return Response.json({ ok: true, ...(await financeSnapshot()) });
+    const expense = await createExpense(body, actor.uid);
+    return Response.json({ ok: true, expense, ...(await financeSnapshot()) });
   } catch (error) {
     return jsonError(error);
   }

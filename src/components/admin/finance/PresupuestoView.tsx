@@ -31,7 +31,7 @@ export function PresupuestoView() {
   const [snapshot, setSnapshot] = useState<FinanceSnapshot>(empty);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [adding, setAdding] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const apply = useCallback((data: Partial<FinanceSnapshot> & { ok?: boolean; error?: string }) => {
     if (data.ok === false) throw new Error(data.error || "No se pudo guardar.");
@@ -53,25 +53,18 @@ export function PresupuestoView() {
     async (input: RequestInfo, init?: RequestInit) => {
       const res = await authorizedFetch(input, init);
       const data = (await res.json()) as Partial<FinanceSnapshot> & { ok?: boolean; error?: string };
+      if (!res.ok || data.ok === false) {
+        throw new Error(data.error || "No se pudo guardar.");
+      }
       return apply(data);
     },
     [authorizedFetch, apply],
   );
 
-  async function addEgreso() {
-    setAdding(true);
+  function addEgreso() {
     setError("");
     setTab("gastos");
-    try {
-      await mutate("/api/admin/finance/expenses", {
-        method: "POST",
-        body: JSON.stringify({ category: "other", title: "", amountCop: 0 }),
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo crear el egreso.");
-    } finally {
-      setAdding(false);
-    }
+    setCreateOpen(true);
   }
 
   useEffect(() => {
@@ -103,11 +96,11 @@ export function PresupuestoView() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
-            disabled={adding || loading}
-            onClick={() => void addEgreso()}
+            disabled={loading}
+            onClick={addEgreso}
             className="h-10 rounded-full bg-white px-5 text-[13px] text-[#0e0d14] disabled:opacity-40"
           >
-            {adding ? "Abriendo…" : "Agregar egreso"}
+            Agregar egreso
           </button>
           <nav className="flex flex-wrap gap-1 rounded-full bg-white/6 p-1">
             {TABS.map((item) => (
@@ -136,7 +129,14 @@ export function PresupuestoView() {
           {tab === "resumen" ? (
             <FinanceOverview snapshot={snapshot} mutate={mutate} onOpen={setTab} />
           ) : null}
-          {tab === "gastos" ? <ExpenseLedger snapshot={snapshot} mutate={mutate} /> : null}
+          {tab === "gastos" ? (
+            <ExpenseLedger
+              snapshot={snapshot}
+              mutate={mutate}
+              openCreate={createOpen}
+              onCreateHandled={() => setCreateOpen(false)}
+            />
+          ) : null}
           {tab === "pedido" ? <PurchaseWorkbook snapshot={snapshot} mutate={mutate} /> : null}
           {tab === "prestamos" ? <LoanBook snapshot={snapshot} mutate={mutate} /> : null}
         </div>

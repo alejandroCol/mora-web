@@ -67,7 +67,14 @@ export async function listGallery(
 ): Promise<GalleryImage[]> {
   try {
     const snap = await galleryCol().where("modelId", "==", modelId).get();
+    if (modelId === "aero") {
+      const leftovers = snap.docs.filter((doc) => doc.id.startsWith("default-aero-"));
+      if (leftovers.length) {
+        await Promise.all(leftovers.map((doc) => doc.ref.delete()));
+      }
+    }
     const docs = snap.docs
+      .filter((doc) => !doc.id.startsWith("default-aero-"))
       .map((doc) => asImage(doc.id, doc.data()))
       .filter((item): item is GalleryImage => Boolean(item));
     const hiddenIds = new Set(docs.filter((item) => item.hidden).map((item) => item.id));

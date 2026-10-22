@@ -199,6 +199,7 @@ export function isProductFinish(modelId: ModelId, value: unknown): value is Fini
 }
 
 export function defaultGalleryImages(modelId: ModelId, finishId?: FinishId) {
+  if (modelId === "aero") return [];
   const colors = finishId
     ? products[modelId].finishes.filter((id) => id === finishId)
     : products[modelId].finishes;
@@ -214,7 +215,7 @@ export function defaultGalleryImages(modelId: ModelId, finishId?: FinishId) {
 }
 
 export function defaultGalleryImage(modelId: ModelId) {
-  return defaultGalleryImages(modelId)[0]!;
+  return defaultGalleryImages(modelId)[0];
 }
 
 export function finishLabel(modelId: ModelId, finishId: FinishId) {

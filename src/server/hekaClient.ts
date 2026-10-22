@@ -1,7 +1,19 @@
+import { DOCS } from "@/commerce/paths";
 import { codigoDaneEnviaCiudad } from "@/lib/colombiaGeo";
 import type { ShippingQuoteOption } from "@/commerce/types";
+import { adminDb } from "@/lib/firebaseAdmin";
 
-const HEKA_API = "https://api.hekaentrega.co";
+const HEKA_PROD_API = "https://api.hekaentrega.co";
+const HEKA_DEMO_API = "https://apidev.hekaentrega.co";
+
+type HekaEnv = {
+  sandbox: boolean;
+  base: string;
+  apiKey: string;
+  email: string;
+  password: string;
+  warehouseId: string;
+};
 
 export const HEKA_CARRIER_LABELS: Record<string, string> = {
   coordinadora: "Coordinadora",
@@ -12,6 +24,7 @@ export const HEKA_CARRIER_LABELS: Record<string, string> = {
 
 export const HEKA_STATUS_LABEL: Record<string, string> = {
   preview: "Pedido",
+  created: "Creada",
   generated: "Preparando",
   progress: "En proceso",
   in_office: "En oficina",
@@ -35,24 +48,62 @@ type HekaSession = {
   expiresAt: number;
 };
 
-let sessionCache: HekaSession | null = null;
+let sessionCache: (HekaSession & { sandbox: boolean }) | null = null;
 
-function apiKey() {
-  return process.env.HEKA_API_KEY?.trim() ?? "";
+async function hekaSandboxEnabled() {
+  try {
+    const snap = await adminDb().doc(DOCS.commerce).get();
+    if (!snap.exists) return true;
+    const value = snap.get("hekaSandbox");
+    return value !== false;
+  } catch (error) {
+    console.error("[heka sandbox]", error);
+    return true;
+  }
+}
+
+async function resolveEnv(): Promise<HekaEnv> {
+  const sandbox = await hekaSandboxEnabled();
+  if (sandbox) {
+    return {
+      sandbox: true,
+      base: process.env.HEKA_DEMO_API?.trim() || HEKA_DEMO_API,
+      apiKey: process.env.HEKA_DEMO_API_KEY?.trim() ?? "",
+      email: process.env.HEKA_DEMO_EMAIL?.trim() ?? "",
+      password: process.env.HEKA_DEMO_PASSWORD?.trim() ?? "",
+      warehouseId: process.env.HEKA_DEMO_WAREHOUSE_ID?.trim() ?? "",
+    };
+  }
+  return {
+    sandbox: false,
+    base: process.env.HEKA_API?.trim() || HEKA_PROD_API,
+    apiKey: process.env.HEKA_API_KEY?.trim() ?? "",
+    email: process.env.HEKA_EMAIL?.trim() ?? "",
+    password: process.env.HEKA_PASSWORD?.trim() ?? "",
+    warehouseId: process.env.HEKA_WAREHOUSE_ID?.trim() ?? "",
+  };
 }
 
 export function hekaQuoteConfigured() {
-  return Boolean(apiKey());
+  return Boolean(
+    process.env.HEKA_API_KEY?.trim() || process.env.HEKA_DEMO_API_KEY?.trim(),
+  );
 }
 
-export function hekaGuideConfigured() {
-  return Boolean(apiKey() && process.env.HEKA_EMAIL?.trim() && process.env.HEKA_PASSWORD?.trim());
+export async function hekaGuideConfigured() {
+  const env = await resolveEnv();
+  return Boolean(env.apiKey && env.email && env.password);
+}
+
+export async function hekaPreferredWarehouseId() {
+  return (await resolveEnv()).warehouseId;
 }
 
 async function hekaFetch(
   path: string,
   init: { method?: string; token?: string; body?: unknown; query?: Record<string, string> },
 ): Promise<HekaEnvelope> {
+  const env = await resolveEnv();
   const query = init.query
     ? `?${new URLSearchParams(
         Object.entries(init.query).filter(([, value]) => value !== ""),
@@ -61,8 +112,8 @@ async function hekaFetch(
   const headers: Record<string, string> = { Accept: "application/json" };
   if (init.body !== undefined) headers["Content-Type"] = "application/json";
   if (init.token) headers.Authorization = `Bearer ${init.token}`;
-  else if (apiKey()) headers["Api-Key"] = apiKey();
-  const res = await fetch(`${HEKA_API}${path}${query}`, {
+  else if (env.apiKey) headers["api-key"] = env.apiKey;
+  const res = await fetch(`${env.base}${path}${query}`, {
     method: init.method ?? (init.body !== undefined ? "POST" : "GET"),
     headers,
     body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
@@ -80,6 +131,16 @@ async function hekaFetch(
 
 function envelopeMessage(data: HekaEnvelope) {
   const response = data.response;
+  if (response && typeof response === "object" && "errors" in response) {
+    const errors = (response as { errors?: Array<{ property?: string; message?: string }> }).errors;
+    if (Array.isArray(errors) && errors.length) {
+      const text = errors
+        .map((error) => [error.property, error.message].filter(Boolean).join(": "))
+        .filter(Boolean)
+        .join(". ");
+      if (text) return text;
+    }
+  }
   if (response && typeof response === "object" && "message" in response) {
     const message = (response as { message?: unknown }).message;
     if (typeof message === "string" && message.trim()) return message;
@@ -93,25 +154,29 @@ function ok(data: HekaEnvelope) {
 }
 
 async function login(): Promise<HekaSession> {
-  const email = process.env.HEKA_EMAIL?.trim() ?? "";
-  const password = process.env.HEKA_PASSWORD?.trim() ?? "";
-  if (!apiKey() || !email || !password) {
-    throw new Error("Faltan HEKA_API_KEY, HEKA_EMAIL y HEKA_PASSWORD.");
+  const env = await resolveEnv();
+  if (!env.apiKey || !env.email || !env.password) {
+    throw new Error(
+      env.sandbox
+        ? "Faltan HEKA_DEMO_API_KEY, HEKA_DEMO_EMAIL y HEKA_DEMO_PASSWORD."
+        : "Faltan HEKA_API_KEY, HEKA_EMAIL y HEKA_PASSWORD.",
+    );
   }
-  if (sessionCache && sessionCache.expiresAt > Date.now()) return sessionCache;
+  if (sessionCache && sessionCache.sandbox === env.sandbox && sessionCache.expiresAt > Date.now()) {
+    return sessionCache;
+  }
 
   const headers = {
     Accept: "application/json",
     "Content-Type": "application/json",
-    "Api-Key": apiKey(),
+    "api-key": env.apiKey,
   };
   const attempts = [
-    { path: "/api/v1/ecommerce/session", body: { email, password } },
-    { path: "/api/v1/user/login", body: { email, password, channel: "hekaentrega" } },
+    { path: "/api/v1/user/login", body: { email: env.email, password: env.password, channel: "hekaentrega" } },
   ];
   let last = "No se pudo entrar a Heka.";
   for (const attempt of attempts) {
-    const res = await fetch(`${HEKA_API}${attempt.path}`, {
+    const res = await fetch(`${env.base}${attempt.path}`, {
       method: "POST",
       headers,
       body: JSON.stringify(attempt.body),
@@ -133,7 +198,7 @@ async function login(): Promise<HekaSession> {
       last = "Heka entró sin token de vendedor.";
       continue;
     }
-    sessionCache = { token, userId, expiresAt: Date.now() + 25 * 60 * 1000 };
+    sessionCache = { token, userId, sandbox: env.sandbox, expiresAt: Date.now() + 25 * 60 * 1000 };
     return sessionCache;
   }
   throw new Error(last);
@@ -155,6 +220,7 @@ type QuoteRow = {
 export async function quoteHeka(input: {
   originDepartamento: string;
   originCiudad: string;
+  cityOriginDane?: string;
   departamento: string;
   ciudad: string;
   declaredValue: number;
@@ -163,12 +229,14 @@ export async function quoteHeka(input: {
   longCm: number;
   widthCm: number;
 }): Promise<ShippingQuoteOption[]> {
-  const cityOrigin = codigoDaneEnviaCiudad(input.originDepartamento, input.originCiudad);
+  const cityOrigin =
+    input.cityOriginDane?.trim() ||
+    codigoDaneEnviaCiudad(input.originDepartamento, input.originCiudad);
   const cityDestination = codigoDaneEnviaCiudad(input.departamento, input.ciudad);
   if (!cityOrigin || !cityDestination) return [];
 
   let token: string | undefined;
-  if (hekaGuideConfigured()) {
+  if (await hekaGuideConfigured()) {
     try {
       token = (await login()).token;
     } catch (error) {
@@ -212,7 +280,13 @@ export async function quoteHeka(input: {
     .sort((a, b) => a.totalPriceCop - b.totalPriceCop);
 }
 
-export type HekaWarehouse = { id: string; name: string };
+export type HekaWarehouse = {
+  id: string;
+  name: string;
+  dane: string;
+  city: string;
+  departamento: string;
+};
 
 export async function listHekaWarehouses(): Promise<HekaWarehouse[]> {
   const session = await login();
@@ -223,11 +297,22 @@ export async function listHekaWarehouses(): Promise<HekaWarehouse[]> {
   });
   if (!ok(data)) throw new Error(envelopeMessage(data));
   const response = data.response as {
-    rows?: Array<{ _id?: string; name?: string; status?: string }>;
+    rows?: Array<{
+      _id?: string;
+      name?: string;
+      status?: string;
+      city?: { label?: string; dane?: string; state?: { label?: string } };
+    }>;
   } | undefined;
   return (response?.rows ?? [])
     .filter((row) => row._id && row.status !== "disabled" && row.status !== "locked")
-    .map((row) => ({ id: String(row._id), name: row.name?.trim() || "Bodega" }));
+    .map((row) => ({
+      id: String(row._id),
+      name: row.name?.trim() || "Bodega",
+      dane: String(row.city?.dane ?? "").trim(),
+      city: row.city?.label?.trim() || "",
+      departamento: row.city?.state?.label?.trim() || "",
+    }));
 }
 
 export type HekaGuide = {
@@ -237,10 +322,22 @@ export type HekaGuide = {
 };
 
 function readGuide(raw: unknown): HekaGuide | null {
+  if (typeof raw === "string") {
+    const number = raw.trim();
+    if (!number || number.length > 40) return null;
+    return { id: "", number, status: "created" };
+  }
   if (!raw || typeof raw !== "object") return null;
   const guide = raw as Record<string, unknown>;
   const id = String(guide._id ?? guide.id ?? "").trim();
-  const number = String(guide.guide_number ?? guide.numeroGuia ?? guide.number ?? "").trim();
+  const guideField = guide.guide;
+  const number = String(
+    guide.guide_number ??
+      (typeof guideField === "string" ? guideField : "") ??
+      guide.numeroGuia ??
+      guide.number ??
+      "",
+  ).trim();
   const status = String(guide.status ?? "").trim();
   if (!id && !number) return null;
   return { id, number, status };
@@ -254,11 +351,30 @@ export async function createHekaGuide(body: Record<string, unknown>): Promise<He
   });
   if (!ok(data)) throw new Error(envelopeMessage(data));
   const response = (data.response ?? {}) as { guide?: unknown; message?: string };
-  const guide = readGuide(response.guide);
+  let guide = readGuide(response);
+  if (!guide?.number) {
+    const nested = readGuide(response.guide);
+    if (nested) guide = { ...nested, id: nested.id || guide?.id || "" };
+  }
   if (!guide?.number) {
     throw new Error(response.message || "Heka no devolvió el número de guía.");
   }
   return guide;
+}
+
+export async function fetchHekaSticker(guideId: string): Promise<Buffer> {
+  const session = await login();
+  const data = await hekaFetch("/api/v1/documents/sticker", {
+    token: session.token,
+    query: { type: "guide" },
+    body: { guides: [guideId] },
+  });
+  if (!ok(data)) throw new Error(envelopeMessage(data));
+  const pdf = data.response;
+  if (typeof pdf !== "string" || pdf.length < 100) {
+    throw new Error("Heka no devolvió el PDF de la guía.");
+  }
+  return Buffer.from(pdf, "base64");
 }
 
 export async function processHekaGuide(guideId: string) {

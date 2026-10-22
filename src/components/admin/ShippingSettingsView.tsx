@@ -123,6 +123,24 @@ export function ShippingSettingsView() {
         ))}
       </div>
 
+      <label className="mt-6 flex items-start gap-3 rounded-2xl bg-white/[0.05] px-4 py-3 text-sm text-white/80">
+        <input
+          type="checkbox"
+          className="mt-1"
+          checked={!current.hekaSandbox}
+          onChange={(event) =>
+            void persist({ ...current, hekaSandbox: !event.target.checked })
+          }
+        />
+        <span>
+          Usar Heka de producción
+          <span className="mt-1 block text-[12px] leading-5 text-white/45">
+            Apagado: ambiente demo, sin cobrar la billetera real. Encendido: guías y cotización de
+            producción.
+          </span>
+        </span>
+      </label>
+
       <label className="mt-6 flex items-center gap-2 text-sm text-white/70">
         <input
           type="checkbox"

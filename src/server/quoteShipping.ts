@@ -8,7 +8,7 @@ import {
   selectQuoteOption,
   type EnviaPackage,
 } from "./enviaClient";
-import { hekaQuoteConfigured, quoteHeka } from "./hekaClient";
+import { hekaPreferredWarehouseId, hekaQuoteConfigured, listHekaWarehouses, quoteHeka } from "./hekaClient";
 
 const DEFAULT_PACKAGE = {
   pesoKg: 0.35,
@@ -27,6 +27,7 @@ export const DEFAULT_SETTINGS: CommerceSettings = {
   },
   package: DEFAULT_PACKAGE,
   quoteAutomatic: true,
+  hekaSandbox: true,
   fallbackShippingCop: 16000,
   cityRates: [],
   updatedAt: 0,
@@ -145,11 +146,19 @@ export async function quoteShipping(input: QuoteInput): Promise<QuoteResult> {
   const originReady = Boolean(
     settings.origin.departamento.trim() && settings.origin.ciudad.trim(),
   );
-  if (hekaQuoteConfigured() && originReady && settings.quoteAutomatic) {
+  let cityOriginDane = "";
+  if (settings.hekaSandbox && settings.quoteAutomatic) {
+    const warehouses = await listHekaWarehouses().catch(() => []);
+    const preferred = await hekaPreferredWarehouseId();
+    const warehouse = warehouses.find((row) => row.id === preferred) ?? warehouses[0];
+    cityOriginDane = warehouse?.dane ?? "";
+  }
+  if (hekaQuoteConfigured() && (originReady || cityOriginDane) && settings.quoteAutomatic) {
     const piezas = Math.max(1, input.piezas);
     const hekaKey = [
       "heka",
-      settings.origin.ciudad,
+      settings.hekaSandbox ? "demo" : "prod",
+      cityOriginDane || settings.origin.ciudad,
       input.ciudad,
       input.departamento,
       Math.round(input.subtotal),
@@ -161,6 +170,7 @@ export async function quoteShipping(input: QuoteInput): Promise<QuoteResult> {
     const opciones = await quoteHeka({
       originDepartamento: settings.origin.departamento,
       originCiudad: settings.origin.ciudad,
+      cityOriginDane,
       departamento: input.departamento,
       ciudad: input.ciudad,
       declaredValue: Math.max(0, Math.round(input.subtotal)),

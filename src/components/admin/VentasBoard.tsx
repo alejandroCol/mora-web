@@ -7,7 +7,7 @@ import {
   ORDER_STATUS_LABEL,
   PAYMENT_METHOD_LABEL,
 } from "@/commerce/labels";
-import type { MoraOrder, OrderStatus } from "@/commerce/types";
+import type { CommerceSettings, MoraOrder, OrderStatus } from "@/commerce/types";
 import { commerceLineLabel, orderNeedsSize } from "@/commerce/sizing";
 import { formatMoney } from "@/lib/catalog";
 import { useAdminAuth } from "./AdminAuth";
@@ -49,6 +49,8 @@ export function VentasBoard() {
   const [tracking, setTracking] = useState("");
   const [busy, setBusy] = useState(false);
   const [hekaError, setHekaError] = useState("");
+  const [sandbox, setSandbox] = useState(true);
+  const [settings, setSettings] = useState<CommerceSettings | null>(null);
 
   const load = useCallback(async () => {
     const res = await authorizedFetch("/api/admin/orders");
@@ -58,7 +60,47 @@ export function VentasBoard() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void authorizedFetch("/api/admin/settings")
+      .then((res) => res.json())
+      .then((data: { ok?: boolean; settings?: CommerceSettings }) => {
+        if (data.ok && data.settings) {
+          setSettings(data.settings);
+          setSandbox(data.settings.hekaSandbox !== false);
+        }
+      })
+      .catch(() => undefined);
+  }, [authorizedFetch, load]);
+
+  async function setProduction(on: boolean) {
+    if (!settings) return;
+    const next = { ...settings, hekaSandbox: !on };
+    setSettings(next);
+    setSandbox(next.hekaSandbox);
+    await authorizedFetch("/api/admin/settings", {
+      method: "PUT",
+      body: JSON.stringify(next),
+    });
+  }
+
+  async function viewGuide(order: MoraOrder) {
+    setBusy(true);
+    setHekaError("");
+    try {
+      const res = await authorizedFetch(`/api/admin/orders/${order.id}/heka/label`);
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || "No se pudo abrir la guía.");
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, "_blank", "noopener");
+      window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (error) {
+      setHekaError(error instanceof Error ? error.message : "No se pudo abrir la guía.");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const stats = useMemo(() => {
     const paid = orders.filter((o) => o.status === "paid").length;
@@ -170,6 +212,28 @@ export function VentasBoard() {
         </div>
       </header>
 
+      {settings ? (
+        <label className="flex items-start gap-3 rounded-2xl bg-white/[0.05] px-4 py-3 text-sm text-white/80">
+          <input
+            type="checkbox"
+            className="mt-1"
+            checked={!sandbox}
+            onChange={(event) => void setProduction(event.target.checked)}
+          />
+          <span>
+            Usar Heka de producción
+            <span className="mt-1 block text-[12px] leading-5 text-white/45">
+              {sandbox
+                ? "Ahora las guías salen en el ambiente demo."
+                : "Ahora las guías salen en producción y descuentan la billetera."}
+            </span>
+          </span>
+        </label>
+      ) : null}
+      {hekaError ? (
+        <p className="rounded-2xl bg-red-50 px-4 py-3 text-[13px] leading-5 text-red-900">{hekaError}</p>
+      ) : null}
+
       <div className="ventas-kpis">
         <Kpi label="Por despachar" value={String(stats.paid)} hint="Pagados sin salir" />
         <Kpi label="En camino" value={String(stats.transit)} hint="Con guía o en ruta" />
@@ -235,10 +299,14 @@ export function VentasBoard() {
                         key={order.id}
                         order={order}
                         action={column.action}
+                        busy={busy}
                         onOpen={() => {
                           setSelected(order);
                           setTracking(order.shipping.trackingNumber ?? "");
+                          setHekaError("");
                         }}
+                        onCreate={() => void runHeka(order, "create")}
+                        onView={() => void viewGuide(order)}
                       />
                     ))
                   )}
@@ -258,10 +326,14 @@ export function VentasBoard() {
               <OrderCard
                 key={order.id}
                 order={order}
+                busy={busy}
                 onOpen={() => {
                   setSelected(order);
                   setTracking(order.shipping.trackingNumber ?? "");
+                  setHekaError("");
                 }}
+                onCreate={() => void runHeka(order, "create")}
+                onView={() => void viewGuide(order)}
               />
             ))
           )}
@@ -278,6 +350,7 @@ export function VentasBoard() {
           onClose={() => setSelected(null)}
           onStatus={(status) => void changeStatus(selectedFresh, status)}
           onHeka={(action) => void runHeka(selectedFresh, action)}
+          onView={() => void viewGuide(selectedFresh)}
         />
       ) : null}
 
@@ -315,18 +388,25 @@ function Kpi({
 function OrderCard({
   order,
   action,
+  busy,
   onOpen,
+  onCreate,
+  onView,
 }: {
   order: MoraOrder;
   action?: string;
+  busy: boolean;
   onOpen: () => void;
+  onCreate: () => void;
+  onView: () => void;
 }) {
   const pendingSize = order.status === "paid" && orderNeedsSize(order.items);
+  const canCreate = order.status === "paid" && !order.shipping.hekaGuideId && !pendingSize;
+  const canView = Boolean(order.shipping.hekaGuideId);
   return (
-    <li>
-      <button type="button" onClick={onOpen} className="ventas-row w-full text-left">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="min-w-0">
+    <li className="ventas-row">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
             <p className="font-medium tracking-[0.02em]">{order.orderNumber}</p>
             <p className="mt-1 text-[14px]">
               {order.customer.firstName} {order.customer.lastName}
@@ -351,7 +431,7 @@ function OrderCard({
                 </>
               ) : null}
             </p>
-          </div>
+        </button>
           <div className="text-right">
             <p className="text-[15px] font-medium">{formatMoney(order.totals.total)}</p>
             {action ? (
@@ -363,9 +443,28 @@ function OrderCard({
                 {ORDER_STATUS_LABEL[order.status]}
               </p>
             )}
+            {canCreate ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onCreate}
+                className="mt-3 h-9 rounded-full bg-[#1d1d1f] px-4 text-[12px] text-white disabled:opacity-40"
+              >
+                Crear guía
+              </button>
+            ) : null}
+            {canView ? (
+              <button
+                type="button"
+                disabled={busy}
+                onClick={onView}
+                className="mt-3 h-9 rounded-full bg-[var(--admin-field)] px-4 text-[12px] disabled:opacity-40"
+              >
+                Ver guía
+              </button>
+            ) : null}
           </div>
         </div>
-      </button>
     </li>
   );
 }
@@ -379,6 +478,7 @@ function OrderDrawer({
   onClose,
   onStatus,
   onHeka,
+  onView,
 }: {
   order: MoraOrder;
   tracking: string;
@@ -388,6 +488,7 @@ function OrderDrawer({
   onClose: () => void;
   onStatus: (status: OrderStatus) => void;
   onHeka: (action: "create" | "refresh") => void;
+  onView: () => void;
 }) {
   const pendingSize = order.status === "paid" && orderNeedsSize(order.items);
   const phone = order.customer.phone.replace(/\D/g, "");
@@ -454,11 +555,21 @@ function OrderDrawer({
           </ul>
         ) : null}
 
-        {order.shipping.hekaStatusLabel ? (
+        {order.shipping.hekaStatusLabel || order.shipping.trackingNumber ? (
           <p className="mt-4 text-[13px] text-[var(--admin-muted)]">
-            Heka · {order.shipping.hekaStatusLabel}
+            Heka · {order.shipping.hekaStatusLabel || "Guía creada"}
             {order.shipping.trackingNumber ? ` · guía ${order.shipping.trackingNumber}` : ""}
           </p>
+        ) : null}
+        {order.shipping.hekaGuideId ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onView}
+            className="mt-3 h-11 w-full rounded-full bg-[var(--admin-field)] text-[13px] disabled:opacity-40"
+          >
+            Ver guía
+          </button>
         ) : null}
         {hekaError ? (
           <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-[13px] leading-5 text-red-900">

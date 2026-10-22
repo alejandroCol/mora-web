@@ -213,6 +213,8 @@ export type CommerceSettings = {
     altoCm: number;
   };
   quoteAutomatic: boolean;
+  /** true = apidev.hekaentrega.co. false = producción. */
+  hekaSandbox: boolean;
   favoriteCarrier?: string;
   freeShippingFromCop?: number;
   fallbackShippingCop: number;

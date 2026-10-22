@@ -112,6 +112,30 @@ env:
     secret: HEKA_WAREHOUSE_ID
     availability:
       - RUNTIME
+  - variable: HEKA_API
+    value: https://api.hekaentrega.co
+    availability:
+      - RUNTIME
+  - variable: HEKA_DEMO_API
+    value: https://apidev.hekaentrega.co
+    availability:
+      - RUNTIME
+  - variable: HEKA_DEMO_API_KEY
+    secret: HEKA_DEMO_API_KEY
+    availability:
+      - RUNTIME
+  - variable: HEKA_DEMO_EMAIL
+    secret: HEKA_DEMO_EMAIL
+    availability:
+      - RUNTIME
+  - variable: HEKA_DEMO_PASSWORD
+    secret: HEKA_DEMO_PASSWORD
+    availability:
+      - RUNTIME
+  - variable: HEKA_DEMO_WAREHOUSE_ID
+    secret: HEKA_DEMO_WAREHOUSE_ID
+    availability:
+      - RUNTIME
   # MATIAS (factura electrónica). Email/password/resolución van como secrets
   # cuando lleguen las credenciales. Sin ellos la venta se cobra y no se factura.
   - variable: MATIAS_API_BASE_URL

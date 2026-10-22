@@ -4,6 +4,7 @@ import { orderNeedsSize } from "@/commerce/sizing";
 import {
   createHekaGuide,
   hekaGuideConfigured,
+  hekaPreferredWarehouseId,
   hekaStatusLabel,
   listHekaWarehouses,
   processHekaGuide,
@@ -30,8 +31,8 @@ function packageOf(order: MoraOrder, settings: Awaited<ReturnType<typeof loadCom
 }
 
 export async function dispatchOrderWithHeka(orderId: string, by: string) {
-  if (!hekaGuideConfigured()) {
-    throw new Error("Faltan HEKA_API_KEY, HEKA_EMAIL y HEKA_PASSWORD.");
+  if (!(await hekaGuideConfigured())) {
+    throw new Error("Faltan las credenciales de Heka para este entorno.");
   }
   const order = await getOrder(orderId);
   if (!order) throw new Error("Pedido no encontrado.");
@@ -51,10 +52,9 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
   }
 
   const settings = await loadCommerceSettings();
-  const originDane = codigoDaneEnviaCiudad(settings.origin.departamento, settings.origin.ciudad);
   const destinationDane = codigoDaneEnviaCiudad(order.shipping.departamento, order.shipping.ciudad);
-  if (!originDane || !destinationDane) {
-    throw new Error("No encontramos el código de la ciudad de origen o de destino.");
+  if (!destinationDane) {
+    throw new Error("No encontramos el código de la ciudad de destino.");
   }
 
   let guideId = order.shipping.hekaGuideId?.trim() ?? "";
@@ -63,7 +63,7 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
 
   if (!guideId) {
     const warehouses = await listHekaWarehouses();
-    const preferred = process.env.HEKA_WAREHOUSE_ID?.trim();
+    const preferred = await hekaPreferredWarehouseId();
     const warehouse = warehouses.find((row) => row.id === preferred) ?? warehouses[0];
     if (!warehouse) {
       throw new Error(
@@ -71,11 +71,18 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
       );
     }
 
+    const originDane =
+      warehouse.dane || codigoDaneEnviaCiudad(settings.origin.departamento, settings.origin.ciudad);
+    if (!originDane) {
+      throw new Error("La bodega de Heka no tiene ciudad de origen.");
+    }
+
     const pack = packageOf(order, settings);
     const declared = Math.max(25000, Math.round(order.totals.subtotal));
     const opciones = await quoteHeka({
-      originDepartamento: settings.origin.departamento,
-      originCiudad: settings.origin.ciudad,
+      originDepartamento: warehouse.departamento || settings.origin.departamento,
+      originCiudad: warehouse.city || settings.origin.ciudad,
+      cityOriginDane: originDane,
       departamento: order.shipping.departamento,
       ciudad: order.shipping.ciudad,
       declaredValue: declared,
@@ -96,7 +103,6 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
       city_origin: originDane,
       city_destination: destinationDane,
       type_payment: 3,
-      total: chosen.totalPriceCop,
       declared_value: declared,
       weight: pack.weightKg,
       height: pack.heightCm,
@@ -108,12 +114,11 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
       quantity: 1,
       note: order.orderNumber,
       product: "Anillo Mora",
-      extra_info: extra || "Anillo",
+      extra_info_product: extra || "Anillo",
       warehouse: warehouse.id,
       version: "1",
       in_order_form: false,
       collection_request: chosen.carrier === "tcc",
-      inventory_allowed: false,
       client: {
         name: `${order.customer.firstName} ${order.customer.lastName}`.trim(),
         address: order.shipping.direccion.trim(),
@@ -170,8 +175,8 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
 }
 
 export async function refreshOrderHeka(orderId: string, by: string) {
-  if (!hekaGuideConfigured()) {
-    throw new Error("Faltan HEKA_API_KEY, HEKA_EMAIL y HEKA_PASSWORD.");
+  if (!(await hekaGuideConfigured())) {
+    throw new Error("Faltan las credenciales de Heka para este entorno.");
   }
   const order = await getOrder(orderId);
   if (!order) throw new Error("Pedido no encontrado.");

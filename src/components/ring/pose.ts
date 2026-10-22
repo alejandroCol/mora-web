@@ -5,10 +5,10 @@ export const RING_POSE = {
   floatSpeed: 0.55,
 };
 
-/** Detalle: quieto, inclinado, solo flota. */
+/** Detalle: de pie, solo flota. */
 export const DETAIL_POSE = {
-  rotation: [-1.18, 0.82, 0.24] as [number, number, number],
+  rotation: [-0.52, 0.35, 0.08] as [number, number, number],
   spin: 0,
-  float: 0.062,
-  floatSpeed: 1.15,
+  float: 0.055,
+  floatSpeed: 1.05,
 };

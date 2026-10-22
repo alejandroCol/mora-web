@@ -776,9 +776,13 @@ body {
 }
 
 .world-light .world-kicker,
-.world-light .world-promise,
+.world-light .world-finishes-label,
 .world-light .world-price {
   color: rgba(29, 29, 31, 0.62);
+}
+
+.world-light .world-dot {
+  box-shadow: 0 0 0 1px rgba(29, 29, 31, 0.22);
 }
 
 .world-light .world-price {
@@ -811,12 +815,31 @@ body {
   line-height: 0.86;
 }
 
-.world-promise {
+.world-finishes {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-top: 0.85rem;
-  max-width: 16ch;
-  font-size: 15px;
-  line-height: 1.4;
-  color: rgba(255, 255, 255, 0.78);
+}
+
+.world-finishes-label {
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.world-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.world-dot {
+  display: block;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.42);
 }
 
 .world-dock {

@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import {
   catalog,
+  finishLabel,
+  finishes,
   formatMoney,
   productPath,
   type ModelId,
@@ -14,8 +16,8 @@ import { useMoraStore } from "@/lib/store";
 const LOOK: Record<ModelId, { src: string; focus: string; alt: string }> = {
   aero: {
     src: "/lifestyle/pro-home.jpg",
-    focus: "58% 54%",
-    alt: "Mora Pro en cerámica lila, sobre pedestal blanco.",
+    focus: "50% 58%",
+    alt: "Mora Pro sobre piedra clara.",
   },
   titan: {
     src: "/lifestyle/ultra.jpg",
@@ -96,7 +98,21 @@ export function Atelier() {
               <div className="world-copy">
                 <p className="world-kicker">{item.line}</p>
                 <h3 className="world-name">{item.name}</h3>
-                <p className="world-promise">{item.promise}</p>
+                <p className="world-finishes">
+                  <span className="world-finishes-label">Disponible en</span>
+                  <span className="world-dots" aria-hidden>
+                    {item.finishes.map((id) => (
+                      <span
+                        key={id}
+                        className="world-dot"
+                        style={{ background: finishes[id].swatch }}
+                      />
+                    ))}
+                  </span>
+                  <span className="sr-only">
+                    {item.finishes.map((id) => finishLabel(item.id, id)).join(", ")}
+                  </span>
+                </p>
                 <div className="world-dock">
                   <span className="world-price">{formatMoney(item.price)}</span>
                   <span className="elegir-cta">

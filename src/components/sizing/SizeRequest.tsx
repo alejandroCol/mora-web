@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { type FormEvent, Suspense, useEffect, useState } from "react";
 import { orderNeedsSize, sizeCopy } from "@/commerce/sizing";
 import type { OrderStatus } from "@/commerce/types";
-import { PRESALE } from "@/lib/presale";
+import { useSales } from "@/components/sales/SalesProvider";
 import { products } from "@/lib/catalog";
 
 type PublicItem = {
@@ -32,6 +32,7 @@ async function fetchOrder(n: string) {
 }
 
 export function SizeRequest({ initial }: { initial?: string }) {
+  const sales = useSales();
   const [value, setValue] = useState(initial ?? "");
   const [order, setOrder] = useState<PublicOrder | null>(null);
   const [picks, setPicks] = useState<number[]>([]);
@@ -107,7 +108,7 @@ export function SizeRequest({ initial }: { initial?: string }) {
 
   return (
     <div className="mx-auto max-w-lg">
-      <p className="presale-seal">{PRESALE.label}</p>
+      {sales.mode === "presale" ? <p className="presale-seal">{sales.label}</p> : null}
       <h1 className="title-whisper mt-5 text-[clamp(2rem,7vw,3.1rem)] leading-[1.08] text-ink">
         Tu talla.
       </h1>
@@ -150,7 +151,7 @@ export function SizeRequest({ initial }: { initial?: string }) {
           <p className="kicker">{order.orderNumber}</p>
           {done || (!pending && !locked) ? (
             <p className="title-whisper mt-3 text-[1.35rem] text-ink">
-              Talla lista. {PRESALE.promise}
+              Talla lista. {sales.promise}
             </p>
           ) : locked ? (
             <p className="mt-3 text-[15px] leading-7 text-soft">

@@ -33,9 +33,11 @@ export {
   integritySignature,
   newBoldReference,
   requestOrigin,
+  resolveBoldEnvironment,
 } from "./bold";
 export {
   addiIsConfigured,
   addiPublicConfig,
   addiWebhookHeaders,
+  resolveAddiEnvironment,
 } from "./addi";

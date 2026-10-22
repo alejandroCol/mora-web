@@ -7,8 +7,8 @@ import {
   products,
   resolveProductSlug,
 } from "@/lib/catalog";
-import { PRESALE } from "@/lib/presale";
 import { getProductDescriptions } from "@/server/productCopy";
+import { getSalesPresentation } from "@/server/salesPolicy";
 
 export function generateStaticParams() {
   return catalog.map((item) => ({ slug: item.slug }));
@@ -23,13 +23,17 @@ export async function generateMetadata({
   const modelId = resolveProductSlug(slug);
   if (!modelId) return { title: "Anillo" };
   const model = products[modelId];
+  const sales = await getSalesPresentation();
+  const delivery = sales.deliveryFull
+    ? `Preventa: entrega el ${sales.deliveryFull}.`
+    : sales.promise;
   return {
     title: `Mora ${model.name}`,
-    description: `${model.promise} ${model.material}. Preventa: entrega el ${PRESALE.deliveryFull}. Desde ${formatMoney(model.price)}.`,
+    description: `${model.promise} ${model.material}. ${delivery} Desde ${formatMoney(model.price)}.`,
     alternates: { canonical: productPath(modelId) },
     openGraph: {
       title: `Mora ${model.name}`,
-      description: `${model.promise} ${PRESALE.promise}`,
+      description: `${model.promise} ${sales.promise}`,
     },
   };
 }

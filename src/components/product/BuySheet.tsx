@@ -9,8 +9,8 @@ import {
   resolveFinish,
   type ModelId,
 } from "@/lib/catalog";
-import { PRESALE } from "@/lib/presale";
 import { track } from "@/growth/track";
+import { useSales } from "@/components/sales/SalesProvider";
 import { insightProductCart } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
 import { AddiWidget } from "@/components/payments/AddiWidget";
@@ -24,6 +24,7 @@ export function BuySheet({
   description: string;
 }) {
   const router = useRouter();
+  const sales = useSales();
   const { selection, setFinish, setSize, setSizing, addSelectionToCart, closeCart } =
     useMoraStore();
   const model = products[modelId];
@@ -40,7 +41,7 @@ export function BuySheet({
       return;
     }
     if (sizing === "self" && !model.sizes.includes(selection.size)) {
-      setNeed("Elige tu talla para reservar.");
+      setNeed(sales.needSize);
       return;
     }
     setNeed("");
@@ -61,9 +62,9 @@ export function BuySheet({
   const hint =
     need ||
     (sizing === "kit"
-      ? "Reservar con medidor. Confirmas la talla después."
+      ? sales.kitHint
       : sizing === "self"
-        ? `Se entrega el ${PRESALE.deliveryLabel}.`
+        ? sales.deliveryHint
         : "");
 
   return (
@@ -156,7 +157,7 @@ export function BuySheet({
           onClick={add}
           className="flex h-11 w-full items-center justify-center rounded-full bg-[#1d1d1f] text-[17px] tracking-[-0.022em] text-white transition-colors hover:bg-[#3a3a3c]"
         >
-          Reservar {model.name}
+          {sales.cta} {model.name}
         </button>
         {hint ? (
           <p className="mt-2 text-center text-[11px] leading-4 text-soft">{hint}</p>

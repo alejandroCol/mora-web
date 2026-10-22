@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
-import { PRESALE } from "@/lib/presale";
+import { useSales } from "@/components/sales/SalesProvider";
 import type { PaymentIntentStatus, PaymentProvider } from "@/payments/types";
 import { PurchaseSeal } from "./PurchaseSeal";
 
@@ -25,10 +25,14 @@ function destination(intent: IntentView) {
   return "/pedido";
 }
 
-function copyFor(status: PaymentIntentStatus | "waiting", provider?: PaymentProvider) {
+function copyFor(
+  status: PaymentIntentStatus | "waiting",
+  promise: string,
+  provider?: PaymentProvider,
+) {
   switch (status) {
     case "approved":
-      return { title: "Ya es tuyo.", detail: PRESALE.promise };
+      return { title: "Ya es tuyo.", detail: promise };
     case "declined":
       return {
         title: provider === "addi" ? "Addi no aprobó las cuotas" : "Pago rechazado",
@@ -55,6 +59,7 @@ function copyFor(status: PaymentIntentStatus | "waiting", provider?: PaymentProv
 }
 
 function PaymentReturnInner() {
+  const sales = useSales();
   const params = useSearchParams();
   const demo = params.get("demo") === "seal";
   const reference =
@@ -148,7 +153,7 @@ function PaymentReturnInner() {
     };
   }, [reference, demo]);
 
-  const copy = copyFor(status, intent?.provider);
+  const copy = copyFor(status, sales.promise, intent?.provider);
   const orderNumber = intent?.metadata.orderNumber;
   const href = intent ? destination(intent) : "/pedido";
   const failed =

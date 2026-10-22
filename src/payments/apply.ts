@@ -24,10 +24,10 @@ import {
   verifyAddiCallback,
 } from "./addi";
 import {
-  boldEnvironment,
   boldIsConfigured,
   fetchBoldVoucher,
   newBoldReference,
+  resolveBoldEnvironment,
   toCheckoutSession,
   verifyWebhookSignature,
 } from "./bold";
@@ -88,7 +88,8 @@ export async function recreateAddiSession(input: {
 export async function createBoldSession(
   input: CreateBoldSessionInput & { origin: string },
 ) {
-  if (!boldIsConfigured()) {
+  const environment = await resolveBoldEnvironment();
+  if (!boldIsConfigured(environment)) {
     throw new Error("Bold aún no está configurado.");
   }
   const reference = input.reference?.trim() || newBoldReference();
@@ -101,14 +102,15 @@ export async function createBoldSession(
     customerEmail: input.customer?.email,
     expiresAt: input.expiresAt,
   });
-  return toCheckoutSession({ ...input, reference });
+  return toCheckoutSession({ ...input, reference, environment });
 }
 
 export async function recreateBoldSession(
   previousReference: string,
   input: CreateBoldSessionInput & { origin: string },
 ) {
-  if (!boldIsConfigured()) {
+  const environment = await resolveBoldEnvironment();
+  if (!boldIsConfigured(environment)) {
     throw new Error("Bold aún no está configurado.");
   }
   const previous = await getPaymentIntent(previousReference);
@@ -125,7 +127,7 @@ export async function recreateBoldSession(
     customerEmail: input.customer?.email,
     expiresAt: input.expiresAt,
   });
-  return toCheckoutSession({ ...input, reference });
+  return toCheckoutSession({ ...input, reference, environment });
 }
 
 export async function applyBoldVoucher(input: {
@@ -170,7 +172,8 @@ export async function applyBoldVoucher(input: {
 }
 
 export async function syncBoldReference(reference: string) {
-  const voucher = await fetchBoldVoucher(reference);
+  const environment = await resolveBoldEnvironment();
+  const voucher = await fetchBoldVoucher(reference, environment);
   const status = voucher.payment_status ?? "NO_TRANSACTION_FOUND";
   if (status === "NO_TRANSACTION_FOUND") {
     const intent = await getPaymentIntent(reference);
@@ -190,7 +193,7 @@ export async function handleBoldEvent(
   request: Request,
   options: { environment?: BoldEnvironment } = {},
 ) {
-  const environment = options.environment ?? boldEnvironment();
+  const environment = options.environment ?? (await resolveBoldEnvironment());
   const raw = await request.text();
   const signature = request.headers.get("x-bold-signature");
   if (!verifyWebhookSignature(raw, signature, environment)) {

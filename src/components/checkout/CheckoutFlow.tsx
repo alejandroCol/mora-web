@@ -12,7 +12,7 @@ import { cartCount, discountOf, subtotalOf } from "@/commerce/cartMath";
 import type { CartLine, ShippingQuoteOption } from "@/commerce/types";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
 import { formatMoney, products } from "@/lib/catalog";
-import { PRESALE } from "@/lib/presale";
+import { useSales } from "@/components/sales/SalesProvider";
 import { useMoraStore } from "@/lib/store";
 import type { AddiCheckoutSession, BoldCheckoutSession, CheckoutPayMethod } from "@/payments/types";
 import { addiAmountAllowed } from "@/payments/public";
@@ -73,6 +73,7 @@ type AppliedOffer = {
 };
 
 export function CheckoutFlow() {
+  const sales = useSales();
   const {
     cart,
     draft,
@@ -468,7 +469,7 @@ export function CheckoutFlow() {
       <div className="check-card px-6 py-10 text-center sm:px-10">
         <h1 className="title-name text-[2rem] text-[#1d1d1f]">Tu bolsa está vacía</h1>
         <p className="mt-3 text-[15px] leading-6 text-[#6e6e73]">
-          Elige Pro o Ultra para reservar.
+          {sales.emptyCart}
         </p>
         <Link href="/#coleccion" className="elegir-cta mt-8 inline-flex">
           Elegir un anillo
@@ -770,10 +771,7 @@ export function CheckoutFlow() {
                   </div>
                 ) : null}
                 <p className="mt-4 text-[12px] leading-5 text-[#6e6e73]">
-                  {payMethod === "addi" && addiReady
-                    ? "Te llevamos a Addi para aprobar las cuotas. Entrega el "
-                    : "Tarjeta, Nequi, PSE o Bancolombia. Entrega el "}
-                  {PRESALE.deliveryLabel}.
+                  {payMethod === "addi" && addiReady ? sales.payNoteAddi : sales.payNote}
                 </p>
               </div>
             </div>
@@ -795,9 +793,9 @@ export function CheckoutFlow() {
             offerCode={appliedOffer?.code}
             total={shownTotal}
           />
-          <p className="mt-3 text-[12px] leading-5 text-[#6e6e73]">
-            Entrega el {PRESALE.deliveryLabel}
-          </p>
+          {sales.orderNote ? (
+            <p className="mt-3 text-[12px] leading-5 text-[#6e6e73]">{sales.orderNote}</p>
+          ) : null}
         </aside>
       </div>
 

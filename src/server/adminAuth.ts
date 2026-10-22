@@ -2,6 +2,7 @@ import type { DocumentData } from "firebase-admin/firestore";
 import { COLLECTIONS } from "@/commerce/paths";
 import {
   canAssignRole,
+  isPrivilegedRole,
   isStaffRole,
   roleHasPermission,
   type StaffPermission,
@@ -138,6 +139,16 @@ export async function requirePermission(
   const staff = await requireStaff(request);
   if (!roleHasPermission(staff.role, permission)) {
     throw Object.assign(new Error("Este rol no puede hacer eso."), { status: 403 });
+  }
+  return staff;
+}
+
+export async function requirePrivileged(request: Request): Promise<StaffProfile> {
+  const staff = await requireStaff(request);
+  if (!isPrivilegedRole(staff.role)) {
+    throw Object.assign(new Error("Solo un super admin puede cambiar el modo de venta."), {
+      status: 403,
+    });
   }
   return staff;
 }

@@ -1,4 +1,5 @@
 import { createHmac, createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import { isPaymentsLive } from "@/server/paymentsPolicy";
 import {
   BOLD_CHECKOUT_SRC,
   BOLD_CURRENCY,
@@ -25,25 +26,26 @@ function requiredEnv(name: string) {
 }
 
 export function boldEnvironment(): BoldEnvironment {
-  const explicit = env("BOLD_ENV").toLowerCase();
-  if (explicit === "prod" || explicit === "production") return "prod";
-  if (explicit === "test" || explicit === "sandbox") return "test";
-  return process.env.NODE_ENV === "production" ? "prod" : "test";
+  return "prod";
 }
 
-export function boldIdentityKey(environment: BoldEnvironment = boldEnvironment()) {
+export async function resolveBoldEnvironment(): Promise<BoldEnvironment> {
+  return (await isPaymentsLive()) ? "prod" : "test";
+}
+
+export function boldIdentityKey(environment: BoldEnvironment = "prod") {
   return environment === "prod"
     ? requiredEnv("BOLD_IDENTITY_KEY")
     : requiredEnv("BOLD_TEST_IDENTITY_KEY");
 }
 
-export function boldSecretKey(environment: BoldEnvironment = boldEnvironment()) {
+export function boldSecretKey(environment: BoldEnvironment = "prod") {
   return environment === "prod"
     ? requiredEnv("BOLD_SECRET_KEY")
     : requiredEnv("BOLD_TEST_SECRET_KEY");
 }
 
-export function boldIsConfigured(environment: BoldEnvironment = boldEnvironment()) {
+export function boldIsConfigured(environment: BoldEnvironment = "prod") {
   if (environment === "prod") {
     return Boolean(env("BOLD_IDENTITY_KEY") && env("BOLD_SECRET_KEY"));
   }
@@ -85,8 +87,9 @@ export function integritySignature(input: {
   orderId: string;
   amountCop: number;
   currency?: string;
+  environment?: BoldEnvironment;
 }) {
-  const secret = boldSecretKey();
+  const secret = boldSecretKey(input.environment ?? "prod");
   const currency = input.currency ?? BOLD_CURRENCY;
   return sha256Hex(`${input.orderId}${input.amountCop}${currency}${secret}`);
 }
@@ -114,7 +117,7 @@ function webhookSecrets(environment: BoldEnvironment) {
 export function verifyWebhookSignature(
   rawBody: string,
   header: string | null,
-  environment: BoldEnvironment = boldEnvironment(),
+  environment: BoldEnvironment = "prod",
 ) {
   if (!header) return false;
   const encoded = Buffer.from(rawBody, "utf8").toString("base64");
@@ -146,19 +149,25 @@ function compactCheckout(
 }
 
 export function buildCheckoutConfig(
-  input: CreateBoldSessionInput & { reference: string; origin: string },
+  input: CreateBoldSessionInput & {
+    reference: string;
+    origin: string;
+    environment?: BoldEnvironment;
+  },
 ): BoldCheckoutConfig {
-  if (!boldIsConfigured()) throw new Error("Bold aún no está configurado.");
+  const environment = input.environment ?? "prod";
+  if (!boldIsConfigured(environment)) throw new Error("Bold aún no está configurado.");
   const origin = input.origin.replace(/\/$/, "");
   const amountCop = Math.max(0, Math.round(input.amountCop));
   return compactCheckout({
     orderId: input.reference,
     currency: BOLD_CURRENCY,
     amount: String(amountCop),
-    apiKey: boldIdentityKey(),
+    apiKey: boldIdentityKey(environment),
     integritySignature: integritySignature({
       orderId: input.reference,
       amountCop,
+      environment,
     }),
     description: (input.description ?? "Pedido Mora").slice(0, 100),
     redirectionUrl: httpsUrl(origin, "/pago"),
@@ -167,7 +176,11 @@ export function buildCheckoutConfig(
 }
 
 export function toCheckoutSession(
-  input: CreateBoldSessionInput & { reference: string; origin: string },
+  input: CreateBoldSessionInput & {
+    reference: string;
+    origin: string;
+    environment?: BoldEnvironment;
+  },
 ): BoldCheckoutSession {
   return {
     reference: input.reference,
@@ -182,7 +195,7 @@ export function toCheckoutSession(
 
 export async function fetchBoldVoucher(
   orderId: string,
-  environment: BoldEnvironment = boldEnvironment(),
+  environment: BoldEnvironment = "prod",
 ): Promise<BoldVoucher> {
   if (!orderId.trim()) throw new Error("Falta la referencia de Bold.");
   const res = await fetch(`${BOLD_VOUCHER_API}/${encodeURIComponent(orderId)}`, {

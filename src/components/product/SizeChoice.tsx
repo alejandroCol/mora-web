@@ -2,27 +2,8 @@
 
 import { useState } from "react";
 import type { SizingMethod } from "@/commerce/types";
-import { PRESALE } from "@/lib/presale";
+import { useSales } from "@/components/sales/SalesProvider";
 import { SizeGuideFilm } from "./SizeGuideFilm";
-
-const STEPS = [
-  {
-    title: "Reservas ahora",
-    body: "Apartas tu Mora. El precio no cambia.",
-  },
-  {
-    title: "Te llega el medidor",
-    body: "Un kit pequeño, antes que el anillo.",
-  },
-  {
-    title: "Confirmas tu número",
-    body: "Entras con tu pedido y eliges la talla.",
-  },
-  {
-    title: `El anillo sale el ${PRESALE.deliveryLabel}`,
-    body: "Cuando ya tenemos tu talla, se fabrica y se envía.",
-  },
-] as const;
 
 export function SizeChoice({
   sizing,
@@ -37,6 +18,7 @@ export function SizeChoice({
   size: number;
   onSize: (size: number) => void;
 }) {
+  const sales = useSales();
   const [info, setInfo] = useState(false);
   const [guide, setGuide] = useState(false);
 
@@ -128,7 +110,7 @@ export function SizeChoice({
               Cómo funciona
             </p>
             <ol className="mt-6 space-y-5">
-              {STEPS.map((step, index) => (
+              {sales.sizeSteps.map((step, index) => (
                 <li key={step.title} className="flex gap-3.5">
                   <span className="size-step-n">{index + 1}</span>
                   <span>

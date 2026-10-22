@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { catalog, formatMoney, productPath } from "@/lib/catalog";
-import { PRESALE, presaleRemaining } from "@/lib/presale";
+import { presaleRemaining } from "@/lib/presale";
+import { useSales } from "@/components/sales/SalesProvider";
 import { useMoraStore } from "@/lib/store";
 
 function pad(value: number) {
@@ -21,15 +22,17 @@ function unitsFrom(ms: number) {
 }
 
 export function PresaleModule() {
+  const sales = useSales();
   const setModel = useMoraStore((state) => state.setModel);
   const [remaining, setRemaining] = useState<number | null>(null);
+  const saleAt = sales.saleAt ?? 0;
 
   useEffect(() => {
-    const tick = () => setRemaining(presaleRemaining());
+    const tick = () => setRemaining(presaleRemaining(saleAt));
     tick();
     const id = window.setInterval(tick, 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [saleAt]);
 
   const units = unitsFrom(remaining ?? 0);
   const open = remaining == null || remaining > 0;
@@ -44,12 +47,12 @@ export function PresaleModule() {
     <section id="preventa" className="presale-wash">
       <div className="mx-auto max-w-[980px] px-6 py-24 sm:py-32">
         <div className="text-center">
-          <p className="presale-seal">{PRESALE.label}</p>
+          <p className="presale-seal">{sales.label}</p>
           <h2 className="title-name mx-auto mt-4 max-w-[18ch] text-[clamp(2.35rem,6.4vw,4.25rem)] text-[#1d1d1f]">
-            Disponible el {PRESALE.deliveryLabel}.
+            Disponible el {sales.deliveryLabel}.
           </h2>
           <p className="mx-auto mt-5 max-w-md text-[17px] leading-7 text-soft sm:text-[21px] sm:leading-8">
-            {PRESALE.whisper}
+            {sales.whisper}
           </p>
         </div>
 
@@ -101,7 +104,7 @@ export function PresaleModule() {
               <div className="mt-8 flex items-center justify-between text-[15px] sm:text-[17px]">
                 <span className="text-[#1d1d1f]">{formatMoney(item.price)}</span>
                 <span className="elegir-cta h-10 px-5 text-[15px]">
-                  Reservar
+                  {sales.cta}
                   <span aria-hidden className="elegir-cta-arrow">
                     ›
                   </span>

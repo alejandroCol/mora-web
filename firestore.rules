@@ -35,7 +35,9 @@ service cloud.firestore {
     }
 
     match /settings/{doc} {
-      allow read, write: if doc == "growth" ? isPrivileged() : isStaff();
+      allow read, write: if doc == "growth" || doc == "sales" || doc == "payments"
+        ? isPrivileged()
+        : isStaff();
     }
 
     match /financeExpenses/{id} {

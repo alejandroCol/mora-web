@@ -1,5 +1,11 @@
 import { addiSessionRetry, boldSessionRetry } from "@/server/checkoutSession";
-import { addiIsConfigured, boldIsConfigured, requestOrigin } from "@/payments";
+import {
+  addiIsConfigured,
+  boldIsConfigured,
+  requestOrigin,
+  resolveAddiEnvironment,
+  resolveBoldEnvironment,
+} from "@/payments";
 import { getOrderByNumber, setOrderPaymentReference } from "@/server/orders";
 
 export const runtime = "nodejs";
@@ -31,10 +37,14 @@ export async function POST(request: Request) {
     }
 
     const method = body.method === "addi" || order.payment.method === "addi" ? "addi" : "bold";
-    if (method === "bold" && !boldIsConfigured()) {
+    const [boldEnv, addiEnv] = await Promise.all([
+      resolveBoldEnvironment(),
+      resolveAddiEnvironment(),
+    ]);
+    if (method === "bold" && !boldIsConfigured(boldEnv)) {
       return Response.json({ ok: false, error: "El pago en línea aún no está configurado." }, { status: 503 });
     }
-    if (method === "addi" && !addiIsConfigured()) {
+    if (method === "addi" && !addiIsConfigured(addiEnv)) {
       return Response.json({ ok: false, error: "Addi aún no está configurado." }, { status: 503 });
     }
 

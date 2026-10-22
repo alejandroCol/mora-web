@@ -2,27 +2,31 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { BRAND } from "@/brand";
+import type { SalesPresentation } from "@/commerce/sales";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { PRESALE } from "@/lib/presale";
 import { siteUrl } from "@/lib/site";
+import { getSalesPresentation } from "@/server/salesPolicy";
 
-const UPDATED = "18 de octubre de 2026";
+const UPDATED = "22 de octubre de 2026";
 const CONTACT = "hola@mora.ring";
 const LEGAL_NAME = "PALMAPAY S.A.S.";
 
-export const metadata: Metadata = {
-  title: "Condiciones del servicio",
-  description:
-    "Términos de uso de moraring.com, la tienda Mora Ring, WhatsApp comercial y servicios relacionados en Colombia.",
-  alternates: { canonical: "/terminos" },
-  openGraph: {
-    title: `Condiciones del servicio — ${BRAND.name}`,
-    description: "Preventa, pagos, entrega, bienestar (no médico) y contacto comercial.",
-    url: siteUrl("/terminos"),
-    locale: "es_CO",
-  },
-  robots: { index: true, follow: true },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const sales = await getSalesPresentation();
+  return {
+    title: "Condiciones del servicio",
+    description:
+      "Términos de uso de moraring.com, la tienda Mora Ring, WhatsApp comercial y servicios relacionados en Colombia.",
+    alternates: { canonical: "/terminos" },
+    openGraph: {
+      title: `Condiciones del servicio — ${BRAND.name}`,
+      description: sales.termsLead,
+      url: siteUrl("/terminos"),
+      locale: "es_CO",
+    },
+    robots: { index: true, follow: true },
+  };
+}
 
 type Section = {
   id: string;
@@ -31,7 +35,8 @@ type Section = {
   body: ReactNode;
 };
 
-const sections: Section[] = [
+function legalSections(sales: SalesPresentation): Section[] {
+  return [
   {
     id: "quien",
     kicker: "01",
@@ -40,8 +45,8 @@ const sections: Section[] = [
       <>
         <p>
           <strong className="font-medium text-ink">{LEGAL_NAME}</strong>, comercialmente{" "}
-          <strong className="font-medium text-ink">{BRAND.name}</strong>, opera este sitio, la preventa
-          de anillos inteligentes, el soporte por correo y WhatsApp, y los servicios descritos en{" "}
+          <strong className="font-medium text-ink">{BRAND.name}</strong>, opera este sitio,{" "}
+          {sales.termsWho}, el soporte por correo y WhatsApp, y los servicios descritos en{" "}
           <Link href="/privacidad" className="text-ink underline decoration-bloom/80 underline-offset-2">
             la política de privacidad
           </Link>
@@ -67,16 +72,25 @@ const sections: Section[] = [
     ),
   },
   {
-    id: "preventa",
+    id: sales.mode === "presale" ? "preventa" : "compra",
     kicker: "03",
-    title: "Preventa y entrega",
+    title: sales.termsTitle,
     body: (
       <>
         <p>
-          Las fechas de preventa y entrega publicadas en el sitio (incluida la entrega prevista el{" "}
-          <strong className="font-medium text-ink">{PRESALE.deliveryLabel}</strong>) forman parte de la
-          oferta. Si cambia el calendario por causas logísticas o de fabricación, te avisaremos por el
-          canal de contacto de tu pedido.
+          {sales.mode === "presale" ? (
+            <>
+              Las fechas de preventa y entrega publicadas en el sitio (incluida la entrega prevista el{" "}
+              <strong className="font-medium text-ink">{sales.deliveryLabel}</strong>) forman parte de
+              la oferta. Si cambia el calendario por causas logísticas o de fabricación, te avisaremos
+              por el canal de contacto de tu pedido.
+            </>
+          ) : (
+            <>
+              La compra se confirma con el pago. El anillo se fabrica y se envía después. Si hay un
+              cambio logístico o de fabricación, te avisaremos por el canal de contacto de tu pedido.
+            </>
+          )}
         </p>
         <p>
           Debes confirmar talla y datos de envío cuando te lo pidamos. Un pedido sin talla confirmada
@@ -180,9 +194,13 @@ const sections: Section[] = [
       </>
     ),
   },
-];
+  ];
+}
 
-export default function TerminosPage() {
+export default async function TerminosPage() {
+  const sales = await getSalesPresentation();
+  const sections = legalSections(sales);
+
   return (
     <div className="relative overflow-hidden" lang="es-CO">
       <div className="hero-wash border-b border-line">
@@ -199,7 +217,7 @@ export default function TerminosPage() {
               Condiciones del servicio
             </h1>
             <p className="title-whisper mt-4 max-w-lg text-[clamp(1.05rem,2.8vw,1.25rem)] text-soft">
-              Preventa, pagos, envíos y contacto comercial en Colombia.
+              {sales.termsLead}
             </p>
             <p className="mt-6 text-[13px] text-soft">Última actualización · {UPDATED}</p>
           </div>

@@ -1,8 +1,8 @@
 import { BRAND } from "@/brand";
 import { commerceLineLabel, orderNeedsSize, tallaPath } from "@/commerce/sizing";
 import { finishLabel, formatMoney, products } from "@/lib/catalog";
-import { PRESALE } from "@/lib/presale";
 import { PAYMENT_METHOD_LABEL } from "@/commerce/labels";
+import { getSalesPresentation } from "./salesPolicy";
 import type { AbandonedCart, MoraOrder } from "@/commerce/types";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
 
@@ -188,12 +188,13 @@ async function sendResend(to: string, subject: string, html: string) {
 }
 
 export async function sendPaidCustomerEmail(order: MoraOrder) {
+  const sales = await getSalesPresentation();
   const needsSize = orderNeedsSize(order.items);
   const extra = needsSize
-    ? `<p style="margin:16px 0 0;font-size:14px;color:${SOFT}">Te enviamos primero el medidor de tallas. Cuando lo uses, entra con tu pedido y pide el anillo. ${PRESALE.promise}</p>`
-    : `<p style="margin:16px 0 0;font-size:14px;color:${SOFT}">${PRESALE.promise}</p>`;
+    ? `<p style="margin:16px 0 0;font-size:14px;color:${SOFT}">Te enviamos primero el medidor de tallas. Cuando lo uses, entra con tu pedido y pide el anillo. ${sales.promise}</p>`
+    : `<p style="margin:16px 0 0;font-size:14px;color:${SOFT}">${sales.promise}</p>`;
   const html = shell({
-    kicker: `${BRAND.name} · ${PRESALE.label}`,
+    kicker: `${BRAND.name} · ${sales.label}`,
     title: "Tu pedido quedó.",
     intro: `Hola ${escapeHtml(order.customer.firstName || "")}. El pago se confirmó. Guardá el número de pedido para seguir cada paso.`,
     body: orderBody(order, extra),

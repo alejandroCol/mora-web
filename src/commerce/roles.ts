@@ -12,7 +12,8 @@ export type StaffPermission =
   | "whatsapp"
   | "growth"
   | "budget"
-  | "insights";
+  | "insights"
+  | "settings";
 
 const SUPERADMIN_PERMISSIONS: StaffPermission[] = [
   "sales",
@@ -25,6 +26,7 @@ const SUPERADMIN_PERMISSIONS: StaffPermission[] = [
   "whatsapp",
   "growth",
   "insights",
+  "settings",
 ];
 
 export const ROLE_LABEL: Record<StaffRole, string> = {

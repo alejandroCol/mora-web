@@ -11,6 +11,7 @@ import {
   productPath,
   type ModelId,
 } from "@/lib/catalog";
+import { useSales } from "@/components/sales/SalesProvider";
 import { useMoraStore } from "@/lib/store";
 
 const LOOK: Record<ModelId, { src: string; focus: string; alt: string }> = {
@@ -27,6 +28,7 @@ const LOOK: Record<ModelId, { src: string; focus: string; alt: string }> = {
 };
 
 export function Atelier() {
+  const sales = useSales();
   const setModel = useMoraStore((state) => state.setModel);
   const scroller = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
@@ -116,7 +118,7 @@ export function Atelier() {
                 <div className="world-dock">
                   <span className="world-price">{formatMoney(item.price)}</span>
                   <span className="elegir-cta">
-                    Reservar
+                    {sales.cta}
                     <span aria-hidden className="elegir-cta-arrow">
                       ›
                     </span>

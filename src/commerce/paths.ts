@@ -25,6 +25,8 @@ export const DOCS = {
   productCopy: `${COLLECTIONS.settings}/productCopy`,
   growth: `${COLLECTIONS.settings}/growth`,
   crm: `${COLLECTIONS.settings}/crm`,
+  sales: `${COLLECTIONS.settings}/sales`,
+  payments: `${COLLECTIONS.settings}/payments`,
   orderCounter: `${COLLECTIONS.counters}/orders`,
   matiasInvoice: `${COLLECTIONS.counters}/matiasInvoice`,
 } as const;

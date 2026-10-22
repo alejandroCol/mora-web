@@ -24,13 +24,14 @@ const NAV: NavItem[] = [
   { href: "/superadmin/inventario", label: "Inventario", permission: "inventory", icon: <BoxIcon /> },
   { href: "/superadmin/galeria", label: "Galería", permission: "gallery", icon: <ImageIcon /> },
   { href: "/superadmin/envios", label: "Origen y envíos", permission: "shipping", icon: <TruckIcon /> },
+  { href: "/superadmin/ajustes", label: "Ajustes", permission: "settings", icon: <GearIcon /> },
   { href: "/superadmin/equipo", label: "Equipo", permission: "team", icon: <PeopleIcon /> },
 ];
 
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: "Casa", hrefs: ["/superadmin/ventas", "/superadmin/carritos", "/superadmin/presupuesto"] },
   { label: "Alcance", hrefs: ["/superadmin/crm", "/superadmin/campanas", "/superadmin/estadisticas", "/superadmin/analitica"] },
-  { label: "Operación", hrefs: ["/superadmin/inventario", "/superadmin/galeria", "/superadmin/envios", "/superadmin/equipo"] },
+  { label: "Operación", hrefs: ["/superadmin/inventario", "/superadmin/galeria", "/superadmin/envios", "/superadmin/ajustes", "/superadmin/equipo"] },
 ];
 
 function Shell({ children }: { children: ReactNode }) {
@@ -377,6 +378,15 @@ function TruckIcon() {
       <path d="M14 10h4l3 3v4h-7" />
       <circle cx="7" cy="18.5" r="1.4" />
       <circle cx="17" cy="18.5" r="1.4" />
+    </svg>
+  );
+}
+
+function GearIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+      <circle cx="12" cy="12" r="3" />
+      <path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6.1 6.1l1.6 1.6M16.3 16.3l1.6 1.6M6.1 17.9l1.6-1.6M16.3 7.7l1.6-1.6" strokeLinecap="round" />
     </svg>
   );
 }

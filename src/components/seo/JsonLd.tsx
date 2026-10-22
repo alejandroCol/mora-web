@@ -1,28 +1,11 @@
 import { BRAND } from "@/brand";
+import { storeFaq, type SalesPresentation } from "@/commerce/sales";
 import { catalog } from "@/lib/catalog";
 import { siteOrigin, siteUrl } from "@/lib/site";
 
-const FAQ = [
-  {
-    q: "¿Pro o Ultra?",
-    a: "Pro es cerámica. Ultra es titanio, el más ligero. Los dos cuestan igual y miden lo mismo.",
-  },
-  {
-    q: "¿Cuánto dura la batería?",
-    a: "Cinco a siete días. Pro llega a siete. Ultra, a seis.",
-  },
-  {
-    q: "¿Cómo elijo la talla?",
-    a: "Pides el medidor —llega primero— o te mides en casa con la guía. El precio no cambia.",
-  },
-  {
-    q: "¿Cuándo llega?",
-    a: "Preventa. El anillo se entrega el 20 de noviembre.",
-  },
-];
-
-export function JsonLd() {
+export function JsonLd({ sales }: { sales: SalesPresentation }) {
   const origin = siteOrigin();
+  const faq = storeFaq(sales);
   const graph = {
     "@context": "https://schema.org",
     "@graph": [
@@ -32,7 +15,7 @@ export function JsonLd() {
         name: BRAND.name,
         url: origin,
         logo: `${origin}${BRAND.assets.icon512}`,
-        description: BRAND.description,
+        description: sales.brandDescription,
         sameAs: [BRAND.contact.instagram],
       },
       {
@@ -40,11 +23,11 @@ export function JsonLd() {
         "@id": `${origin}/#site`,
         url: origin,
         name: BRAND.name,
-        description: BRAND.description,
+        description: sales.brandDescription,
         inLanguage: "es-CO",
         publisher: { "@id": `${origin}/#org` },
         potentialAction: {
-          "@type": "ReserveAction",
+          "@type": sales.schemaAction,
           target: siteUrl("/#coleccion"),
           name: "Elegir un anillo Mora",
         },
@@ -63,15 +46,17 @@ export function JsonLd() {
           url: siteUrl(`/anillo/${item.slug}`),
           priceCurrency: "COP",
           price: item.price,
-          availability: "https://schema.org/PreOrder",
-          availabilityEnds: "2026-11-20",
+          availability: sales.schemaAvailability,
+          ...(sales.schemaAvailabilityEnds
+            ? { availabilityEnds: sales.schemaAvailabilityEnds }
+            : {}),
           itemCondition: "https://schema.org/NewCondition",
         },
       })),
       {
         "@type": "FAQPage",
         "@id": `${origin}/#faq`,
-        mainEntity: FAQ.map((item) => ({
+        mainEntity: faq.map((item) => ({
           "@type": "Question",
           name: item.q,
           acceptedAnswer: { "@type": "Answer", text: item.a },
@@ -87,5 +72,3 @@ export function JsonLd() {
     />
   );
 }
-
-export { FAQ };

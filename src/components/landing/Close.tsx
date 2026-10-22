@@ -1,12 +1,16 @@
-import { BrandSignature } from "@/components/brand/BrandSignature";
+"use client";
 
-const rows = [
-  ["Autonomía", "Cinco a siete días"],
-  ["Talla", "6 a 13 · medidor o guía"],
-  ["Preventa", "Entrega el 20 de noviembre"],
-];
+import { BrandSignature } from "@/components/brand/BrandSignature";
+import { useSales } from "@/components/sales/SalesProvider";
 
 export function Close() {
+  const sales = useSales();
+  const rows = [
+    ["Autonomía", "Cinco a siete días"],
+    ["Talla", "6 a 13 · medidor o guía"],
+    [sales.closeLabel, sales.closeValue],
+  ] as const;
+
   return (
     <section className="border-t border-line bg-white">
       <div className="mx-auto max-w-xl px-6 py-16 sm:py-24">

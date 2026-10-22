@@ -13,7 +13,7 @@ import type { BoldCheckoutSession } from "@/payments/types";
 import { track } from "@/growth/track";
 import { commerceLineLabel, orderNeedsSize, tallaPath } from "@/commerce/sizing";
 import { formatMoney } from "@/lib/catalog";
-import { PRESALE } from "@/lib/presale";
+import { useSales } from "@/components/sales/SalesProvider";
 
 type PublicOrder = {
   orderNumber: string;
@@ -227,6 +227,7 @@ function OrderStatusCard({
   onRetry?: () => void;
   paying?: boolean;
 }) {
+  const sales = useSales();
   const index = fulfillmentIndex(order.status);
   const cancelled = order.status === "cancelled";
   const waitingPay = order.status === "awaiting_payment";
@@ -279,7 +280,7 @@ function OrderStatusCard({
             {order.status === "sizer_transit" ? "El medidor va en camino." : "Primero el medidor. Luego tu talla."}
           </p>
           <p className="mt-2 text-[13px] leading-6 text-soft">
-            Cuando lo uses, entra con este pedido y pide el anillo. {PRESALE.promise}
+            Cuando lo uses, entra con este pedido y pide el anillo. {sales.promise}
           </p>
           {order.sizerTrackingNumber ? (
             <p className="mt-2 text-[13px] text-ink">Guía del medidor {order.sizerTrackingNumber}</p>
@@ -298,7 +299,7 @@ function OrderStatusCard({
             Primero el medidor. Luego tu talla.
           </p>
           <p className="mt-2 text-[13px] leading-6 text-soft">
-            Cuando lo uses, entra con este pedido y pide el anillo. {PRESALE.promise}
+            Cuando lo uses, entra con este pedido y pide el anillo. {sales.promise}
           </p>
           <Link
             href={tallaPath(order.orderNumber)}
@@ -308,7 +309,7 @@ function OrderStatusCard({
           </Link>
         </div>
       ) : order.status === "paid" ? (
-        <p className="mt-6 text-[13px] leading-6 text-soft">{PRESALE.promise}</p>
+        <p className="mt-6 text-[13px] leading-6 text-soft">{sales.promise}</p>
       ) : null}
 
       {cancelled ? (

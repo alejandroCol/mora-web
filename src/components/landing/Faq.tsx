@@ -1,7 +1,12 @@
+"use client";
+
 import { BRAND } from "@/brand";
-import { FAQ } from "@/components/seo/JsonLd";
+import { storeFaq } from "@/commerce/sales";
+import { useSales } from "@/components/sales/SalesProvider";
 
 export function Faq() {
+  const sales = useSales();
+  const items = storeFaq(sales);
   return (
     <section id="preguntas" className="faq-stage">
       <div className="mx-auto max-w-xl px-6 py-20 sm:py-28">
@@ -9,7 +14,7 @@ export function Faq() {
           Lo que suelen preguntar.
         </h2>
         <div className="faq-list">
-          {FAQ.map((item) => (
+          {items.map((item) => (
             <details key={item.q} className="faq-item">
               <summary>{item.q}</summary>
               <p>{item.a}</p>

@@ -5,9 +5,11 @@ import { useEffect } from "react";
 import { IconCart } from "@/components/icons/NavIcons";
 import { formatMoney, products } from "@/lib/catalog";
 import { useCartCount, useCartSubtotal, useMoraStore } from "@/lib/store";
+import { useSales } from "@/components/sales/SalesProvider";
 import { CartLineVisual } from "./CartLineVisual";
 
 export function CartDrawer() {
+  const sales = useSales();
   const { cart, cartOpen, closeCart, setQty, removeLine } = useMoraStore();
   const count = useCartCount();
   const subtotal = useCartSubtotal();
@@ -122,7 +124,7 @@ export function CartDrawer() {
               cart.length === 0 ? "pointer-events-none opacity-35" : ""
             }`}
           >
-            Reservar
+            {sales.cta}
             <span aria-hidden className="elegir-cta-arrow">
               ›
             </span>

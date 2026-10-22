@@ -8,6 +8,7 @@ import {
   addiAmountAllowed,
   addiAllySlug,
 } from "./public";
+import { isPaymentsLive } from "@/server/paymentsPolicy";
 import { colombianMobile } from "./bold";
 import type {
   AddiCheckoutSession,
@@ -37,12 +38,11 @@ function envInt(name: string, fallback: number) {
 }
 
 export function addiEnvironment(): AddiEnvironment {
-  const explicit = env("ADDI_ENV").toLowerCase();
-  if (explicit === "prod" || explicit === "production") return "prod";
-  if (explicit === "sandbox" || explicit === "test" || explicit === "staging") {
-    return "sandbox";
-  }
-  return process.env.NODE_ENV === "production" ? "prod" : "sandbox";
+  return "prod";
+}
+
+export async function resolveAddiEnvironment(): Promise<AddiEnvironment> {
+  return (await isPaymentsLive()) ? "prod" : "sandbox";
 }
 
 export function addiMinCop() {
@@ -53,7 +53,7 @@ export function addiMaxCop() {
   return envInt("ADDI_MAX_COP", ADDI_MAX_COP_DEFAULT);
 }
 
-export function addiIsConfigured(environment: AddiEnvironment = addiEnvironment()) {
+export function addiIsConfigured(environment: AddiEnvironment = "prod") {
   const id = environment === "prod" ? env("ADDI_CLIENT_ID") : env("ADDI_CLIENT_ID") || env("ADDI_SANDBOX_CLIENT_ID");
   const secret =
     environment === "prod"
@@ -62,7 +62,7 @@ export function addiIsConfigured(environment: AddiEnvironment = addiEnvironment(
   return Boolean(id && secret);
 }
 
-function addiCredentials(environment: AddiEnvironment = addiEnvironment()) {
+function addiCredentials(environment: AddiEnvironment = "prod") {
   const sandboxId = env("ADDI_SANDBOX_CLIENT_ID") || env("ADDI_CLIENT_ID");
   const sandboxSecret = env("ADDI_SANDBOX_CLIENT_SECRET") || env("ADDI_CLIENT_SECRET");
   const id = environment === "prod" ? env("ADDI_CLIENT_ID") : sandboxId;
@@ -71,17 +71,17 @@ function addiCredentials(environment: AddiEnvironment = addiEnvironment()) {
   return { id, secret };
 }
 
-export function addiAuthUrl(environment: AddiEnvironment = addiEnvironment()) {
+export function addiAuthUrl(environment: AddiEnvironment = "prod") {
   if (env("ADDI_AUTH_URL")) return env("ADDI_AUTH_URL").replace(/\/$/, "");
   return environment === "prod" ? "https://auth.addi.com" : "https://auth.addi-staging.com";
 }
 
-export function addiApiUrl(environment: AddiEnvironment = addiEnvironment()) {
+export function addiApiUrl(environment: AddiEnvironment = "prod") {
   if (env("ADDI_API_URL")) return env("ADDI_API_URL").replace(/\/$/, "");
   return environment === "prod" ? "https://api.addi.com" : "https://api.addi-staging.com";
 }
 
-function addiAudience(environment: AddiEnvironment = addiEnvironment()) {
+function addiAudience(environment: AddiEnvironment = "prod") {
   if (env("ADDI_AUDIENCE")) return env("ADDI_AUDIENCE");
   return environment === "prod" ? "https://api.addi.com" : "https://api.addi-staging.com";
 }
@@ -112,7 +112,7 @@ function addiAmount(value: number) {
   return `${Math.max(0, Math.round(value)).toFixed(1)}`;
 }
 
-async function getAddiToken(environment: AddiEnvironment = addiEnvironment()) {
+async function getAddiToken(environment: AddiEnvironment = "prod") {
   const cached = tokenCache[environment];
   if (cached && cached.exp > Date.now() + 15_000) return cached.token;
 
@@ -205,7 +205,8 @@ export async function createAddiApplication(input: {
   reference: string;
   origin: string;
 }): Promise<AddiCheckoutSession> {
-  if (!addiIsConfigured()) throw new Error("Addi aún no está configurado.");
+  const environment = await resolveAddiEnvironment();
+  if (!addiIsConfigured(environment)) throw new Error("Addi aún no está configurado.");
   if (!orderEligibleForAddi(input.order)) {
     throw new Error("Este total no califica para pagar con Addi.");
   }
@@ -250,8 +251,8 @@ export async function createAddiApplication(input: {
     },
   };
 
-  const token = await getAddiToken();
-  const res = await fetch(`${addiApiUrl()}/v1/online-applications`, {
+  const token = await getAddiToken(environment);
+  const res = await fetch(`${addiApiUrl(environment)}/v1/online-applications`, {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
@@ -304,11 +305,12 @@ export async function createAddiApplication(input: {
 }
 
 export async function fetchAddiApplication(orderId: string) {
-  if (!orderId.trim() || !addiIsConfigured()) return null;
+  const environment = await resolveAddiEnvironment();
+  if (!orderId.trim() || !addiIsConfigured(environment)) return null;
   try {
-    const token = await getAddiToken();
+    const token = await getAddiToken(environment);
     const res = await fetch(
-      `${addiApiUrl()}/v1/online-applications/${encodeURIComponent(orderId)}`,
+      `${addiApiUrl(environment)}/v1/online-applications/${encodeURIComponent(orderId)}`,
       {
         headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
         cache: "no-store",
@@ -391,13 +393,14 @@ export function verifyAddiCallback(request: Request) {
   return false;
 }
 
-export function addiPublicConfig() {
+export async function addiPublicConfig() {
+  const environment = await resolveAddiEnvironment();
   return {
-    configured: addiIsConfigured(),
+    configured: addiIsConfigured(environment),
     widget: Boolean(addiAllySlug()),
     minCop: addiMinCop(),
     maxCop: addiMaxCop(),
-    environment: addiEnvironment(),
+    environment,
   };
 }
 

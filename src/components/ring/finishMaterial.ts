@@ -5,9 +5,9 @@ import type { Finish } from "@/lib/catalog";
 export function applyRingFinish(material: MeshPhysicalMaterial, next: Finish) {
   const gold = next.id === "gold";
   const silver = next.id === "silver";
-  const glossBlack = next.id === "black" && next.clearcoat > 0.4;
-  const matte = next.id === "black" && !glossBlack;
-  const ceramic = next.id === "white" || next.id === "lilac";
+  const glossBlack = next.id === "black" && next.metalness > 0.3;
+  const matte = next.id === "black" && next.roughness > 0.55;
+  const ceramic = next.id === "white" || next.id === "lilac" || (next.id === "black" && !matte && !glossBlack);
 
   material.color.set(next.color);
   material.metalness = next.metalness;

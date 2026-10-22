@@ -85,7 +85,9 @@ export function Atelier() {
                 src={look.src}
                 alt={look.alt}
                 fill
-                sizes="(min-width: 1024px) 60vw, 86vw"
+                unoptimized
+                quality={100}
+                sizes="(min-width: 1024px) 50vw, 84vw"
                 priority={item.id === "aero"}
                 className="world-photo"
                 style={{ objectPosition: look.focus }}

@@ -1029,7 +1029,7 @@ body {
 .world-name {
   margin-top: 0.2rem;
   font-family: var(--font-sans);
-  font-size: clamp(3.15rem, 11.5vw, 4rem);
+  font-size: clamp(4.41rem, 16.1vw, 5.6rem);
   font-weight: 700;
   letter-spacing: -0.028em;
   line-height: 1.04;
@@ -1139,7 +1139,7 @@ body {
   }
 
   .world-name {
-    font-size: clamp(3.5rem, 4.5vw, 4.75rem);
+    font-size: clamp(4.9rem, 6.3vw, 6.65rem);
     letter-spacing: -0.024em;
   }
 

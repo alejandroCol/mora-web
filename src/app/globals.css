@@ -897,6 +897,7 @@ body {
 
 .worlds-stage {
   position: relative;
+  overflow: hidden;
   background: #0a090e;
 }
 
@@ -933,6 +934,7 @@ body {
   display: flex;
   min-height: 100dvh;
   overflow-x: auto;
+  overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   scroll-padding-inline: 0;
@@ -956,8 +958,14 @@ body {
 
 @media (max-width: 1023px) {
   .worlds {
-    gap: 8px;
-    padding-right: 12vw;
+    gap: 0;
+    padding-right: 0;
+  }
+
+  .world {
+    min-width: 100%;
+    flex: 0 0 100%;
+    scroll-snap-stop: always;
   }
 }
 
@@ -983,7 +991,10 @@ body {
   color: #1d1d1f;
 }
 
-.world-light .world-kicker,
+.world-light .world-kicker {
+  color: #6e6e73;
+}
+
 .world-light .world-finishes-label,
 .world-light .world-price {
   color: rgba(29, 29, 31, 0.62);
@@ -1008,19 +1019,20 @@ body {
 }
 
 .world-kicker {
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 300;
+  letter-spacing: -0.012em;
+  text-transform: none;
   color: rgba(255, 255, 255, 0.72);
 }
 
 .world-name {
-  margin-top: 0.15rem;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
-  font-size: clamp(4.4rem, 18vw, 8.5rem);
-  font-weight: 600;
-  letter-spacing: -0.055em;
-  line-height: 0.86;
+  margin-top: 0.2rem;
+  font-family: var(--font-sans);
+  font-size: clamp(3.15rem, 11.5vw, 4rem);
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  line-height: 1.04;
 }
 
 .world-finishes {
@@ -1127,7 +1139,14 @@ body {
   }
 
   .world-name {
-    font-size: clamp(5.5rem, 9vw, 9.5rem);
+    font-size: clamp(3.5rem, 4.5vw, 4.75rem);
+    letter-spacing: -0.024em;
+  }
+
+  .world-kicker {
+    font-size: 14px;
+    font-weight: 300;
+    letter-spacing: -0.016em;
   }
 
   .world-hint {
@@ -1369,7 +1388,7 @@ body {
   position: absolute;
   inset: 0;
   z-index: 1;
-  touch-action: pan-x;
+  touch-action: none;
 }
 
 .look-hit {
@@ -1378,6 +1397,16 @@ body {
   bottom: 0;
   z-index: 2;
   width: 28%;
+}
+
+@media (max-width: 1023px) {
+  .look-hit {
+    display: none;
+  }
+
+  .look-ring canvas {
+    pointer-events: none;
+  }
 }
 
 .look-hit-prev {

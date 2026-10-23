@@ -131,7 +131,12 @@ export function GalleryExperience({
       <section className="relative min-h-0 min-w-0 flex-1">
         <div className="absolute inset-0">
           {current ? (
-            <ZoomableImage src={current.src} alt={`${model.name} ${index + 1}`} />
+            <ZoomableImage
+              src={current.src}
+              alt={`${model.name} ${index + 1}`}
+              onSwipePrev={() => step(-1)}
+              onSwipeNext={() => step(1)}
+            />
           ) : null}
         </div>
 

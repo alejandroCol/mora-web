@@ -8,9 +8,11 @@ const MAX = 4;
 type ZoomableImageProps = {
   src: string;
   alt: string;
+  onSwipePrev?: () => void;
+  onSwipeNext?: () => void;
 };
 
-export function ZoomableImage({ src, alt }: ZoomableImageProps) {
+export function ZoomableImage({ src, alt, onSwipePrev, onSwipeNext }: ZoomableImageProps) {
   const stage = useRef<HTMLDivElement>(null);
   const view = useRef({ scale: 1, tx: 0, ty: 0 });
   const [scale, setScale] = useState(1);
@@ -20,6 +22,8 @@ export function ZoomableImage({ src, alt }: ZoomableImageProps) {
   const pointers = useRef(new Map<number, { x: number; y: number }>());
   const pinch = useRef<{ distance: number; scale: number } | null>(null);
   const drag = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
+  const swipeOrigin = useRef<{ x: number; y: number } | null>(null);
+  const swipeAxis = useRef<"x" | "y" | null>(null);
 
   function commit(next: { scale: number; tx: number; ty: number }) {
     view.current = next;
@@ -67,6 +71,8 @@ export function ZoomableImage({ src, alt }: ZoomableImageProps) {
     pointers.current.clear();
     pinch.current = null;
     drag.current = null;
+    swipeOrigin.current = null;
+    swipeAxis.current = null;
   }, [src]);
 
   useEffect(() => {
@@ -98,6 +104,10 @@ export function ZoomableImage({ src, alt }: ZoomableImageProps) {
         event.currentTarget.setPointerCapture(event.pointerId);
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
         setLive(true);
+        if (view.current.scale === 1 && pointers.current.size === 1) {
+          swipeOrigin.current = { x: event.clientX, y: event.clientY };
+          swipeAxis.current = null;
+        }
         if (pointers.current.size === 2) {
           const pts = [...pointers.current.values()];
           pinch.current = {
@@ -117,6 +127,16 @@ export function ZoomableImage({ src, alt }: ZoomableImageProps) {
       onPointerMove={(event) => {
         if (!pointers.current.has(event.pointerId)) return;
         pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY });
+        if (
+          swipeOrigin.current &&
+          !swipeAxis.current &&
+          view.current.scale === 1 &&
+          pointers.current.size === 1
+        ) {
+          const dx = Math.abs(event.clientX - swipeOrigin.current.x);
+          const dy = Math.abs(event.clientY - swipeOrigin.current.y);
+          if (dx > 10 || dy > 10) swipeAxis.current = dx > dy ? "x" : "y";
+        }
         if (pointers.current.size === 2 && pinch.current) {
           const pts = [...pointers.current.values()];
           const distance = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
@@ -137,15 +157,29 @@ export function ZoomableImage({ src, alt }: ZoomableImageProps) {
         }
       }}
       onPointerUp={(event) => {
+        if (
+          pointers.current.size === 1 &&
+          swipeOrigin.current &&
+          swipeAxis.current === "x" &&
+          view.current.scale === 1
+        ) {
+          const dx = event.clientX - swipeOrigin.current.x;
+          if (dx > 48) onSwipePrev?.();
+          else if (dx < -48) onSwipeNext?.();
+        }
         pointers.current.delete(event.pointerId);
         pinch.current = null;
         drag.current = null;
+        swipeOrigin.current = null;
+        swipeAxis.current = null;
         if (pointers.current.size === 0) setLive(false);
       }}
       onPointerCancel={(event) => {
         pointers.current.delete(event.pointerId);
         pinch.current = null;
         drag.current = null;
+        swipeOrigin.current = null;
+        swipeAxis.current = null;
         setLive(false);
       }}
     >

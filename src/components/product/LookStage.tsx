@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useHorizontalSwipe } from "@/lib/useHorizontalSwipe";
 import type { GalleryImage } from "@/commerce/types";
 import {
   defaultGalleryImages,
@@ -67,7 +68,6 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
   const [desktop, setDesktop] = useState(false);
   const [railOut, setRailOut] = useState(false);
   const [belowBar, setBelowBar] = useState(false);
-  const swipe = useRef<number | null>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const railOutRef = useRef(false);
   const images = asLooks(modelId, finishId, remote);
@@ -158,13 +158,22 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
     );
   }, []);
 
-  function go(next: number) {
-    if (!items.length) return;
-    const wrapped = (next + items.length) % items.length;
-    if (wrapped === index) return;
-    setPrev(null);
-    setIndex(wrapped);
-  }
+  const go = useCallback(
+    (next: number) => {
+      if (!items.length) return;
+      const wrapped = (next + items.length) % items.length;
+      if (wrapped === index) return;
+      setPrev(null);
+      setIndex(wrapped);
+    },
+    [index, items.length],
+  );
+
+  const swipe = useHorizontalSwipe(
+    () => go(index - 1),
+    () => go(index + 1),
+    { enabled: items.length > 1 },
+  );
 
   useEffect(() => {
     const ahead = images[index] ?? images[0];
@@ -180,7 +189,7 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  });
+  }, [go, index]);
 
   useEffect(() => {
     const stage = stageRef.current;
@@ -211,19 +220,7 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
       ref={stageRef}
       className={`look-stage${belowBar ? " look-below-bar" : ""}${railOut ? " rail-out" : ""}`}
     >
-      <div
-        className="look-frame"
-        onPointerDown={(event) => {
-          swipe.current = event.clientX;
-        }}
-        onPointerUp={(event) => {
-          if (swipe.current == null) return;
-          const dx = event.clientX - swipe.current;
-          swipe.current = null;
-          if (dx > 56) go(index - 1);
-          else if (dx < -56) go(index + 1);
-        }}
-      >
+      <div className="look-frame" {...swipe}>
         {items.length > 1 ? (
           <>
             <button

@@ -17,8 +17,8 @@ import { useMoraStore } from "@/lib/store";
 const LOOK: Record<ModelId, { src: string; focus: string; alt: string }> = {
   aero: {
     src: "/lifestyle/pro-home.jpg",
-    focus: "58% 54%",
-    alt: "Mora Pro en cerámica lila, sobre pedestal blanco.",
+    focus: "54% 46%",
+    alt: "Mora Pro en rosa cuarzo, sobre piedra clara con flores blancas.",
   },
   titan: {
     src: "/lifestyle/ultra-home.jpg",
@@ -91,7 +91,7 @@ export function Atelier() {
                 fill
                 unoptimized
                 quality={100}
-                sizes="(min-width: 1024px) 50vw, 84vw"
+                sizes="(min-width: 1024px) 50vw, 100vw"
                 priority={item.id === "aero"}
                 className="world-photo"
                 style={{ objectPosition: look.focus }}

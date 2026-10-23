@@ -25,8 +25,15 @@ export function BuySheet({
 }) {
   const router = useRouter();
   const sales = useSales();
-  const { selection, setFinish, setSize, setSizing, addSelectionToCart, closeCart } =
-    useMoraStore();
+  const {
+    selection,
+    setFinish,
+    setSize,
+    setSizing,
+    addSelectionToCart,
+    closeCart,
+    openCart,
+  } = useMoraStore();
   const model = products[modelId];
   const finishId = model.finishes.includes(selection.finishId)
     ? selection.finishId
@@ -35,18 +42,20 @@ export function BuySheet({
   const [need, setNeed] = useState("");
   const [showCopy, setShowCopy] = useState(false);
 
-  function add() {
+  function validateSelection() {
     if (!sizing) {
       setNeed("Elige si quieres pedir un medidor.");
-      return;
+      return false;
     }
     if (sizing === "self" && !model.sizes.includes(selection.size)) {
       setNeed(sales.needSize);
-      return;
+      return false;
     }
     setNeed("");
-    addSelectionToCart(1);
-    closeCart();
+    return true;
+  }
+
+  function trackAdd() {
     track("AddToCart", {
       content_ids: [model.id],
       content_name: `Mora ${model.name} ${finishLabel(modelId, finishId)}`,
@@ -56,6 +65,20 @@ export function BuySheet({
       num_items: 1,
     });
     insightProductCart(model.id, model.name);
+  }
+
+  function addToCart() {
+    if (!validateSelection()) return;
+    addSelectionToCart(1);
+    trackAdd();
+    openCart();
+  }
+
+  function buyNow() {
+    if (!validateSelection()) return;
+    addSelectionToCart(1);
+    closeCart();
+    trackAdd();
     router.push("/checkout");
   }
 
@@ -152,13 +175,22 @@ export function BuySheet({
       </div>
 
       <div className="shrink-0 border-t border-line bg-white/80 px-5 py-3 backdrop-blur-xl pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-8">
-        <button
-          type="button"
-          onClick={add}
-          className="flex h-11 w-full items-center justify-center rounded-full bg-[#1d1d1f] text-[17px] tracking-[-0.022em] text-white transition-colors hover:bg-[#3a3a3c]"
-        >
-          {sales.cta} {model.name}
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+          <button
+            type="button"
+            onClick={addToCart}
+            className="flex h-11 flex-1 items-center justify-center rounded-full bg-[#1d1d1f] text-[15px] tracking-[-0.02em] text-white transition-colors hover:bg-[#3a3a3c] sm:text-[16px]"
+          >
+            Añadir al carrito
+          </button>
+          <button
+            type="button"
+            onClick={buyNow}
+            className="flex h-11 flex-1 items-center justify-center rounded-full border border-[#1d1d1f]/12 bg-white/90 text-[15px] tracking-[-0.02em] text-[#1d1d1f] transition-colors hover:bg-white sm:text-[16px]"
+          >
+            {sales.cta}
+          </button>
+        </div>
         {hint ? (
           <p className="mt-2 text-center text-[11px] leading-4 text-soft">{hint}</p>
         ) : null}

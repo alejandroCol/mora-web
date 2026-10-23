@@ -141,7 +141,7 @@ export function SizeChoice({
       </div>
 
       {sizing === "kit" ? (
-        <p className="mt-2.5 text-[13px] leading-5 text-soft">
+        <p className="mt-3 rounded-xl border border-[#d9d0ee] bg-[#f6f4fb] px-3.5 py-2.5 text-[13px] leading-5 text-[#6f61b8]">
           Te lo enviamos primero. Luego eliges el número con tu pedido.
         </p>
       ) : null}

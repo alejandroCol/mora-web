@@ -89,13 +89,7 @@ export function BuySheet({
     router.push("/checkout");
   }
 
-  const hint =
-    need ||
-    (sizing === "kit"
-      ? sales.kitHint
-      : sizing === "self"
-        ? sales.deliveryHint
-        : "");
+  const hint = need || (sizing === "self" ? sales.deliveryHint : "");
 
   return (
     <div className="flex h-full min-h-0 flex-col">

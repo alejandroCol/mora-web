@@ -113,7 +113,7 @@ export const products: Record<ModelId, RingProduct> = {
     line: "Cerámica",
     material: "Cerámica de alta densidad",
     weight: "3.3 g",
-    price: 679_000,
+    price: 1_000,
     water: "5 ATM",
     battery: "7 días",
     sizes: [6, 7, 8, 9, 10, 11, 12, 13],

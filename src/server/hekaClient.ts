@@ -1,7 +1,5 @@
-import { DOCS } from "@/commerce/paths";
 import { codigoDaneEnviaCiudad } from "@/lib/colombiaGeo";
 import type { ShippingQuoteOption } from "@/commerce/types";
-import { adminDb } from "@/lib/firebaseAdmin";
 
 const HEKA_PROD_API = "https://api.hekaentrega.co";
 const HEKA_DEMO_API = "https://apidev.hekaentrega.co";
@@ -51,15 +49,7 @@ type HekaSession = {
 let sessionCache: (HekaSession & { sandbox: boolean }) | null = null;
 
 async function hekaSandboxEnabled() {
-  try {
-    const snap = await adminDb().doc(DOCS.commerce).get();
-    if (!snap.exists) return true;
-    const value = snap.get("hekaSandbox");
-    return value !== false;
-  } catch (error) {
-    console.error("[heka sandbox]", error);
-    return true;
-  }
+  return true;
 }
 
 async function resolveEnv(): Promise<HekaEnv> {

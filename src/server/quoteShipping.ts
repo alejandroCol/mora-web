@@ -44,6 +44,7 @@ export async function loadCommerceSettings(): Promise<CommerceSettings> {
       origin: { ...DEFAULT_SETTINGS.origin, ...data.origin },
       package: { ...DEFAULT_SETTINGS.package, ...data.package },
       cityRates: Array.isArray(data.cityRates) ? data.cityRates : [],
+      hekaSandbox: true,
     };
   } catch (error) {
     console.error("[commerce settings]", error);

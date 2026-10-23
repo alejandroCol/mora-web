@@ -244,6 +244,7 @@ export function defaultGalleryImages(modelId: ModelId, finishId?: FinishId) {
       sort: index,
       createdAt: 0,
       system: true as const,
+      hidden: false,
     }));
 }
 

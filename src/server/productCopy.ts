@@ -1,11 +1,12 @@
 import { DOCS } from "@/commerce/paths";
-import { products, type ModelId } from "@/lib/catalog";
+import type { ModelId } from "@/lib/catalog";
+import { previewCopy } from "@/lib/productSpec";
 import { adminDb } from "@/lib/firebaseAdmin";
 
 const MAX_CHARS = 400;
 
 export function defaultDescription(modelId: ModelId) {
-  return products[modelId].promise;
+  return previewCopy[modelId];
 }
 
 export async function getProductDescriptions(): Promise<Record<ModelId, string>> {

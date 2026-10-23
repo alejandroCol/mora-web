@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   finishLabel,
   formatMoney,
@@ -14,6 +14,7 @@ import { useSales } from "@/components/sales/SalesProvider";
 import { insightProductCart } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
 import { AddiWidget } from "@/components/payments/AddiWidget";
+import { ProductSpecSheet } from "./ProductSpecSheet";
 import { SizeChoice } from "./SizeChoice";
 
 export function BuySheet({
@@ -41,13 +42,19 @@ export function BuySheet({
   const sizing = selection.sizing;
   const [need, setNeed] = useState("");
   const [showCopy, setShowCopy] = useState(false);
+  const specRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showCopy || !specRef.current) return;
+    const node = specRef.current;
+    const scroller = node.closest(".overflow-y-auto");
+    if (!(scroller instanceof HTMLElement)) return;
+    const delta = node.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+    scroller.scrollTo({ top: Math.max(0, scroller.scrollTop + delta - 12), behavior: "smooth" });
+  }, [showCopy]);
 
   function validateSelection() {
-    if (!sizing) {
-      setNeed("Elige si quieres pedir un medidor.");
-      return false;
-    }
-    if (sizing === "self" && !model.sizes.includes(selection.size)) {
+    if ((sizing ?? "self") === "self" && !model.sizes.includes(selection.size)) {
       setNeed(sales.needSize);
       return false;
     }
@@ -92,7 +99,7 @@ export function BuySheet({
 
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pt-3 hide-scroll sm:px-8 sm:pt-8">
+      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-12 pt-3 hide-scroll sm:px-8 sm:pb-14 sm:pt-8">
         <div className="flex items-baseline justify-between gap-4">
           <div className="flex min-w-0 items-baseline gap-2">
             <h1 className="title-name text-[2.35rem] text-[#1d1d1f] sm:text-[2.85rem]">
@@ -135,7 +142,7 @@ export function BuySheet({
         </fieldset>
 
         {model.kind === "ring" ? (
-          <div className="mt-4 sm:mt-6">
+          <div className="mt-5 sm:mt-6">
             <SizeChoice
               sizing={sizing}
               onSizing={(method) => {
@@ -152,41 +159,46 @@ export function BuySheet({
           </div>
         ) : null}
 
-        {description ? (
-          <div className="mt-4 sm:mt-5">
-            {showCopy ? (
-              <p className="max-w-[36ch] text-[14px] leading-5 text-soft sm:text-[15px] sm:leading-6">
-                {description}
-              </p>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setShowCopy((value) => !value)}
-              className="mt-0.5 text-[13px] tracking-[-0.018em] text-[#6e6e73] transition-colors hover:text-[#1d1d1f]"
-            >
-              {showCopy ? "Cerrar descripción" : "Ver toda la descripción"}
-              <span aria-hidden className="ml-0.5">
-                {showCopy ? "‹" : "›"}
-              </span>
-            </button>
-          </div>
-        ) : null}
+        <div className="product-copy mt-5 sm:mt-6">
+          <div aria-hidden className="mb-3.5 h-[0.5px] w-36 bg-[#d8d8de]" />
+          {description ? (
+            <p className="max-w-[40ch] text-[12px] leading-4 text-soft">
+              {description}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            aria-expanded={showCopy}
+            onClick={() => setShowCopy((value) => !value)}
+            className="mt-1 text-[12px] text-[#6e6e73] transition-colors hover:text-[#1d1d1f]"
+          >
+            {showCopy ? "Cerrar descripción" : "Ver toda la descripción"}
+            <span aria-hidden className="ml-0.5">
+              {showCopy ? "‹" : "›"}
+            </span>
+          </button>
+          {showCopy ? (
+            <div ref={specRef}>
+              <ProductSpecSheet modelId={modelId} />
+            </div>
+          ) : null}
+        </div>
 
       </div>
 
-      <div className="shrink-0 border-t border-line bg-white/80 px-5 py-3 backdrop-blur-xl pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-8">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-stretch">
+      <div className="shrink-0 border-t border-line bg-white/80 px-4 py-3 backdrop-blur-xl pb-[max(0.85rem,env(safe-area-inset-bottom))] sm:px-8">
+        <div className="flex items-stretch gap-2">
           <button
             type="button"
             onClick={addToCart}
-            className="flex h-11 flex-1 items-center justify-center rounded-full bg-[#1d1d1f] text-[15px] tracking-[-0.02em] text-white transition-colors hover:bg-[#3a3a3c] sm:text-[16px]"
+            className="flex h-[3.25rem] min-w-0 flex-[1.45] items-center justify-center rounded-full bg-[#1d1d1f] px-3 text-[14px] tracking-[-0.02em] text-white transition-colors hover:bg-[#3a3a3c] sm:h-12 sm:flex-1 sm:px-4 sm:text-[15px]"
           >
             Añadir al carrito
           </button>
           <button
             type="button"
             onClick={buyNow}
-            className="flex h-11 flex-1 items-center justify-center rounded-full border border-[#1d1d1f]/12 bg-white/90 text-[15px] tracking-[-0.02em] text-[#1d1d1f] transition-colors hover:bg-white sm:text-[16px]"
+            className="flex h-[3.25rem] min-w-[6.5rem] flex-1 items-center justify-center rounded-full border border-[#1d1d1f]/12 bg-white/90 px-3 text-[14px] tracking-[-0.02em] text-[#1d1d1f] transition-colors hover:bg-white sm:h-12 sm:min-w-0 sm:px-4 sm:text-[15px]"
           >
             {sales.cta}
           </button>

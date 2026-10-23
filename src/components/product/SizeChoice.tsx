@@ -1,17 +1,58 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { SizingMethod } from "@/commerce/types";
 import { useSales } from "@/components/sales/SalesProvider";
 import { SizeGuideFilm } from "./SizeGuideFilm";
 
+const SIZE_CHART = [
+  { size: 8, around: "5,75 cm", diameter: "18,3 mm" },
+  { size: 9, around: "6 cm", diameter: "19,1 mm" },
+  { size: 10, around: "6,28 cm", diameter: "20 mm" },
+  { size: 11, around: "6,54 cm", diameter: "20,8 mm" },
+  { size: 12, around: "6,79 cm", diameter: "21,6 mm" },
+  { size: 13, around: "7 cm", diameter: "22,3 mm" },
+];
+
+function SizeChart({ active }: { active: number }) {
+  return (
+    <div className="mt-3 px-1 pb-1">
+      <p className="text-[14px] tracking-[-0.018em] text-[#1d1d1f]">Según tu medida</p>
+      <p className="mt-0.5 text-[12px] leading-4 text-[#6e6e73]">Contorno del dedo, en centímetros.</p>
+      <table className="mt-2.5 w-full border-collapse text-left">
+        <thead>
+          <tr className="text-[11px] text-[#8e8e93]">
+            <th className="pb-1.5 pl-2 font-normal">Talla</th>
+            <th className="pb-1.5 font-normal">Contorno</th>
+            <th className="pb-1.5 pr-2 text-right font-normal">Diámetro</th>
+          </tr>
+        </thead>
+        <tbody>
+          {SIZE_CHART.map((row) => {
+            const on = row.size === active;
+            return (
+              <tr key={row.size} className={on ? "bg-[#f5f5f7]" : ""}>
+                <td className="rounded-l-lg py-1.5 pl-2 text-[14px] tabular-nums text-[#1d1d1f]">{row.size}</td>
+                <td className="py-1.5 text-[14px] tabular-nums text-[#1d1d1f]">{row.around}</td>
+                <td className="rounded-r-lg py-1.5 pr-2 text-right text-[13px] tabular-nums text-[#6e6e73]">{row.diameter}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export function SizeChoice({
+  prompt = 0,
   sizing,
   onSizing,
   sizes,
   size,
   onSize,
 }: {
+  prompt?: number;
   sizing: SizingMethod | null;
   onSizing: (method: SizingMethod) => void;
   sizes: number[];
@@ -21,36 +62,81 @@ export function SizeChoice({
   const sales = useSales();
   const [info, setInfo] = useState(false);
   const [guide, setGuide] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const ask = prompt > 0 && !sizing;
+
+  useEffect(() => {
+    if (!ask || !rowRef.current) return;
+    const node = rowRef.current;
+    const scroller = node.closest(".overflow-y-auto");
+    if (!(scroller instanceof HTMLElement)) return;
+    const top = node.getBoundingClientRect().top;
+    const bounds = scroller.getBoundingClientRect();
+    if (top >= bounds.top && node.getBoundingClientRect().bottom <= bounds.bottom) return;
+    const delta = top - bounds.top;
+    scroller.scrollTo({ top: Math.max(0, scroller.scrollTop + delta - 12), behavior: "smooth" });
+  }, [ask, prompt]);
 
   return (
     <div>
-      <div className="flex items-center gap-2 whitespace-nowrap">
-        <p className="min-w-0 flex-1 text-[14px] tracking-[-0.018em] text-[#1d1d1f] sm:text-[15px]">
-          ¿Quieres pedir un medidor?
-        </p>
+      <div>
+        <div className="flex flex-wrap justify-start gap-1" role="group" aria-label="Talla">
+          {sizes.map((item) => {
+            const on = item === size;
+            return (
+              <button
+                key={item}
+                type="button"
+                aria-pressed={on}
+                onClick={() => onSize(item)}
+                className={`grid h-8 w-8 place-items-center rounded-full text-[14px] tabular-nums tracking-[-0.02em] transition-colors ${
+                  on ? "bg-[#1d1d1f] text-white" : "text-[#1d1d1f] hover:bg-black/[0.05]"
+                }`}
+              >
+                {item}
+              </button>
+            );
+          })}
+        </div>
         <button
           type="button"
-          className="size-info"
-          aria-label="Cómo funciona el medidor"
-          onClick={() => setInfo(true)}
+          onClick={() => setGuide(true)}
+          className="mt-3 inline-flex h-8 items-center rounded-full bg-[#efeff2] px-3 text-[13px] tracking-[-0.01em] text-[#1d1d1f] transition-colors hover:bg-[#e6e6ea]"
         >
-          i
+          Cómo medir mi talla?
         </button>
-        <div className="size-seg size-seg-inline">
+      </div>
+
+      <div ref={rowRef} className="mt-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <p className="text-[14px] tracking-[-0.018em] text-[#1d1d1f] sm:text-[15px]">
+          ¿Quieres pedir un medidor?
+        </p>
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => onSizing("kit")}
-            aria-pressed={sizing === "kit"}
+            className="size-info"
+            aria-label="Cómo funciona el medidor"
+            onClick={() => setInfo(true)}
           >
-            Sí
+            i
           </button>
-          <button
-            type="button"
-            onClick={() => onSizing("self")}
-            aria-pressed={sizing === "self"}
-          >
-            No
-          </button>
+          {ask ? <p className="size-ask">Selecciona una opción</p> : null}
+          <div key={prompt} className={`size-seg size-seg-inline ${ask ? "size-hop" : ""}`}>
+            <button
+              type="button"
+              onClick={() => onSizing("kit")}
+              aria-pressed={sizing === "kit"}
+            >
+              Sí
+            </button>
+            <button
+              type="button"
+              onClick={() => onSizing("self")}
+              aria-pressed={sizing !== "kit"}
+            >
+              No
+            </button>
+          </div>
         </div>
       </div>
 
@@ -58,38 +144,6 @@ export function SizeChoice({
         <p className="mt-2.5 text-[13px] leading-5 text-soft">
           Te lo enviamos primero. Luego eliges el número con tu pedido.
         </p>
-      ) : null}
-
-      {sizing === "self" ? (
-        <div className="mt-4">
-          <p className="text-[13px] tracking-[-0.014em] text-[#1d1d1f]">
-            Elige tu talla
-          </p>
-          <div className="mt-2.5 flex flex-wrap gap-1">
-            {sizes.map((item) => {
-              const on = item === size;
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  onClick={() => onSize(item)}
-                  className={`h-9 min-w-9 rounded-full px-2.5 text-[13px] transition-colors ${
-                    on ? "bg-[#1d1d1f] text-white" : "text-soft hover:text-ink"
-                  }`}
-                >
-                  {item}
-                </button>
-              );
-            })}
-          </div>
-          <button
-            type="button"
-            onClick={() => setGuide(true)}
-            className="mt-2.5 text-[13px] tracking-[-0.01em] text-[#6e6e73] hover:text-[#1d1d1f]"
-          >
-            Ver cómo medir ›
-          </button>
-        </div>
       ) : null}
 
       {info ? (
@@ -136,46 +190,21 @@ export function SizeChoice({
       ) : null}
 
       {guide ? (
-        <div className="size-sheet" role="dialog" aria-modal="true">
+        <div className="size-sheet size-sheet-mid" role="dialog" aria-modal="true" aria-label="Cómo medir mi talla">
           <button
             type="button"
             className="size-sheet-dim"
             aria-label="Cerrar"
             onClick={() => setGuide(false)}
           />
-          <div className="size-sheet-card">
-            <div className="flex items-center justify-between gap-4">
-              <p className="text-[15px] tracking-[-0.016em] text-[#1d1d1f]">
-                Cómo medir
-              </p>
-              <button
-                type="button"
-                onClick={() => setGuide(false)}
-                className="text-[13px] text-soft hover:text-ink"
-              >
-                Listo
-              </button>
-            </div>
-            <div className="mt-4">
-              <SizeGuideFilm />
-            </div>
-            <div className="mt-4 flex flex-wrap gap-1">
-              {sizes.map((item) => {
-                const on = item === size;
-                return (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => onSize(item)}
-                    className={`h-9 min-w-9 rounded-full px-2.5 text-[13px] ${
-                      on ? "bg-[#1d1d1f] text-white" : "bg-white text-soft"
-                    }`}
-                  >
-                    {item}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="size-sheet-card size-sheet-card-slim">
+            <button type="button" className="size-x" aria-label="Cerrar" onClick={() => setGuide(false)}>
+              <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden>
+                <path d="M3.2 3.2 10.8 10.8M10.8 3.2 3.2 10.8" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+            </button>
+            <SizeGuideFilm />
+            <SizeChart active={size} />
           </div>
         </div>
       ) : null}

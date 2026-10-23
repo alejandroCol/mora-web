@@ -78,7 +78,7 @@ export const useMoraStore = create<Store>()(
         modelId: "aero",
         finishId: "lilac",
         size: 8,
-        sizing: null,
+        sizing: "self",
       },
       cart: [],
       cartOpen: false,
@@ -102,7 +102,7 @@ export const useMoraStore = create<Store>()(
               modelId,
               finishId: nextFinish,
               size,
-              sizing: null,
+              sizing: "self",
             },
           };
         }),
@@ -120,17 +120,16 @@ export const useMoraStore = create<Store>()(
             ...state.selection,
             sizing,
             size:
-              sizing === "kit"
-                ? PENDING_SIZE
-                : state.selection.size || 8,
+              state.selection.size && state.selection.size !== PENDING_SIZE
+                ? state.selection.size
+                : 8,
           },
         })),
       setDraft: (patch) =>
         set((state) => ({ draft: { ...state.draft, ...patch } })),
       addSelectionToCart: (qty = 1) => {
         const { selection } = get();
-        const sizing = selection.sizing;
-        if (!sizing) return;
+        const sizing = selection.sizing ?? "self";
         const size = sizing === "kit" ? PENDING_SIZE : selection.size;
         const key = cartLineKey(
           selection.modelId,
@@ -194,7 +193,7 @@ export const useMoraStore = create<Store>()(
     }),
     {
       name: "mora-atelier",
-      version: 7,
+      version: 8,
       partialize: (state) => ({
         selection: state.selection,
         cart: state.cart,
@@ -224,7 +223,7 @@ export const useMoraStore = create<Store>()(
         }
         if (data.selection?.modelId === "pulse") data.selection.modelId = "titan";
         if (data.selection && data.selection.sizing == null) {
-          data.selection.sizing = null;
+          data.selection.sizing = "self";
         }
         const cart = (data.cart ?? []).map((line) => ({
           ...line,

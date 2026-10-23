@@ -6,6 +6,7 @@ import {
   listAllGalleries,
   moveGalleryImage,
   removeGalleryImage,
+  reorderGallery,
   setGalleryHidden,
 } from "@/server/gallery";
 import { getProductDescriptions, setProductDescription } from "@/server/productCopy";
@@ -72,8 +73,19 @@ export async function PATCH(request: Request) {
       direction?: "up" | "down";
       hidden?: boolean;
       modelId?: string;
+      finishId?: string;
+      order?: string[];
       description?: string;
     };
+    if (
+      isModelId(body.modelId) &&
+      isProductFinish(body.modelId, body.finishId) &&
+      Array.isArray(body.order)
+    ) {
+      const order = body.order.filter((id): id is string => typeof id === "string" && id.length > 0);
+      await reorderGallery(body.modelId, body.finishId, order);
+      return Response.json({ ok: true, galleries: await galleries() });
+    }
     if (isModelId(body.modelId) && typeof body.description === "string") {
       const description = await setProductDescription(body.modelId, body.description);
       return Response.json({

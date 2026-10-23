@@ -67,14 +67,16 @@ export async function listGallery(
 ): Promise<GalleryImage[]> {
   try {
     const snap = await galleryCol().where("modelId", "==", modelId).get();
-    if (modelId === "aero") {
-      const leftovers = snap.docs.filter((doc) => doc.id.startsWith("default-aero-"));
-      if (leftovers.length) {
-        await Promise.all(leftovers.map((doc) => doc.ref.delete()));
-      }
+    const liveDefaultIds = new Set(defaultGalleryImages(modelId).map((item) => item.id));
+    const leftovers = snap.docs.filter(
+      (doc) => doc.id.startsWith(`default-${modelId}-`) && !liveDefaultIds.has(doc.id),
+    );
+    if (leftovers.length) {
+      await Promise.all(leftovers.map((doc) => doc.ref.delete()));
     }
+    const leftoverIds = new Set(leftovers.map((doc) => doc.id));
     const docs = snap.docs
-      .filter((doc) => !doc.id.startsWith("default-aero-"))
+      .filter((doc) => !leftoverIds.has(doc.id))
       .map((doc) => asImage(doc.id, doc.data()))
       .filter((item): item is GalleryImage => Boolean(item));
     const hiddenIds = new Set(docs.filter((item) => item.hidden).map((item) => item.id));
@@ -217,30 +219,52 @@ export async function removeGalleryImage(id: string) {
   await ref.delete();
 }
 
+function customOf(images: GalleryImage[], finishId: FinishId) {
+  return images.filter((item) => !item.system && item.finishId === finishId);
+}
+
+export async function reorderGallery(modelId: ModelId, finishId: FinishId, orderedIds: string[]) {
+  const siblings = customOf(
+    await listGallery(modelId, { finishId, includeHidden: true }),
+    finishId,
+  );
+  const known = new Set(siblings.map((item) => item.id));
+  const next = orderedIds.filter((id) => known.has(id));
+  for (const item of siblings) {
+    if (!next.includes(item.id)) next.push(item.id);
+  }
+  if (!next.length) return;
+
+  const batch = adminDb().batch();
+  next.forEach((id, index) => {
+    batch.set(galleryCol().doc(id), { sort: index }, { merge: true });
+  });
+  await batch.commit();
+}
+
 export async function moveGalleryImage(id: string, direction: "up" | "down") {
   const ref = galleryCol().doc(id);
   const snap = await ref.get();
   const current = asImage(id, snap.data());
-  if (!current || current.system) {
+  if (!current || current.system || !current.finishId) {
     throw Object.assign(new Error("Esa imagen no se puede mover."), { status: 400 });
   }
 
-  const siblings = (
+  const siblings = customOf(
     await listGallery(current.modelId, {
       finishId: current.finishId,
       includeHidden: true,
-    })
-  ).filter((item) => !item.system);
+    }),
+    current.finishId,
+  );
   const index = siblings.findIndex((item) => item.id === id);
   const nextIndex = direction === "up" ? index - 1 : index + 1;
-  const swap = siblings[nextIndex];
-  if (!swap) return siblings;
+  if (index < 0 || nextIndex < 0 || nextIndex >= siblings.length) return;
 
-  const batch = adminDb().batch();
-  batch.set(galleryCol().doc(current.id), { sort: swap.sort }, { merge: true });
-  batch.set(galleryCol().doc(swap.id), { sort: current.sort }, { merge: true });
-  await batch.commit();
-  return listGallery(current.modelId, { includeHidden: true });
+  const order = siblings.map((item) => item.id);
+  const [moved] = order.splice(index, 1);
+  order.splice(nextIndex, 0, moved);
+  await reorderGallery(current.modelId, current.finishId, order);
 }
 
 export async function setGalleryHidden(id: string, hidden: boolean) {

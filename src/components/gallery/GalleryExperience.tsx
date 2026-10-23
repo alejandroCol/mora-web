@@ -33,6 +33,7 @@ export function GalleryExperience({
     ? selection.finishId
     : model.finishes[0];
   const [remote, setRemote] = useState<GalleryImage[]>([]);
+  const [galleryReady, setGalleryReady] = useState(false);
   const [index, setIndex] = useState(0);
   const [veil, setVeil] = useState(entrada);
 
@@ -59,14 +60,16 @@ export function GalleryExperience({
 
   useEffect(() => {
     let alive = true;
+    setGalleryReady(false);
     void fetch(`/api/gallery?model=${modelId}`)
       .then(async (res) => {
-        if (!res.ok) return { images: [] };
+        if (!res.ok) return { images: [] as GalleryImage[] };
         return (await res.json()) as { images?: GalleryImage[] };
       })
       .then((data) => {
         if (!alive) return;
         setRemote(data.images ?? []);
+        setGalleryReady(true);
         setIndex(0);
       })
       .catch(() => undefined);
@@ -75,14 +78,11 @@ export function GalleryExperience({
     };
   }, [modelId]);
 
-  const uploaded = remote.filter(
-    (item) => !item.system && (!item.finishId || item.finishId === finishId),
-  );
-  const house = defaultGalleryImages(modelId, finishId);
-  const houseHidden = remote.some(
-    (item) => item.hidden && house.some((entry) => entry.id === item.id),
-  );
-  const images = [...uploaded, ...(houseHidden ? [] : house)];
+  const images = (
+    galleryReady
+      ? remote.filter((item) => !item.finishId || item.finishId === finishId)
+      : defaultGalleryImages(modelId, finishId)
+  ).filter((item) => !item.hidden);
 
   useEffect(() => {
     setIndex(0);

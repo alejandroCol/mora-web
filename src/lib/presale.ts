@@ -38,7 +38,8 @@ export const PRESALE = buildPresaleCopy(PRESALE_DEFAULT_SALE_ON);
 
 export const SIZE_GUIDE_VIDEO = {
   src: "/videos/medir-talla.mp4",
-  caption: "Cómo medir tu talla",
+  poster: "/videos/medir-talla.jpg",
+  caption: "Cómo medir mi talla",
   whisper: "Un hilo. Un dedo. Tu número.",
 } as const;
 

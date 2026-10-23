@@ -164,6 +164,17 @@ export function resolveFinish(modelId: ModelId, finishId: FinishId): Finish {
       swatch: "linear-gradient(145deg, #4a4a4e 0%, #1a1a1c 48%, #0a0a0c 100%)",
     };
   }
+  if (modelId === "titan" && finishId === "black") {
+    return {
+      ...base,
+      color: "#09090b",
+      metalness: 0.2,
+      roughness: 0.07,
+      clearcoat: 0.94,
+      envMapIntensity: 1.22,
+      swatch: "linear-gradient(145deg, #3a3a3e 0%, #141416 42%, #050506 100%)",
+    };
+  }
   return base;
 }
 
@@ -216,20 +227,24 @@ export function isProductFinish(modelId: ModelId, value: unknown): value is Fini
   return isFinishId(value) && products[modelId].finishes.includes(value);
 }
 
+const removedHousePhotos = new Set(["default-titan-silver"]);
+
 export function defaultGalleryImages(modelId: ModelId, finishId?: FinishId) {
   if (modelId === "aero") return [];
   const colors = finishId
     ? products[modelId].finishes.filter((id) => id === finishId)
     : products[modelId].finishes;
-  return colors.map((id, index) => ({
-    id: `default-${modelId}-${id}`,
-    modelId,
-    finishId: id,
-    src: finishPhoto(id),
-    sort: index,
-    createdAt: 0,
-    system: true as const,
-  }));
+  return colors
+    .filter((id) => !removedHousePhotos.has(`default-${modelId}-${id}`))
+    .map((id, index) => ({
+      id: `default-${modelId}-${id}`,
+      modelId,
+      finishId: id,
+      src: finishPhoto(id),
+      sort: index,
+      createdAt: 0,
+      system: true as const,
+    }));
 }
 
 export function defaultGalleryImage(modelId: ModelId) {

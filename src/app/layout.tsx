@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { Roboto } from "next/font/google";
 import { BRAND } from "@/brand";
 import { FALLBACK_SALES } from "@/commerce/sales";
 import { AppChrome } from "@/components/AppChrome";
@@ -8,6 +9,13 @@ import { SalesProvider } from "@/components/sales/SalesProvider";
 import { JsonLd } from "@/components/seo/JsonLd";
 import { siteOrigin } from "@/lib/site";
 import "./globals.css";
+
+const roboto = Roboto({
+  weight: ["400", "500"],
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-roboto",
+});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -61,7 +69,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es-CO"
-      className="h-full scroll-smooth antialiased"
+      className={`${roboto.variable} h-full scroll-smooth antialiased`}
     >
       <body className="flex min-h-full flex-col bg-paper text-ink">
         <JsonLd sales={FALLBACK_SALES} />

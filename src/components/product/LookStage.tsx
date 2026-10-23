@@ -29,16 +29,17 @@ function matchesFinish(image: GalleryImage, finishId: FinishId) {
   return !image.finishId || image.finishId === finishId;
 }
 
-function asLooks(modelId: ModelId, finishId: FinishId, remote: GalleryImage[]): LookImage[] {
+function asLooks(
+  modelId: ModelId,
+  finishId: FinishId,
+  remote: GalleryImage[],
+  loaded: boolean,
+): LookImage[] {
   const name = `Mora ${products[modelId].name} ${finishLabel(modelId, finishId)}`;
-  const uploaded = remote.filter(
-    (item) => !item.system && matchesFinish(item, finishId) && !item.hidden,
-  );
-  const house = defaultGalleryImages(modelId, finishId);
-  const houseHidden = remote.some(
-    (item) => item.hidden && house.some((entry) => entry.id === item.id),
-  );
-  return [...uploaded, ...(houseHidden ? [] : house)].map((item) => ({
+  const source = loaded
+    ? remote.filter((item) => matchesFinish(item, finishId) && !item.hidden)
+    : defaultGalleryImages(modelId, finishId);
+  return source.map((item) => ({
     id: item.id,
     src: item.src,
     alt: name,
@@ -57,6 +58,7 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
       ? selection.finishId
       : model.finishes[0];
   const [remote, setRemote] = useState<GalleryImage[]>([]);
+  const [galleryReady, setGalleryReady] = useState(false);
   const [index, setIndex] = useState(0);
   const [seenFinish, setSeenFinish] = useState(finishId);
   const [prev, setPrev] = useState<number | null>(null);
@@ -70,7 +72,7 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
   const [belowBar, setBelowBar] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const railOutRef = useRef(false);
-  const images = asLooks(modelId, finishId, remote);
+  const images = asLooks(modelId, finishId, remote, galleryReady);
 
   const items: StageItem[] = [
     { id: "ring", kind: "ring" },
@@ -87,11 +89,13 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
 
   useEffect(() => {
     let alive = true;
+    setGalleryReady(false);
     void fetch(`/api/gallery?model=${modelId}`)
       .then(async (res) => (await res.json()) as { images?: GalleryImage[] })
       .then((data) => {
         if (!alive) return;
         setRemote(data.images ?? []);
+        setGalleryReady(true);
       })
       .catch(() => undefined);
     return () => {

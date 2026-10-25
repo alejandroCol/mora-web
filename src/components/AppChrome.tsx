@@ -13,6 +13,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     pathname.startsWith("/superadmin") ||
     pathname.startsWith("/acceso") ||
     pathname.startsWith("/circulo") ||
+    pathname.startsWith("/vincular") ||
     pathname.startsWith("/encuesta") ||
     pathname.startsWith("/creadores");
   const isGallery = pathname.startsWith("/galeria");

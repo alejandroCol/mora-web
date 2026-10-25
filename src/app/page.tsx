@@ -1,4 +1,5 @@
 import { Atelier } from "@/components/landing/Atelier";
+import { CreatorsStrip } from "@/components/landing/CreatorsStrip";
 import { Close } from "@/components/landing/Close";
 import { Faq } from "@/components/landing/Faq";
 import { Film } from "@/components/landing/Film";
@@ -18,6 +19,7 @@ export default function Home() {
       <PresaleModule />
       <Film />
       <Atelier />
+      <CreatorsStrip />
       <Close />
       <Faq />
     </>

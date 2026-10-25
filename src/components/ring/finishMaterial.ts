@@ -29,7 +29,7 @@ export function applyRingFinish(material: MeshPhysicalMaterial, next: Finish) {
   material.emissive.set(next.emissive);
   material.emissiveIntensity = next.emissiveIntensity;
   material.sheen = gold || silver || matte || glossBlack || softBlack ? 0 : 0.16;
-  material.sheenColor.set(next.id === "lilac" ? "#E4D7F6" : "#f4f8ff");
+  material.sheenColor.set(next.id === "lilac" ? "#EFC2CD" : "#f4f8ff");
   material.specularIntensity = gold
     ? 1
     : silver

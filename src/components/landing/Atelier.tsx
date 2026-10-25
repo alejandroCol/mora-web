@@ -52,6 +52,71 @@ export function Atelier() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const root = scroller.current;
+    if (!root) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (window.matchMedia("(min-width: 1024px)").matches) return;
+
+    let played = false;
+    let cancelled = false;
+    let frame = 0;
+    const timers: number[] = [];
+
+    const ease = (t: number) => 0.5 - Math.cos(Math.PI * t) / 2;
+
+    const stop = () => {
+      cancelled = true;
+      window.cancelAnimationFrame(frame);
+      timers.forEach((id) => window.clearTimeout(id));
+      root.style.scrollSnapType = "";
+    };
+
+    const peek = () => {
+      if (played || cancelled || root.scrollLeft > 8) return;
+      played = true;
+      const reach = Math.min(Math.round(root.clientWidth * 0.055), 28);
+      const duration = 1680;
+      const started = performance.now();
+      root.style.scrollSnapType = "none";
+
+      const tick = (now: number) => {
+        if (cancelled) return;
+        const t = Math.min(1, (now - started) / duration);
+        const wave = Math.sin(ease(t) * Math.PI);
+        root.scrollLeft = reach * wave;
+        if (t < 1) {
+          frame = window.requestAnimationFrame(tick);
+          return;
+        }
+        root.scrollLeft = 0;
+        root.style.scrollSnapType = "";
+      };
+
+      frame = window.requestAnimationFrame(tick);
+    };
+
+    const seen = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.58) return;
+        timers.push(window.setTimeout(peek, 700));
+      },
+      { threshold: [0.58] },
+    );
+    seen.observe(root);
+
+    const onTouch = () => stop();
+    root.addEventListener("pointerdown", onTouch, { passive: true });
+    root.addEventListener("wheel", onTouch, { passive: true });
+
+    return () => {
+      stop();
+      seen.disconnect();
+      root.removeEventListener("pointerdown", onTouch);
+      root.removeEventListener("wheel", onTouch);
+    };
+  }, []);
+
   function show(index: number) {
     const card = scroller.current?.querySelectorAll<HTMLElement>("[data-world]")[index];
     card?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
@@ -129,6 +194,7 @@ export function Atelier() {
           );
         })}
       </div>
+      {active === 0 ? <span className="world-swipe-hint" aria-hidden /> : null}
     </section>
   );
 }

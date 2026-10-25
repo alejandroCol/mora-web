@@ -5,14 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import {
   finishLabel,
   formatMoney,
-  productColorPath,
   products,
   resolveFinish,
   writeProductColor,
-  type FinishId,
   type ModelId,
 } from "@/lib/catalog";
-import { siteOrigin } from "@/lib/site";
 import { track } from "@/growth/track";
 import { useSales } from "@/components/sales/SalesProvider";
 import { insightProductCart } from "@/insights/client";
@@ -105,12 +102,9 @@ export function BuySheet({
             </h1>
             <p className="text-[11px] tracking-[-0.01em] text-soft sm:text-[12px]">{model.line}</p>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5 self-center">
-            <ShareProduct modelId={modelId} finishId={finishId} name={model.name} />
-            <p className="text-[17px] tracking-[-0.02em] text-[#1d1d1f]">
-              {formatMoney(model.price)}
-            </p>
-          </div>
+          <p className="shrink-0 text-[17px] tracking-[-0.02em] text-[#1d1d1f]">
+            {formatMoney(model.price)}
+          </p>
         </div>
         <AddiWidget price={model.price} className="mt-2" />
 
@@ -212,69 +206,5 @@ export function BuySheet({
         ) : null}
       </div>
     </div>
-  );
-}
-
-function ShareProduct({
-  modelId,
-  finishId,
-  name,
-}: {
-  modelId: ModelId;
-  finishId: FinishId;
-  name: string;
-}) {
-  const [copied, setCopied] = useState(false);
-  const color = finishLabel(modelId, finishId);
-
-  async function share() {
-    const path = productColorPath(modelId, finishId);
-    const origin = typeof window === "undefined" ? siteOrigin() : window.location.origin;
-    const url = `${origin}${path}`;
-    const title = `Mora ${name} · ${color}`;
-    if (typeof navigator.share === "function") {
-      try {
-        await navigator.share({ title, text: title, url });
-        return;
-      } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") return;
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      setCopied(false);
-    }
-  }
-
-  return (
-    <button
-      type="button"
-      onClick={() => void share()}
-      className="grid h-8 w-8 place-items-center rounded-full text-[#6e6e73] transition-colors hover:bg-black/[0.05] hover:text-[#1d1d1f]"
-      aria-label={copied ? "Enlace copiado" : `Compartir ${color}`}
-    >
-      {copied ? <CopiedMark /> : <ShareMark />}
-    </button>
-  );
-}
-
-function ShareMark() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden fill="none">
-      <path d="M8 10.2V2.6" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
-      <path d="M5.15 4.85 8 2.05l2.85 2.8" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M3.4 7.1v5.15c0 .7.55 1.25 1.25 1.25h6.7c.7 0 1.25-.55 1.25-1.25V7.1" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function CopiedMark() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden fill="none">
-      <path d="M3.4 8.2 6.5 11.2 12.6 4.6" stroke="currentColor" strokeWidth="1.35" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
   );
 }

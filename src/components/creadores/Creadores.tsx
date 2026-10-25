@@ -730,35 +730,33 @@ export function Creadores() {
                             </div>
                           ))}
                           {shots.length < MAX_SHOTS ? (
-                            <button
-                              type="button"
+                            <label
                               className={shots.length === 0 ? "cr-add cr-add-wide" : "cr-add"}
-                              onClick={() => fileRef.current?.click()}
                               onDragOver={(event) => event.preventDefault()}
                               onDrop={(event) => {
                                 event.preventDefault();
                                 addFiles(event.dataTransfer.files);
                               }}
                             >
+                              <input
+                                ref={fileRef}
+                                type="file"
+                                accept="image/*,.heic,.heif"
+                                multiple
+                                className="cr-file-input"
+                                onChange={(event) => addFiles(event.target.files)}
+                              />
                               {shots.length === 0 ? (
                                 <>
-                                  Añadir pantallazos
+                                  <span>Añadir pantallazos</span>
                                   <small>De tus estadísticas</small>
                                 </>
                               ) : (
-                                "+"
+                                <span aria-hidden="true">+</span>
                               )}
-                            </button>
+                            </label>
                           ) : null}
                         </div>
-                        <input
-                          ref={fileRef}
-                          type="file"
-                          accept="image/*"
-                          multiple
-                          hidden
-                          onChange={(event) => addFiles(event.target.files)}
-                        />
                       </div>
                     </div>
                   </>

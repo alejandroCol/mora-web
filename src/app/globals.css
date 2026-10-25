@@ -1107,6 +1107,161 @@ body {
   background: #000;
 }
 
+.world-creators {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fbfbfd;
+  color: #3d3852;
+}
+
+.world-creators-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% 18%, rgba(196, 189, 220, 0.55), transparent 70%),
+    radial-gradient(ellipse 46% 38% at 88% 88%, rgba(201, 196, 230, 0.45), transparent 72%),
+    radial-gradient(ellipse 40% 32% at 8% 78%, rgba(230, 226, 244, 0.85), transparent 72%);
+  pointer-events: none;
+}
+
+.world-creators-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 20rem;
+  padding: 2rem 1.75rem 2.5rem;
+  text-align: center;
+}
+
+.world-creators-kicker {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #8b84a6;
+}
+
+.world-creators-title {
+  margin: 0.85rem 0 0;
+  font-family: var(--font-roboto), Roboto, sans-serif;
+  font-size: clamp(1.65rem, 7vw, 2.15rem);
+  font-weight: 100;
+  letter-spacing: -0.045em;
+  line-height: 1.08;
+  text-wrap: balance;
+  color: #3d3852;
+}
+
+.world-creators-lead {
+  margin: 0.85rem 0 0;
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 1.5;
+  letter-spacing: -0.015em;
+  color: #6a6580;
+  text-wrap: balance;
+}
+
+.world-creators-cta {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 10.5rem;
+  height: 3rem;
+  margin-top: 1.65rem;
+  padding: 0 1.65rem;
+  border-radius: 999px;
+  background: #6f61b8;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+  transition: background-color 0.2s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.world-creators-cta:hover {
+  background: #6256a8;
+}
+
+.world-creators-cta:active {
+  transform: scale(0.98);
+}
+
+.creators-strip {
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid rgba(111, 97, 184, 0.12);
+  background: #fbfbfd;
+}
+
+.creators-strip-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 0%, rgba(196, 189, 220, 0.45), transparent 72%),
+    radial-gradient(ellipse 50% 40% at 92% 100%, rgba(201, 196, 230, 0.35), transparent 70%);
+  pointer-events: none;
+}
+
+.creators-strip .world-creators-copy {
+  position: relative;
+  z-index: 1;
+  margin: 0 auto;
+  max-width: 22rem;
+  padding: 2.75rem 1.5rem 3rem;
+}
+
+.world-swipe-hint {
+  position: absolute;
+  top: 50%;
+  right: 0.85rem;
+  z-index: 4;
+  width: 14px;
+  height: 14px;
+  pointer-events: none;
+  opacity: 0;
+  animation: world-swipe-hint 2.8s 0.7s ease-in-out both;
+}
+
+.world-swipe-hint::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 3px;
+  width: 7px;
+  height: 7px;
+  border-right: 1.15px solid rgba(29, 29, 31, 0.22);
+  border-top: 1.15px solid rgba(29, 29, 31, 0.22);
+  transform: translateY(-50%) rotate(45deg);
+}
+
+@keyframes world-swipe-hint {
+  0% {
+    opacity: 0;
+    transform: translate(-3px, -50%);
+  }
+  22% {
+    opacity: 0.55;
+    transform: translate(0, -50%);
+  }
+  55% {
+    opacity: 0.28;
+    transform: translate(4px, -50%);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(2px, -50%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .world-swipe-hint {
+    display: none;
+  }
+}
+
 .world-hint {
   position: absolute;
   right: 1.25rem;
@@ -1169,7 +1324,8 @@ body {
     letter-spacing: -0.016em;
   }
 
-  .world-hint {
+  .world-hint,
+  .world-swipe-hint {
     display: none;
   }
 }

@@ -37,16 +37,16 @@ export type RingProduct = {
 export const finishes: Record<FinishId, Finish> = {
   lilac: {
     id: "lilac",
-    title: "Lila",
-    whisper: "Cerámica en el color de Mora.",
-    color: "#C9B6E4",
+    title: "Rosa perla",
+    whisper: "Blanco con un poco de rosa.",
+    color: "#E9B9C5",
     metalness: 0.08,
-    roughness: 0.28,
+    roughness: 0.26,
     clearcoat: 0.4,
-    envMapIntensity: 1.05,
-    emissive: "#D4C4EE",
-    emissiveIntensity: 0.06,
-    swatch: "linear-gradient(145deg, #f6f1ff 0%, #d4c4ee 48%, #a890d0 100%)",
+    envMapIntensity: 0.95,
+    emissive: "#EFC6D0",
+    emissiveIntensity: 0.08,
+    swatch: "linear-gradient(145deg, #fbeef1 0%, #edc6d0 50%, #d6a3b1 100%)",
   },
   white: {
     id: "white",
@@ -192,7 +192,7 @@ export function productPath(modelId: ModelId) {
 }
 
 const COLOR_SLUG: Record<FinishId, string> = {
-  lilac: "lila",
+  lilac: "rosa",
   white: "blanco",
   black: "negro",
   gold: "oro",
@@ -206,6 +206,7 @@ export function colorSlug(finishId: FinishId) {
 export function finishFromColorSlug(value: string | null | undefined): FinishId | null {
   if (!value) return null;
   const key = value.trim().toLowerCase();
+  if (key === "lila") return "lilac";
   const match = (Object.entries(COLOR_SLUG) as [FinishId, string][]).find(
     ([, slug]) => slug === key,
   );

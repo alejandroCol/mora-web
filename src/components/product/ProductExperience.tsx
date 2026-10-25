@@ -3,6 +3,7 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { BuySheet } from "@/components/product/BuySheet";
 import { LookStage } from "@/components/product/LookStage";
+import { ShareProduct } from "@/components/product/ShareProduct";
 import { landingFinish, products, writeProductColor, type ModelId } from "@/lib/catalog";
 import { track } from "@/growth/track";
 import { useInsightProduct } from "@/insights/client";
@@ -69,6 +70,12 @@ export function ProductExperience({
       <div className="flex h-full flex-col lg:flex-row">
         <section className="relative h-[min(50dvh,36rem)] min-h-[20rem] shrink-0 lg:h-auto lg:min-h-0 lg:min-w-0 lg:flex-1">
           <LookStage modelId={modelId} landing={opened} />
+          <ShareProduct
+            modelId={modelId}
+            finishId={finishId}
+            name={model.name}
+            className="absolute bottom-3 right-3 z-10 sm:bottom-5 sm:right-5"
+          />
         </section>
         <aside className="product-sheet relative min-h-0 flex-1 bg-white/70 lg:w-[26rem] lg:flex-none lg:border-l lg:border-line lg:bg-transparent xl:w-[28rem]">
           <BuySheet modelId={modelId} description={copy} />

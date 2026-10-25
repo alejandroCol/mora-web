@@ -53,3 +53,7 @@ next-env.d.ts
 
 # votos de /encuesta
 /data/encuesta.json
+
+# postulaciones locales de /creadores si Firestore no responde
+/data/creadores.json
+/data/creadores/

@@ -7,6 +7,7 @@ const LINKS = [
   { href: "/anillo/ultra", label: "Ultra" },
   { href: "/pedido", label: "Pedido" },
   { href: "/talla", label: "Talla" },
+  { href: "/creadores", label: "Creadores" },
   { href: "/privacidad", label: "Privacidad" },
   { href: "/terminos", label: "Condiciones" },
 ] as const;

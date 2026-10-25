@@ -14,6 +14,7 @@ export const COLLECTIONS = {
   financeOrders: "financeOrders",
   financeAttachments: "financeAttachments",
   encuestaVotes: "encuestaVotes",
+  creatorApplications: "creatorApplications",
   paymentIntents: "paymentIntents",
   abandonedCarts: "abandonedCarts",
   insightsDaily: "insightsDaily",

@@ -157,14 +157,39 @@ function orderBody(order: MoraOrder, extra?: string) {
   `;
 }
 
-async function sendResend(to: string, subject: string, html: string) {
+async function sendResend(
+  to: string | string[],
+  subject: string,
+  html: string,
+  extras?: {
+    replyTo?: string;
+    attachments?: { filename: string; content: Buffer }[];
+  },
+) {
   const key = process.env.RESEND_API_KEY?.trim();
   const from = process.env.RESEND_FROM?.trim() || FROM_DEFAULT;
+  const recipients = (Array.isArray(to) ? to : [to]).map((item) => item.trim()).filter(Boolean);
   if (!key) {
-    console.warn("[email] RESEND_API_KEY ausente; no se envió", subject, to);
+    console.warn("[email] RESEND_API_KEY ausente; no se envió", subject, recipients.join(","));
     return { ok: false as const, error: "missing_resend" };
   }
-  if (!looksLikeEmail(to)) return { ok: false as const, error: "invalid_email" };
+  if (recipients.length === 0 || recipients.some((item) => !looksLikeEmail(item))) {
+    return { ok: false as const, error: "invalid_email" };
+  }
+
+  const payload: Record<string, unknown> = {
+    from,
+    to: recipients,
+    reply_to: extras?.replyTo || "no-responder@moraring.com",
+    subject,
+    html,
+  };
+  if (extras?.attachments?.length) {
+    payload.attachments = extras.attachments.map((file) => ({
+      filename: file.filename,
+      content: file.content.toString("base64"),
+    }));
+  }
 
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -172,16 +197,11 @@ async function sendResend(to: string, subject: string, html: string) {
       Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      from,
-      to: [to.trim()],
-      reply_to: "no-responder@moraring.com",
-      subject,
-      html,
-    }),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const text = await res.text();
+    console.error("[email] resend", res.status, text.slice(0, 180));
     return { ok: false as const, error: text.slice(0, 300) };
   }
   return { ok: true as const };
@@ -306,4 +326,117 @@ export async function sendAbandonedOfferEmail(cart: AbandonedCart) {
     `Tu Mora con ${formatMoney(offer.discountCop)} de descuento`,
     html,
   );
+}
+
+const CREATOR_LILAC = "#6f61b8";
+const CREATOR_MIST = "#f4f3f8";
+const CREATOR_INK = "#3d3852";
+const CREATOR_SOFT = "#6a6580";
+const CREATOR_LINE = "#e6e2f4";
+
+function creatorInterestShell(input: { name: string }) {
+  const hello = escapeHtml(input.name.trim() || "Hola");
+  const banner = `${siteUrl()}/creadores/fondo.jpg`;
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<title>Estamos emocionados · ${escapeHtml(BRAND.name)}</title>
+</head>
+<body style="margin:0;padding:0;background:${CREATOR_MIST}">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all">Recibimos tu registro. Revisaremos tus redes y nos comunicaremos pronto.</div>
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:${CREATOR_MIST};padding:32px 14px">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fbfbfd;border:1px solid ${CREATOR_LINE};border-radius:4px;overflow:hidden">
+          <tr>
+            <td style="padding:0;line-height:0;background:#fbfbfd">
+              <img src="${banner}" alt="" width="560" height="224" style="display:block;width:100%;max-width:560px;height:auto;border:0;opacity:0.92" />
+            </td>
+          </tr>
+          <tr>
+            <td align="center" style="padding:28px 32px 8px;background:#fbfbfd">
+              <img src="${LOGO}" alt="${escapeHtml(BRAND.name)}" width="148" height="46" style="display:block;margin:0 auto;border:0;outline:none;height:auto;max-width:148px;opacity:0.88" />
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:8px 36px 0;color:${CREATOR_INK};font-family:Roboto,ui-sans-serif,system-ui,-apple-system,sans-serif;background:#fbfbfd">
+              <div style="font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#8b84a6;font-weight:400">Creadores</div>
+              <h1 style="margin:12px 0 0;font-size:32px;line-height:1.08;font-weight:300;letter-spacing:-0.04em;color:${CREATOR_INK}">Estamos emocionados.</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:18px 36px 36px;font-family:Roboto,ui-sans-serif,system-ui,-apple-system,sans-serif;font-size:15px;line-height:1.65;background:#fbfbfd;color:${CREATOR_SOFT}">
+              <p style="margin:0 0 20px;color:${CREATOR_SOFT};font-weight:300">Hola ${hello}. Recibimos tu registro para usar ${escapeHtml(BRAND.name)} antes que nadie.</p>
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:${CREATOR_MIST};border:1px solid ${CREATOR_LINE};border-radius:16px">
+                <tr>
+                  <td style="padding:20px 22px">
+                    <p style="margin:0;font-size:15px;line-height:1.6;color:${CREATOR_INK};font-weight:300">Vamos a revisar tus redes y tus estadísticas con calma.</p>
+                    <p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:${CREATOR_INK};font-weight:400">Nos comunicaremos pronto contigo.</p>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:22px 0 0;font-size:13px;line-height:1.55;color:#8b84a6;font-weight:300">Si tienes dudas, escríbenos a <a href="mailto:${escapeHtml(BRAND.contact.email)}" style="color:${CREATOR_LILAC};text-decoration:none">${escapeHtml(BRAND.contact.email)}</a>.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:22px 36px 28px;background:#fbfbfd;border-top:1px solid ${CREATOR_LINE};font-family:Roboto,ui-sans-serif,system-ui,-apple-system,sans-serif">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td width="28" style="vertical-align:middle">
+                    <img src="${MARK}" alt="" width="28" height="28" style="display:block;border:0;width:28px;height:auto;opacity:0.9" />
+                  </td>
+                  <td style="padding-left:12px;vertical-align:middle">
+                    <div style="color:${CREATOR_INK};font-size:12px;letter-spacing:0.14em;text-transform:uppercase;font-weight:400">${escapeHtml(BRAND.name)}</div>
+                    <div style="margin-top:3px;color:#8b84a6;font-size:12px;font-weight:300">${escapeHtml(BRAND.tagline)}</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendCreatorInterestEmail(input: { name: string; email: string }) {
+  const html = creatorInterestShell({ name: input.name });
+  return sendResend(input.email, "Estamos emocionados · nos comunicaremos pronto", html, {
+    replyTo: BRAND.contact.email,
+  });
+}
+
+export async function sendCreatorStaffEmail(input: {
+  name: string;
+  email: string;
+  phone: string;
+  network: string;
+  secondary?: string;
+  followersLabel: string;
+  audience: string;
+  shots: { filename: string; content: Buffer }[];
+}) {
+  const extra = process.env.MORA_SALES_EMAIL?.trim();
+  const to: string[] = [BRAND.contact.email];
+  if (extra && extra.toLowerCase() !== BRAND.contact.email.toLowerCase()) to.push(extra);
+  const html = shell({
+    kicker: "Creadores",
+    title: "Nueva postulación.",
+    intro: `${escapeHtml(input.name)} quiere el anillo en primicia.`,
+    body: `
+      <p style="margin:0 0 14px;font-size:15px;line-height:1.6">${escapeHtml(input.network)}<br />${escapeHtml(input.followersLabel)} seguidores</p>
+      ${input.secondary ? `<p style="margin:0 0 14px;font-size:14px;color:${SOFT}">También ${escapeHtml(input.secondary)}</p>` : ""}
+      <p style="margin:0 0 14px;font-size:15px;line-height:1.6">${escapeHtml(input.audience)}</p>
+      <p style="margin:0;font-size:13px;color:${SOFT}">${escapeHtml(input.email)} · ${escapeHtml(input.phone)}<br />Los pantallazos van adjuntos.</p>
+    `,
+  });
+  return sendResend(to, `Creador · ${input.name} · ${input.followersLabel}`, html, {
+    replyTo: input.email,
+    attachments: input.shots,
+  });
 }

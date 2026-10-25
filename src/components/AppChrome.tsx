@@ -13,7 +13,8 @@ export function AppChrome({ children }: { children: ReactNode }) {
     pathname.startsWith("/superadmin") ||
     pathname.startsWith("/acceso") ||
     pathname.startsWith("/circulo") ||
-    pathname.startsWith("/encuesta");
+    pathname.startsWith("/encuesta") ||
+    pathname.startsWith("/creadores");
   const isGallery = pathname.startsWith("/galeria");
   const isProduct = pathname.startsWith("/anillo");
   const isCheckout = pathname.startsWith("/checkout");

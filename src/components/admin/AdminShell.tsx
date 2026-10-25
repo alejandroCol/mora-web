@@ -19,6 +19,7 @@ const NAV: NavItem[] = [
   { href: "/superadmin/presupuesto", label: "Presupuesto", permission: "budget", icon: <BookIcon /> },
   { href: "/superadmin/crm", label: "CRM", permission: "whatsapp", icon: <ChatIcon /> },
   { href: "/superadmin/campanas", label: "Campañas", permission: "growth", icon: <MegaphoneIcon /> },
+  { href: "/superadmin/creadores", label: "Creadores", permission: "growth", icon: <SparkIcon /> },
   { href: "/superadmin/estadisticas", label: "Estadísticas", permission: "stats", icon: <ChartIcon /> },
   { href: "/superadmin/analitica", label: "Analítica", permission: "insights", icon: <PulseIcon /> },
   { href: "/superadmin/inventario", label: "Inventario", permission: "inventory", icon: <BoxIcon /> },
@@ -30,7 +31,7 @@ const NAV: NavItem[] = [
 
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: "Casa", hrefs: ["/superadmin/ventas", "/superadmin/carritos", "/superadmin/presupuesto"] },
-  { label: "Alcance", hrefs: ["/superadmin/crm", "/superadmin/campanas", "/superadmin/estadisticas", "/superadmin/analitica"] },
+  { label: "Alcance", hrefs: ["/superadmin/crm", "/superadmin/campanas", "/superadmin/creadores", "/superadmin/estadisticas", "/superadmin/analitica"] },
   { label: "Operación", hrefs: ["/superadmin/inventario", "/superadmin/galeria", "/superadmin/envios", "/superadmin/ajustes", "/superadmin/equipo"] },
 ];
 
@@ -387,6 +388,15 @@ function GearIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
       <circle cx="12" cy="12" r="3" />
       <path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6.1 6.1l1.6 1.6M16.3 16.3l1.6 1.6M6.1 17.9l1.6-1.6M16.3 7.7l1.6-1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function SparkIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+      <circle cx="12" cy="12" r="3.1" />
+      <path d="M12 3.2v2.3M12 18.5v2.3M3.2 12h2.3M18.5 12h2.3" strokeLinecap="round" />
     </svg>
   );
 }

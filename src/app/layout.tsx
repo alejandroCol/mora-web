@@ -11,7 +11,7 @@ import { siteOrigin } from "@/lib/site";
 import "./globals.css";
 
 const roboto = Roboto({
-  weight: ["400", "500"],
+  weight: ["100", "300", "400", "500"],
   subsets: ["latin"],
   display: "swap",
   variable: "--font-roboto",

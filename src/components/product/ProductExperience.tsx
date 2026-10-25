@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { BuySheet } from "@/components/product/BuySheet";
 import { LookStage } from "@/components/product/LookStage";
-import { products, type ModelId } from "@/lib/catalog";
+import { landingFinish, products, writeProductColor, type ModelId } from "@/lib/catalog";
 import { track } from "@/growth/track";
 import { useInsightProduct } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
@@ -11,16 +11,19 @@ import { useMoraStore } from "@/lib/store";
 export function ProductExperience({
   modelId,
   description,
+  color = null,
 }: {
   modelId: ModelId;
   description: string;
+  color?: string | null;
 }) {
   const { selection, setModel, setFinish } = useMoraStore();
   const model = products[modelId];
   const [copy, setCopy] = useState(description);
+  const opened = landingFinish(modelId, color);
   const finishId = model.finishes.includes(selection.finishId)
     ? selection.finishId
-    : model.finishes[0];
+    : opened;
 
   useEffect(() => {
     setCopy(description);
@@ -41,10 +44,12 @@ export function ProductExperience({
     };
   }, [modelId]);
 
-  useEffect(() => {
-    if (selection.modelId !== modelId) setModel(modelId);
-    else if (selection.finishId !== finishId) setFinish(finishId);
-  }, [finishId, modelId, selection.finishId, selection.modelId, setFinish, setModel]);
+  useLayoutEffect(() => {
+    const finish = landingFinish(modelId, color);
+    if (useMoraStore.getState().selection.modelId !== modelId) setModel(modelId);
+    setFinish(finish);
+    writeProductColor(modelId, finish);
+  }, [color, modelId, setFinish, setModel]);
 
   useInsightProduct(model.id, model.name);
 
@@ -63,7 +68,7 @@ export function ProductExperience({
     <div className="hero-wash h-dvh overflow-hidden">
       <div className="flex h-full flex-col lg:flex-row">
         <section className="relative h-[min(50dvh,36rem)] min-h-[20rem] shrink-0 lg:h-auto lg:min-h-0 lg:min-w-0 lg:flex-1">
-          <LookStage modelId={modelId} />
+          <LookStage modelId={modelId} landing={opened} />
         </section>
         <aside className="product-sheet relative min-h-0 flex-1 bg-white/70 lg:w-[26rem] lg:flex-none lg:border-l lg:border-line lg:bg-transparent xl:w-[28rem]">
           <BuySheet modelId={modelId} description={copy} />

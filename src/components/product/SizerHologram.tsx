@@ -3,10 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
 
-const HOLO_WEBM = "/videos/medidor-holo.webm";
-const HOLO_HEVC = "/videos/medidor-holo.mov";
+const HOLO_WEBM = "/videos/medidor-holo.webm?v=2";
+const HOLO_HEVC = "/videos/medidor-holo.mov?v=2";
 const FRAME_W = 720;
-const FRAME_H = 1152;
+const FRAME_H = 1176;
 
 type Phase = "off" | "forming" | "live" | "leaving";
 
@@ -26,13 +26,13 @@ function place(anchor: DOMRect) {
   const cx = anchor.left + anchor.width / 2;
   const base = anchor.top + anchor.height / 2;
   const aspect = FRAME_W / FRAME_H;
-  const gap = 14;
   let height = Math.min(vh * 0.58, 520, Math.max(180, base - 52)) * 0.25;
   let width = height * aspect;
   if (width > vw - 24) {
     width = vw - 24;
     height = width / aspect;
   }
+  const gap = 14 + height * 0.1;
   let top = base - height - gap;
   if (top < 64) {
     height = Math.max(72, base - gap - 64);
@@ -244,6 +244,17 @@ export function SizerHologram() {
             points={`${box.cx - 7},${box.base} ${box.cx + 7},${box.base} ${figCx + box.width * 0.46},${figBottom - box.height * 0.22} ${figCx - box.width * 0.46},${figBottom - box.height * 0.22}`}
           />
         </svg>
+      ) : null}
+      {box ? (
+        <div
+          className="holo-halo"
+          style={{
+            left: box.left - box.width * 0.42,
+            top: box.top - box.height * 0.12,
+            width: box.width * 1.84,
+            height: box.height * 1.14,
+          }}
+        />
       ) : null}
       <div
         className="holo-person"

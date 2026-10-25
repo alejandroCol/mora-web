@@ -1306,9 +1306,18 @@ body {
   position: absolute;
   inset: 0;
   pointer-events: auto;
-  background: rgba(251, 251, 253, 0.38);
-  backdrop-filter: blur(8px) saturate(1.15);
-  -webkit-backdrop-filter: blur(8px) saturate(1.15);
+  background: transparent;
+}
+
+.holo-halo {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  background: rgba(251, 251, 253, 0.72);
+  backdrop-filter: blur(14px) saturate(1.12);
+  -webkit-backdrop-filter: blur(14px) saturate(1.12);
+  -webkit-mask-image: radial-gradient(ellipse at 50% 46%, #000 22%, transparent 70%);
+  mask-image: radial-gradient(ellipse at 50% 46%, #000 22%, transparent 70%);
 }
 
 .holo-scrim:focus,
@@ -1367,7 +1376,7 @@ body {
 .holo-floor {
   position: absolute;
   left: 50%;
-  bottom: -2%;
+  bottom: 1%;
   width: 58%;
   height: 9%;
   transform: translateX(-50%);
@@ -1397,7 +1406,7 @@ body {
   border: 1px solid rgba(214, 220, 244, 0.9);
 }
 
-.holo-stage[data-open="true"] .holo-scrim {
+.holo-stage[data-open="true"] .holo-halo {
   animation: holo-scrim-in 0.42s ease both;
 }
 
@@ -1417,7 +1426,7 @@ body {
   animation: holo-person-in 1.02s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.holo-stage[data-state="leaving"] .holo-scrim {
+.holo-stage[data-state="leaving"] .holo-halo {
   animation: holo-scrim-out 0.42s ease both;
 }
 
@@ -1525,7 +1534,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .holo-scrim,
+  .holo-halo,
   .holo-beam,
   .holo-person,
   .holo-spark,
@@ -1534,7 +1543,7 @@ body {
   }
 
   .holo-stage[data-state="live"] .holo-person,
-  .holo-stage[data-open="true"] .holo-scrim,
+  .holo-stage[data-open="true"] .holo-halo,
   .holo-stage[data-open="true"] .holo-beam,
   .holo-stage[data-open="true"] .holo-spark {
     opacity: 1;
@@ -1544,7 +1553,7 @@ body {
   }
 
   .holo-stage[data-state="leaving"] .holo-person,
-  .holo-stage[data-state="leaving"] .holo-scrim,
+  .holo-stage[data-state="leaving"] .holo-halo,
   .holo-stage[data-state="leaving"] .holo-beam,
   .holo-stage[data-state="leaving"] .holo-spark {
     opacity: 0;

@@ -201,6 +201,17 @@ export const useMoraStore = create<Store>()(
         cartSessionId: state.cartSessionId,
         offerCode: state.offerCode,
       }),
+      merge: (persisted, current) => {
+        const saved = persisted as Partial<Store>;
+        const selection = saved.selection
+          ? { ...current.selection, ...saved.selection, finishId: current.selection.finishId }
+          : current.selection;
+        return {
+          ...current,
+          ...saved,
+          selection,
+        };
+      },
       migrate: (persisted) => {
         const data = persisted as {
           selection?: {

@@ -40,15 +40,24 @@ export async function generateMetadata({
 
 export default async function AnilloPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ color?: string }>;
 }) {
   const { slug } = await params;
+  const { color } = await searchParams;
   const modelId = resolveProductSlug(slug);
   if (!modelId) notFound();
   if (slug !== products[modelId].slug) {
     redirect(productPath(modelId));
   }
   const descriptions = await getProductDescriptions();
-  return <ProductExperience modelId={modelId} description={descriptions[modelId]} />;
+  return (
+    <ProductExperience
+      modelId={modelId}
+      description={descriptions[modelId]}
+      color={typeof color === "string" ? color : null}
+    />
+  );
 }

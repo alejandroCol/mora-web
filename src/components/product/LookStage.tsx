@@ -46,7 +46,13 @@ function asLooks(
   }));
 }
 
-export function LookStage({ modelId }: { modelId: ModelId }) {
+export function LookStage({
+  modelId,
+  landing,
+}: {
+  modelId: ModelId;
+  landing: FinishId;
+}) {
   const { selection } = useMoraStore();
   const model = products[modelId];
   const [ready, setReady] = useState(false);
@@ -56,7 +62,7 @@ export function LookStage({ modelId }: { modelId: ModelId }) {
   const finishId =
     ready && model.finishes.includes(selection.finishId)
       ? selection.finishId
-      : model.finishes[0];
+      : landing;
   const [remote, setRemote] = useState<GalleryImage[]>([]);
   const [galleryReady, setGalleryReady] = useState(false);
   const [index, setIndex] = useState(0);

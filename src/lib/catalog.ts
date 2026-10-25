@@ -191,6 +191,46 @@ export function productPath(modelId: ModelId) {
   return `/anillo/${products[modelId].slug}`;
 }
 
+const COLOR_SLUG: Record<FinishId, string> = {
+  lilac: "lila",
+  white: "blanco",
+  black: "negro",
+  gold: "oro",
+  silver: "plata",
+};
+
+export function colorSlug(finishId: FinishId) {
+  return COLOR_SLUG[finishId];
+}
+
+export function finishFromColorSlug(value: string | null | undefined): FinishId | null {
+  if (!value) return null;
+  const key = value.trim().toLowerCase();
+  const match = (Object.entries(COLOR_SLUG) as [FinishId, string][]).find(
+    ([, slug]) => slug === key,
+  );
+  if (match) return match[0];
+  return isFinishId(key) ? key : null;
+}
+
+export function landingFinish(modelId: ModelId, color?: string | null): FinishId {
+  const requested = finishFromColorSlug(color);
+  if (requested && products[modelId].finishes.includes(requested)) return requested;
+  return products[modelId].finishes[0];
+}
+
+export function productColorPath(modelId: ModelId, finishId: FinishId) {
+  return `${productPath(modelId)}?color=${colorSlug(finishId)}`;
+}
+
+export function writeProductColor(modelId: ModelId, finishId: FinishId) {
+  if (typeof window === "undefined") return;
+  const path = productColorPath(modelId, finishId);
+  const current = `${window.location.pathname}${window.location.search}`;
+  if (current === path) return;
+  window.history.replaceState(null, "", path);
+}
+
 export function resolveProductSlug(slug: string): ModelId | null {
   const key = slug.trim().toLowerCase();
   if (key === "pro" || key === "aero") return "aero";

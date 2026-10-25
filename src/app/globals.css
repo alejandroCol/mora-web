@@ -1280,6 +1280,277 @@ body {
   color: #1d1d1f;
 }
 
+.size-info[aria-pressed="true"] {
+  border-color: #8e97c4;
+  color: #4d567f;
+  box-shadow: 0 0 0 3px rgba(190, 198, 232, 0.55);
+}
+
+.size-video-mark {
+  display: block;
+  margin-left: 0.5px;
+}
+
+.holo-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  pointer-events: none;
+}
+
+.holo-stage[data-open="false"] {
+  visibility: hidden;
+}
+
+.holo-scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: auto;
+  background: rgba(251, 251, 253, 0.38);
+  backdrop-filter: blur(8px) saturate(1.15);
+  -webkit-backdrop-filter: blur(8px) saturate(1.15);
+}
+
+.holo-scrim:focus,
+.holo-scrim:focus-visible {
+  outline: none;
+}
+
+.holo-beam {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.holo-person {
+  position: absolute;
+  z-index: 2;
+  opacity: 0;
+  transform-origin: 50% 100%;
+  pointer-events: auto;
+}
+
+.holo-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.holo-video::-webkit-media-controls,
+.holo-video::-webkit-media-controls-enclosure,
+.holo-video::-webkit-media-controls-panel,
+.holo-video::-webkit-media-controls-start-playback-button {
+  display: none !important;
+  -webkit-appearance: none;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.holo-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  filter:
+    drop-shadow(0 0 1px rgba(255, 255, 255, 0.95))
+    drop-shadow(0 0 18px rgba(176, 186, 224, 0.72));
+}
+
+.holo-floor {
+  position: absolute;
+  left: 50%;
+  bottom: -2%;
+  width: 58%;
+  height: 9%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(255, 255, 255, 0.8), rgba(206, 212, 240, 0.22) 44%, transparent 74%);
+  filter: blur(4px);
+  pointer-events: none;
+}
+
+.holo-spark {
+  position: fixed;
+  z-index: 3;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+  border-radius: 999px;
+  background: radial-gradient(circle, #fff 0 28%, rgba(226, 230, 250, 0.72) 46%, transparent 74%);
+  box-shadow: 0 0 16px rgba(198, 206, 238, 0.95);
+  pointer-events: none;
+}
+
+.holo-spark::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: inherit;
+  border: 1px solid rgba(214, 220, 244, 0.9);
+}
+
+.holo-stage[data-open="true"] .holo-scrim {
+  animation: holo-scrim-in 0.42s ease both;
+}
+
+.holo-stage[data-open="true"] .holo-beam {
+  animation: holo-beam-in 0.82s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.holo-stage[data-open="true"] .holo-spark {
+  animation: holo-spark-in 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.holo-stage[data-open="true"] .holo-spark::after {
+  animation: holo-ring 1.05s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both;
+}
+
+.holo-stage[data-state="live"] .holo-person {
+  animation: holo-person-in 1.02s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.holo-stage[data-state="leaving"] .holo-scrim {
+  animation: holo-scrim-out 0.42s ease both;
+}
+
+.holo-stage[data-state="leaving"] .holo-beam {
+  animation: holo-beam-out 0.46s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+.holo-stage[data-state="leaving"] .holo-spark {
+  animation: holo-spark-out 0.32s ease both;
+}
+
+.holo-stage[data-state="leaving"][data-live="true"] .holo-person {
+  animation: holo-person-out 0.46s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@keyframes holo-scrim-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes holo-scrim-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes holo-beam-in {
+  from {
+    opacity: 0;
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes holo-beam-out {
+  from {
+    opacity: 1;
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    opacity: 0;
+    clip-path: inset(100% 0 0 0);
+  }
+}
+
+@keyframes holo-person-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.72, 0.05);
+    filter: blur(14px) brightness(2.35);
+  }
+  46% {
+    opacity: 1;
+    filter: blur(1.5px) brightness(1.28);
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+@keyframes holo-person-out {
+  from {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.84, 0.07);
+    filter: blur(10px) brightness(1.8);
+  }
+}
+
+@keyframes holo-spark-in {
+  from {
+    opacity: 0;
+    transform: scale(0.2);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes holo-spark-out {
+  to {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+@keyframes holo-ring {
+  from {
+    opacity: 0.85;
+    transform: scale(0.5);
+  }
+  to {
+    opacity: 0;
+    transform: scale(2.6);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .holo-scrim,
+  .holo-beam,
+  .holo-person,
+  .holo-spark,
+  .holo-spark::after {
+    animation: none !important;
+  }
+
+  .holo-stage[data-state="live"] .holo-person,
+  .holo-stage[data-open="true"] .holo-scrim,
+  .holo-stage[data-open="true"] .holo-beam,
+  .holo-stage[data-open="true"] .holo-spark {
+    opacity: 1;
+    transform: none;
+    filter: none;
+    clip-path: none;
+  }
+
+  .holo-stage[data-state="leaving"] .holo-person,
+  .holo-stage[data-state="leaving"] .holo-scrim,
+  .holo-stage[data-state="leaving"] .holo-beam,
+  .holo-stage[data-state="leaving"] .holo-spark {
+    opacity: 0;
+  }
+}
+
 .size-sheet {
   position: fixed;
   inset: 0;

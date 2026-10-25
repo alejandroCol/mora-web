@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { SizingMethod } from "@/commerce/types";
 import { useSales } from "@/components/sales/SalesProvider";
 import { SizeGuideFilm } from "./SizeGuideFilm";
+import { SizerHologram } from "./SizerHologram";
 
 const SIZE_CHART = [
   { size: 8, around: "5,75 cm", diameter: "18,3 mm" },
@@ -120,6 +121,7 @@ export function SizeChoice({
           >
             i
           </button>
+          <SizerHologram />
           {ask ? <p className="size-ask">Selecciona una opción</p> : null}
           <div key={prompt} className={`size-seg size-seg-inline ${ask ? "size-hop" : ""}`}>
             <button
@@ -141,7 +143,7 @@ export function SizeChoice({
       </div>
 
       {sizing === "kit" ? (
-        <p className="mt-3 rounded-xl border border-[#d9d0ee] bg-[#f6f4fb] px-3.5 py-2.5 text-[13px] leading-5 text-[#6f61b8]">
+        <p className="mt-3 rounded-[10px] bg-[#f2f2f7] px-3.5 py-2.5 text-[13px] leading-[1.35] tracking-[-0.012em] text-[#6e6e73]">
           Te lo enviamos primero. Luego eliges el número con tu pedido.
         </p>
       ) : null}

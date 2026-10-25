@@ -1107,70 +1107,85 @@ body {
   background: #000;
 }
 
-.world-creators {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: #fbfbfd;
-  color: #3d3852;
+.creators-strip {
+  position: relative;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  min-height: min(78svh, 34rem);
+  padding: 4.25rem 1.5rem 3.75rem;
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 42%, #ffffff 0%, #f7f4ff 72%, #efeaff 100%);
 }
 
-.world-creators-glow {
+.creators-strip-art {
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(ellipse 70% 50% at 50% 18%, rgba(196, 189, 220, 0.55), transparent 70%),
-    radial-gradient(ellipse 46% 38% at 88% 88%, rgba(201, 196, 230, 0.45), transparent 72%),
-    radial-gradient(ellipse 40% 32% at 8% 78%, rgba(230, 226, 244, 0.85), transparent 72%);
   pointer-events: none;
 }
 
-.world-creators-copy {
+.creators-arc {
+  position: absolute;
+  border-radius: 50%;
+  border: 1.15px solid rgba(167, 157, 214, 0.38);
+}
+
+.creators-arc-nw {
+  top: -42%;
+  left: -38%;
+  width: min(92vw, 42rem);
+  height: min(92vw, 42rem);
+  box-shadow: 0 0 0 2.6rem rgba(167, 157, 214, 0.07);
+}
+
+.creators-arc-se {
+  right: -36%;
+  bottom: -46%;
+  width: min(88vw, 40rem);
+  height: min(88vw, 40rem);
+  box-shadow: 0 0 0 2.4rem rgba(167, 157, 214, 0.07);
+}
+
+.creators-strip-copy {
   position: relative;
   z-index: 1;
-  max-width: 20rem;
-  padding: 2rem 1.75rem 2.5rem;
+  display: flex;
+  max-width: 20.5rem;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
 }
 
-.world-creators-kicker {
+.creators-strip-copy h2 {
   margin: 0;
-  font-size: 11px;
-  font-weight: 400;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: #8b84a6;
-}
-
-.world-creators-title {
-  margin: 0.85rem 0 0;
   font-family: var(--font-roboto), Roboto, sans-serif;
-  font-size: clamp(1.65rem, 7vw, 2.15rem);
-  font-weight: 100;
-  letter-spacing: -0.045em;
+  font-size: clamp(2.15rem, 8vw, 3.35rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
   line-height: 1.08;
   text-wrap: balance;
-  color: #3d3852;
+  color: #5449b8;
 }
 
-.world-creators-lead {
+.creators-strip-lead {
   margin: 0.85rem 0 0;
-  font-size: 14px;
+  font-family: var(--font-roboto), Roboto, sans-serif;
+  font-size: clamp(0.95rem, 3.4vw, 1.1rem);
   font-weight: 300;
-  line-height: 1.5;
-  letter-spacing: -0.015em;
-  color: #6a6580;
+  letter-spacing: -0.018em;
+  line-height: 1.4;
   text-wrap: balance;
+  color: #7d76b0;
 }
 
-.world-creators-cta {
+.creators-strip-cta {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 10.5rem;
+  min-width: 10.75rem;
   height: 3rem;
-  margin-top: 1.65rem;
-  padding: 0 1.65rem;
+  margin-top: 1.7rem;
+  padding: 0 1.7rem;
   border-radius: 999px;
   background: #6f61b8;
   color: #fff;
@@ -1181,36 +1196,37 @@ body {
   transition: background-color 0.2s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.world-creators-cta:hover {
+.creators-strip-cta:hover {
   background: #6256a8;
 }
 
-.world-creators-cta:active {
+.creators-strip-cta:active {
   transform: scale(0.98);
 }
 
-.creators-strip {
-  position: relative;
-  overflow: hidden;
-  border-top: 1px solid rgba(111, 97, 184, 0.12);
-  background: #fbfbfd;
-}
+@media (min-width: 768px) {
+  .creators-strip {
+    min-height: min(72svh, 40rem);
+    padding: 5.5rem 2rem 5rem;
+  }
 
-.creators-strip-glow {
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 80% 70% at 50% 0%, rgba(196, 189, 220, 0.45), transparent 72%),
-    radial-gradient(ellipse 50% 40% at 92% 100%, rgba(201, 196, 230, 0.35), transparent 70%);
-  pointer-events: none;
-}
+  .creators-strip-copy {
+    max-width: 28rem;
+  }
 
-.creators-strip .world-creators-copy {
-  position: relative;
-  z-index: 1;
-  margin: 0 auto;
-  max-width: 22rem;
-  padding: 2.75rem 1.5rem 3rem;
+  .creators-strip-copy h2 {
+    font-size: clamp(2.7rem, 4.6vw, 3.6rem);
+  }
+
+  .creators-arc-nw {
+    top: -48%;
+    left: -22%;
+  }
+
+  .creators-arc-se {
+    right: -20%;
+    bottom: -50%;
+  }
 }
 
 .world-swipe-hint {

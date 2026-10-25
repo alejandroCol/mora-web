@@ -37,7 +37,7 @@ export type RingProduct = {
 export const finishes: Record<FinishId, Finish> = {
   lilac: {
     id: "lilac",
-    title: "Rosa perla",
+    title: "Rosa Perla",
     whisper: "Blanco con un poco de rosa.",
     color: "#E9B9C5",
     metalness: 0.08,

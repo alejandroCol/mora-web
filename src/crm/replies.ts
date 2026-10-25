@@ -23,7 +23,7 @@ export function defaultCrmReplies(): CrmQuickReply[] {
     reply(
       "pro",
       "Mora Pro",
-      `Mora Pro es cerámica, ${pro}. Sueño, pulso y ciclo, sin verse gadget. ¿Rosa perla, blanco o negro?`,
+      `Mora Pro es cerámica, ${pro}. Sueño, pulso y ciclo, sin verse gadget. ¿Rosa Perla, blanco o negro?`,
       "sales",
     ),
     reply(

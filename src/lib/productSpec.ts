@@ -36,7 +36,7 @@ export const specSheet: Record<
       { label: "Peso", value: "3,3 g" },
       { label: "Batería", value: "Hasta 7 días, según el uso" },
       { label: "Agua", value: "5 ATM. Ducha y nado en superficie. Sin buceo, sauna ni jacuzzi" },
-      { label: "Colores", value: "Rosa perla, blanco y negro" },
+      { label: "Colores", value: "Rosa Perla, blanco y negro" },
       { label: "Tallas", value: "6 a 13" },
       { label: "Conexión", value: "Bluetooth" },
     ],
@@ -79,7 +79,7 @@ export const specCompare: { label: string; aero: string; titan: string }[] = [
   { label: "Peso", aero: "3,3 g", titan: "2,5 g" },
   { label: "Batería", aero: "Hasta 7 días", titan: "Hasta 6 días" },
   { label: "Agua", aero: "5 ATM", titan: "IP67" },
-  { label: "Colores", aero: "Rosa perla, blanco, negro", titan: "Plata, negro mate, oro" },
+  { label: "Colores", aero: "Rosa Perla, blanco, negro", titan: "Plata, negro mate, oro" },
 ];
 
 export const specDisclaimer =

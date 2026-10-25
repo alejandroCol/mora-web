@@ -35,7 +35,7 @@ service cloud.firestore {
     }
 
     match /settings/{doc} {
-      allow read, write: if doc == "growth" || doc == "sales" || doc == "payments"
+      allow read, write: if doc == "growth" || doc == "sales" || doc == "payments" || doc == "rings"
         ? isPrivileged()
         : isStaff();
     }
@@ -161,6 +161,16 @@ service cloud.firestore {
         allow read: if isOwner(uid);
         allow write: if false;
       }
+    }
+
+    // Plano Círculo en vivo. Solo Admin (Functions): dayCurves, circles/{id}/state/pulse,
+    // circles/{id}/events, circles/{id}/badges, limits, users/{uid}/devices.
+    match /dayCurves/{id} {
+      allow read, write: if false;
+    }
+
+    match /limits/{uid} {
+      allow read, write: if false;
     }
 
     match /{document=**} {

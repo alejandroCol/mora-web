@@ -12,6 +12,7 @@ export type StaffPermission =
   | "whatsapp"
   | "growth"
   | "budget"
+  | "rings"
   | "insights"
   | "settings";
 
@@ -25,6 +26,7 @@ const SUPERADMIN_PERMISSIONS: StaffPermission[] = [
   "team",
   "whatsapp",
   "growth",
+  "rings",
   "insights",
   "settings",
 ];
@@ -37,7 +39,7 @@ export const ROLE_LABEL: Record<StaffRole, string> = {
 
 export const ROLE_BLURB: Record<StaffRole, string> = {
   founder: "Operación completa más el presupuesto de la casa.",
-  superadmin: "Equipo, inventario, galería, envíos, campañas, CRM y ventas.",
+  superadmin: "Equipo, inventario, anillos, galería, envíos, campañas, CRM y ventas.",
   vendedor: "CRM, ventas, analítica de la tienda y despacho de pedidos.",
 };
 

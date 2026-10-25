@@ -46,10 +46,15 @@ export function RingThumb({
   size?: "sm" | "md" | "lg";
 }) {
   const src = useLookPhoto(modelId, finishId);
+  const finish = finishes[finishId];
   return (
     <span className={`ring-thumb ring-thumb-${size}`} aria-hidden>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="" />
+      {src ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={src} alt="" />
+      ) : (
+        <span className="ring-thumb-swatch" style={{ background: finish.swatch }} />
+      )}
     </span>
   );
 }

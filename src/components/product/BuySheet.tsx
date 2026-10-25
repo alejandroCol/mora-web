@@ -14,7 +14,10 @@ import { track } from "@/growth/track";
 import { useSales } from "@/components/sales/SalesProvider";
 import { insightProductCart } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
+import { AddiCuotasButton } from "@/components/payments/AddiCuotasButton";
 import { AddiWidget } from "@/components/payments/AddiWidget";
+import { addiAmountAllowed, checkoutHref } from "@/payments/public";
+import { loadPayMethods } from "@/payments/methodsClient";
 import { ProductSpecSheet } from "./ProductSpecSheet";
 import { SizeChoice } from "./SizeChoice";
 
@@ -43,7 +46,19 @@ export function BuySheet({
   const sizing = selection.sizing;
   const [need, setNeed] = useState("");
   const [showCopy, setShowCopy] = useState(false);
+  const [addiRange, setAddiRange] = useState<{ minCop: number; maxCop: number } | null>(null);
   const specRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void loadPayMethods().then((methods) => {
+      if (!alive) return;
+      setAddiRange(methods.addi ? { minCop: methods.minCop, maxCop: methods.maxCop } : null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (!showCopy || !specRef.current) return;
@@ -82,13 +97,16 @@ export function BuySheet({
     openCart();
   }
 
-  function buyNow() {
+  function buyNow(pay?: "addi") {
     if (!validateSelection()) return;
     addSelectionToCart(1);
     closeCart();
     trackAdd();
-    router.push("/checkout");
+    router.push(checkoutHref(pay));
   }
+
+  const offerAddi =
+    addiRange != null && addiAmountAllowed(model.price, addiRange.minCop, addiRange.maxCop);
 
   const hint = need || (sizing === "self" ? sales.deliveryHint : "");
 
@@ -185,21 +203,14 @@ export function BuySheet({
       </div>
 
       <div className="shrink-0 border-t border-line bg-white/80 px-4 py-3 backdrop-blur-xl pb-[max(0.85rem,env(safe-area-inset-bottom))] sm:px-8">
-        <div className="flex items-stretch gap-2">
-          <button
-            type="button"
-            onClick={addToCart}
-            className="flex h-[3.25rem] min-w-0 flex-[1.45] items-center justify-center rounded-full bg-[#1d1d1f] px-3 text-[14px] tracking-[-0.02em] text-white transition-colors hover:bg-[#3a3a3c] sm:h-12 sm:flex-1 sm:px-4 sm:text-[15px]"
-          >
+        <div className="buy-dock">
+          <button type="button" onClick={addToCart} className="buy-cart">
             Añadir al carrito
           </button>
-          <button
-            type="button"
-            onClick={buyNow}
-            className="flex h-[3.25rem] min-w-[6.5rem] flex-1 items-center justify-center rounded-full border border-[#1d1d1f]/12 bg-white/90 px-3 text-[14px] tracking-[-0.02em] text-[#1d1d1f] transition-colors hover:bg-white sm:h-12 sm:min-w-0 sm:px-4 sm:text-[15px]"
-          >
+          <button type="button" onClick={() => buyNow()} className="buy-now">
             {sales.cta}
           </button>
+          {offerAddi ? <AddiCuotasButton onClick={() => buyNow("addi")} /> : null}
         </div>
         {hint ? (
           <p className="mt-2 text-center text-[11px] leading-4 text-soft">{hint}</p>

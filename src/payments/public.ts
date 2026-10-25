@@ -20,3 +20,11 @@ export function addiAmountAllowed(
   const amount = Math.round(amountCop);
   return amount >= minCop && amount <= maxCop;
 }
+
+export function checkoutHref(pay?: "addi") {
+  return pay === "addi" ? "/checkout?pago=addi" : "/checkout";
+}
+
+export function checkoutPrefersAddi(search: string) {
+  return new URLSearchParams(search).get("pago") === "addi";
+}

@@ -11,8 +11,10 @@ import {
   productPath,
   type ModelId,
 } from "@/lib/catalog";
+import { AddiCuotasChip } from "@/components/payments/AddiCuotasChip";
 import { useSales } from "@/components/sales/SalesProvider";
 import { useMoraStore } from "@/lib/store";
+import { loadPayMethods } from "@/payments/methodsClient";
 
 const LOOK: Record<ModelId, { src: string; focus: string; alt: string }> = {
   aero: {
@@ -32,6 +34,18 @@ export function Atelier() {
   const setModel = useMoraStore((state) => state.setModel);
   const scroller = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
+  const [addiRange, setAddiRange] = useState<{ minCop: number; maxCop: number } | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void loadPayMethods().then((methods) => {
+      if (!alive) return;
+      setAddiRange(methods.addi ? { minCop: methods.minCop, maxCop: methods.maxCop } : null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     const root = scroller.current;
@@ -182,12 +196,15 @@ export function Atelier() {
                 </p>
                 <div className="world-dock">
                   <span className="world-price">{formatMoney(item.price)}</span>
-                  <span className="elegir-cta">
-                    {sales.cta}
-                    <span aria-hidden className="elegir-cta-arrow">
-                      ›
+                  <div className="world-actions">
+                    <span className="elegir-cta">
+                      {sales.cta}
+                      <span aria-hidden className="elegir-cta-arrow">
+                        ›
+                      </span>
                     </span>
-                  </span>
+                    {addiRange ? <AddiCuotasChip /> : null}
+                  </div>
                 </div>
               </div>
             </Link>

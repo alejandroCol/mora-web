@@ -15,7 +15,8 @@ import { formatMoney, products } from "@/lib/catalog";
 import { useSales } from "@/components/sales/SalesProvider";
 import { useMoraStore } from "@/lib/store";
 import type { AddiCheckoutSession, BoldCheckoutSession, CheckoutPayMethod } from "@/payments/types";
-import { addiAmountAllowed } from "@/payments/public";
+import { addiAmountAllowed, checkoutPrefersAddi } from "@/payments/public";
+import { loadPayMethods } from "@/payments/methodsClient";
 import { CartLineVisual } from "@/components/cart/CartLineVisual";
 import { AddiMark } from "@/components/payments/AddiMark";
 import { AddiWidget } from "@/components/payments/AddiWidget";
@@ -265,25 +266,13 @@ export function CheckoutFlow() {
   }, [cartKey, destKey, carrier, payMethod]);
 
   useEffect(() => {
+    const hinted = checkoutPrefersAddi(window.location.search);
     let cancelled = false;
-    void fetch("/api/checkout/methods")
-      .then(async (res) => (await res.json()) as {
-        ok?: boolean;
-        methods?: { bold?: boolean; addi?: boolean };
-        addi?: { minCop?: number; maxCop?: number };
-      })
-      .then((data) => {
-        if (cancelled) return;
-        const next = {
-          bold: data.methods?.bold !== false,
-          addi: Boolean(data.methods?.addi),
-          minCop: data.addi?.minCop ?? 50_000,
-          maxCop: data.addi?.maxCop ?? 3_000_000,
-        };
-        setGateways(next);
-        if (!next.bold && next.addi) setPayMethod("addi");
-      })
-      .catch(() => undefined);
+    void loadPayMethods().then((next) => {
+      if (cancelled) return;
+      setGateways(next);
+      if ((hinted || !next.bold) && next.addi) setPayMethod("addi");
+    });
     return () => {
       cancelled = true;
     };
@@ -305,6 +294,11 @@ export function CheckoutFlow() {
   const shownTotal = envioCop == null ? Math.max(0, subtotal - discount) : total;
   const addiReady =
     gateways.addi && addiAmountAllowed(shownTotal, gateways.minCop, gateways.maxCop);
+
+  useEffect(() => {
+    if (payMethod !== "addi" || addiReady || !gateways.bold) return;
+    setPayMethod("bold");
+  }, [payMethod, addiReady, gateways.bold]);
 
   function goTo(index: number) {
     if (index < step) {

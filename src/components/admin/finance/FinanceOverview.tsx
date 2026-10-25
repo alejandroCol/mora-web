@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   currentMonthKey,
   dueInstallmentsInMonth,
@@ -174,7 +175,7 @@ export function FinanceOverview({
         </section>
       </div>
 
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+      <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <button
           type="button"
           onClick={() => onOpen("pedido")}
@@ -193,6 +194,13 @@ export function FinanceOverview({
           <p className="mt-2 text-[16px] tracking-[-0.02em]">Un gasto, con factura si quieres.</p>
           <p className="mt-2 text-[13px] text-white/40">Se guarda al salir de cada campo.</p>
         </button>
+        <Link href="/superadmin/anillos" className="rounded-[1.5rem] bg-white/[0.04] p-5 text-left">
+          <p className="text-[11px] uppercase tracking-[0.14em] text-white/35">Mis anillos</p>
+          <p className="mt-2 text-[16px] tracking-[-0.02em]">CAC y lo que deja cada uno.</p>
+          <p className="mt-2 text-[13px] text-white/40">
+            Marketing {formatFinanceMoney(byCategory.marketing)} ÷ anillos vendidos.
+          </p>
+        </Link>
       </div>
     </div>
   );

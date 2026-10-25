@@ -47,6 +47,14 @@
       ]
     },
     {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "digestSlot", "order": "ASCENDING" },
+        { "fieldPath": "notify.digest", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "daySummaries",
       "queryScope": "COLLECTION",
       "fields": [

@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import type { GalleryImage } from "@/commerce/types";
-import { finishPhoto, products, type FinishId, type ModelId } from "@/lib/catalog";
+import { products, type FinishId, type ModelId } from "@/lib/catalog";
 
-const cache = new Map<string, string>();
+const cache = new Map<string, string | null>();
 const inflight = new Map<string, Promise<void>>();
 
 function keyOf(modelId: ModelId, finishId: FinishId) {
@@ -12,14 +12,16 @@ function keyOf(modelId: ModelId, finishId: FinishId) {
 }
 
 function pickFirst(images: GalleryImage[], finishId: FinishId) {
-  return images.find(
-    (item) => !item.system && !item.hidden && (!item.finishId || item.finishId === finishId),
-  )?.src;
+  return (
+    images.find(
+      (item) => !item.system && !item.hidden && (!item.finishId || item.finishId === finishId),
+    )?.src ?? null
+  );
 }
 
 function hydrate(modelId: ModelId, images: GalleryImage[]) {
   for (const finishId of products[modelId].finishes) {
-    cache.set(keyOf(modelId, finishId), pickFirst(images, finishId) ?? finishPhoto(finishId));
+    cache.set(keyOf(modelId, finishId), pickFirst(images, finishId));
   }
 }
 
@@ -34,7 +36,7 @@ function loadModel(modelId: ModelId) {
     .catch(() => {
       for (const finishId of products[modelId].finishes) {
         const key = keyOf(modelId, finishId);
-        if (!cache.has(key)) cache.set(key, finishPhoto(finishId));
+        if (!cache.has(key)) cache.set(key, null);
       }
     })
     .finally(() => {
@@ -46,22 +48,21 @@ function loadModel(modelId: ModelId) {
 
 export function useLookPhoto(modelId: ModelId, finishId: FinishId) {
   const key = keyOf(modelId, finishId);
-  const fallback = finishPhoto(finishId);
-  const [src, setSrc] = useState(() => cache.get(key) ?? fallback);
+  const [src, setSrc] = useState<string | null>(() => (cache.has(key) ? cache.get(key) ?? null : null));
 
   useEffect(() => {
     if (cache.has(key)) {
-      setSrc(cache.get(key) ?? fallback);
+      setSrc(cache.get(key) ?? null);
       return;
     }
     let alive = true;
     void loadModel(modelId).then(() => {
-      if (alive) setSrc(cache.get(key) ?? fallback);
+      if (alive) setSrc(cache.get(key) ?? null);
     });
     return () => {
       alive = false;
     };
-  }, [fallback, key, modelId]);
+  }, [key, modelId]);
 
   return src;
 }

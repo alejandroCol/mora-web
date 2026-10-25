@@ -17,6 +17,7 @@ const NAV: NavItem[] = [
   { href: "/superadmin/ventas", label: "Ventas", permission: "sales", icon: <BagIcon /> },
   { href: "/superadmin/carritos", label: "Carritos", permission: "sales", icon: <CartIcon /> },
   { href: "/superadmin/presupuesto", label: "Presupuesto", permission: "budget", icon: <BookIcon /> },
+  { href: "/superadmin/anillos", label: "Mis anillos", permission: "rings", icon: <RingIcon /> },
   { href: "/superadmin/crm", label: "CRM", permission: "whatsapp", icon: <ChatIcon /> },
   { href: "/superadmin/campanas", label: "Campañas", permission: "growth", icon: <MegaphoneIcon /> },
   { href: "/superadmin/creadores", label: "Creadores", permission: "growth", icon: <SparkIcon /> },
@@ -30,7 +31,7 @@ const NAV: NavItem[] = [
 ];
 
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
-  { label: "Casa", hrefs: ["/superadmin/ventas", "/superadmin/carritos", "/superadmin/presupuesto"] },
+  { label: "Casa", hrefs: ["/superadmin/ventas", "/superadmin/carritos", "/superadmin/presupuesto", "/superadmin/anillos"] },
   { label: "Alcance", hrefs: ["/superadmin/crm", "/superadmin/campanas", "/superadmin/creadores", "/superadmin/estadisticas", "/superadmin/analitica"] },
   { label: "Operación", hrefs: ["/superadmin/inventario", "/superadmin/galeria", "/superadmin/envios", "/superadmin/ajustes", "/superadmin/equipo"] },
 ];
@@ -307,6 +308,15 @@ function CartIcon() {
       <path d="M4 7h16l-1.2 9H5.2L4 7Z" strokeLinejoin="round" />
       <path d="M9 20.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2ZM17 20.5a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" />
       <path d="M8 7V5.5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2V7" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function RingIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+      <circle cx="12" cy="12" r="7.2" />
+      <circle cx="12" cy="12" r="3.1" />
     </svg>
   );
 }

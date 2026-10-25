@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { IconCart } from "@/components/icons/NavIcons";
+import { IconCart, IconClose, IconTrash } from "@/components/icons/NavIcons";
 import { formatMoney, products } from "@/lib/catalog";
 import { useCartCount, useCartSubtotal, useMoraStore } from "@/lib/store";
 import { useSales } from "@/components/sales/SalesProvider";
@@ -58,9 +58,10 @@ export function CartDrawer() {
           <button
             type="button"
             onClick={closeCart}
-            className="text-[13px] text-soft hover:text-ink"
+            aria-label="Cerrar carrito"
+            className="cart-close"
           >
-            Cerrar
+            <IconClose className="h-3.5 w-3.5" />
           </button>
         </header>
 
@@ -99,9 +100,10 @@ export function CartDrawer() {
                         <button
                           type="button"
                           onClick={() => removeLine(line.key)}
-                          className="text-[12px] text-soft hover:text-ink"
+                          aria-label="Quitar del carrito"
+                          className="cart-trash"
                         >
-                          Quitar
+                          <IconTrash className="h-[18px] w-[18px]" />
                         </button>
                       </div>
                     </CartLineVisual>

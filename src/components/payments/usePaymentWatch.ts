@@ -25,6 +25,7 @@ export function usePaymentWatch(reference: string | null) {
 
   useEffect(() => {
     if (!reference) return;
+    const ref = reference;
 
     let cancelled = false;
     const started = Date.now();
@@ -38,7 +39,7 @@ export function usePaymentWatch(reference: string | null) {
       const res = await fetch("/api/payments/sync", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reference }),
+        body: JSON.stringify({ reference: ref }),
       });
       const data = (await res.json()) as {
         ok: boolean;
@@ -54,7 +55,7 @@ export function usePaymentWatch(reference: string | null) {
     }
 
     async function poll() {
-      const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(reference)}`);
+      const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(ref)}`);
       const data = (await res.json()) as {
         ok: boolean;
         intent?: WatchedIntent;

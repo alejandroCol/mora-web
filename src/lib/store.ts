@@ -245,7 +245,7 @@ export const useMoraStore = create<Store>()(
         offerCode: state.offerCode,
       }),
       merge: (persisted, current) => {
-        const saved = persisted as Partial<Store>;
+        const saved = (persisted ?? {}) as Partial<Store>;
         const selection = saved.selection
           ? { ...current.selection, ...saved.selection, finishId: current.selection.finishId }
           : current.selection;

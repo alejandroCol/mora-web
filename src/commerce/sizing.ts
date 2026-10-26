@@ -19,7 +19,7 @@ export function isSizePending(line: {
 }
 
 export function sizeCopy(line: { size?: number; sizing?: SizingMethod }) {
-  if (isSizePending(line)) return "Medidor primero";
+  if (isSizePending(line)) return "Con medidor";
   if (line.size) return `Talla ${line.size}`;
   return "Talla pendiente";
 }

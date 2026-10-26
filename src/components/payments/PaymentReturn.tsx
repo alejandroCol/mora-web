@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useSales } from "@/components/sales/SalesProvider";
 import type { BoldCheckoutSession, PaymentIntentStatus, PaymentProvider } from "@/payments/types";
 import { payWithBold } from "./useBoldCheckout";
+import { paidDetail } from "./paidCopy";
 import { readPendingPay, writePendingPay } from "./pendingPay";
 import { PurchaseSeal } from "./PurchaseSeal";
 import { usePaymentWatch, type WatchedIntent } from "./usePaymentWatch";
@@ -18,13 +19,13 @@ function destination(intent: WatchedIntent) {
 
 function copyFor(
   status: PaymentIntentStatus | "waiting",
-  promise: string,
+  paidNote: string,
   provider?: PaymentProvider,
   timedOut = false,
 ) {
   switch (status) {
     case "approved":
-      return { title: "Ya es tuyo.", detail: promise };
+      return { title: "Ya es tuyo.", detail: paidDetail(paidNote) };
     case "declined":
       return {
         title: provider === "addi" ? "Addi no aprobó las cuotas" : "Pago rechazado",
@@ -88,7 +89,7 @@ function PaymentReturnInner() {
         metadata: { orderNumber: "MORA-000" },
       } satisfies WatchedIntent)
     : watch.intent;
-  const copy = copyFor(status, sales.promise, intent?.provider, watch.timedOut);
+  const copy = copyFor(status, sales.paidNote, intent?.provider, watch.timedOut);
   const orderNumber = intent?.metadata.orderNumber ?? stored?.orderNumber;
   const href = intent ? destination(intent) : orderNumber ? `/pedido/${orderNumber}` : "/pedido";
   const failed =

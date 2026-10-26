@@ -56,7 +56,7 @@ env:
       - BUILD
       - RUNTIME
   - variable: RESEND_FROM
-    value: "Mora <no-responder@moraring.com>"
+    value: "Mora Ring <no-responder@moraring.com>"
     availability:
       - RUNTIME
   - variable: RESEND_API_KEY

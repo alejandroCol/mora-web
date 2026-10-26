@@ -133,7 +133,7 @@ export const products: Record<ModelId, RingProduct> = {
     line: "Titanio",
     material: "Titanio grado médico",
     weight: "2.5 g",
-    price: 1_000,
+    price: 679_000,
     water: "IP67",
     battery: "6 días",
     sizes: [7, 8, 9, 10, 11, 12, 13],

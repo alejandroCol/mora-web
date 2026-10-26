@@ -40,6 +40,9 @@ export type SalesPresentation = {
   kicker: string;
   whisper: string;
   promise: string;
+  /** Después del pago. Vacío en venta inmediata: no se promete fecha. */
+  paidNote: string;
+  sizerNote: string;
   deliveryLabel: string;
   deliveryFull: string;
   saleOn: string | null;
@@ -68,6 +71,9 @@ const BASE_KEYWORDS = [
   "anillo de titanio",
   "anillo de cerámica",
 ];
+
+const SIZER_NOTE =
+  "Te enviamos el medidor a tu casa. Pruébatelo con calma, encuentra el número que mejor te queda, cuéntanos tu talla y te enviamos tu anillo.";
 
 const BRAND_CORE =
   "Anillo inteligente de lujo en Colombia. Mora Pro en cerámica y Mora Ultra en titanio. Pulso, sueño y autonomía de días, sin pantalla que pida atención.";
@@ -111,7 +117,7 @@ export function storeFaq(sales: SalesPresentation) {
     },
     {
       q: "¿Puedo cambiar la talla?",
-      a: "No. Por eso puedes pedir el medidor: llega primero, confirmas el número y después fabricamos el anillo.",
+      a: "No. Por eso puedes pedir el medidor: te llega primero, nos cuentas tu número y te enviamos el anillo.",
     },
   ];
 }
@@ -135,7 +141,7 @@ function immediatePresentation(): SalesPresentation {
     kitHint: "Comprar con medidor. Confirmas la talla después.",
     deliveryHint: "",
     emptyCart: "Elige Pro o Ultra para comprar.",
-    payNote: "Tarjeta, Nequi, PSE o Bancolombia.",
+    payNote: "",
     payNoteAddi: "Te llevamos a Addi para aprobar las cuotas.",
     orderNote: "",
     heroNote: null,
@@ -143,7 +149,9 @@ function immediatePresentation(): SalesPresentation {
     label: "Venta",
     kicker: "Venta",
     whisper: "Elige Pro o Ultra. El anillo sale a tu nombre.",
-    promise: "Tu Mora se fabrica y se envía después del pago.",
+    promise: "Envío a toda Colombia.",
+    paidNote: "",
+    sizerNote: SIZER_NOTE,
     deliveryLabel: "",
     deliveryFull: "",
     saleOn: null,
@@ -151,15 +159,12 @@ function immediatePresentation(): SalesPresentation {
     closeLabel: "Envío",
     closeValue: "Todo Colombia, cotizado al pagar",
     sizeSteps: [
-      { title: "Compras ahora", body: "El precio no cambia." },
-      { title: "Te llega el medidor", body: "Un kit pequeño, antes que el anillo." },
-      { title: "Confirmas tu número", body: "Entras con tu pedido y eliges la talla." },
-      {
-        title: "El anillo se fabrica y se envía",
-        body: "Cuando ya tenemos tu talla, se fabrica y se envía.",
-      },
+      { title: "Compras hoy", body: "El precio es el mismo, con o sin medidor." },
+      { title: "Te enviamos el medidor", body: "Llega a tu casa antes que el anillo." },
+      { title: "Nos cuentas tu talla", body: "Te lo pruebas con calma y eliges tu número con tu pedido." },
+      { title: "Te enviamos tu anillo", body: "Con tu talla lista, sale directo hacia ti." },
     ],
-    faqWhen: "Se fabrica y se envía después del pago. El medidor, si lo pediste, sale primero.",
+    faqWhen: "Lo despachamos después del pago. Si pediste el medidor, te llega primero.",
     brandDescription: BRAND_CORE,
     ogLine: "Pro · Ultra · Colombia",
     schemaAvailability: "https://schema.org/InStock",
@@ -181,7 +186,7 @@ function presalePresentation(saleOn: string): SalesPresentation {
     kitHint: "Reservar con medidor. Confirmas la talla después.",
     deliveryHint: `Se entrega el ${copy.deliveryLabel}.`,
     emptyCart: "Elige Pro o Ultra para reservar.",
-    payNote: `Tarjeta, Nequi, PSE o Bancolombia. Entrega el ${copy.deliveryLabel}.`,
+    payNote: `Tu anillo llega el ${copy.deliveryLabel}.`,
     payNoteAddi: `Te llevamos a Addi para aprobar las cuotas. Entrega el ${copy.deliveryLabel}.`,
     orderNote: `Entrega el ${copy.deliveryLabel}`,
     heroNote: "Preventa",
@@ -190,6 +195,8 @@ function presalePresentation(saleOn: string): SalesPresentation {
     kicker: copy.kicker,
     whisper: copy.whisper,
     promise: copy.promise,
+    paidNote: `Tu anillo llega el ${copy.deliveryLabel}.`,
+    sizerNote: SIZER_NOTE,
     deliveryLabel: copy.deliveryLabel,
     deliveryFull: copy.deliveryFull,
     saleOn,
@@ -197,12 +204,12 @@ function presalePresentation(saleOn: string): SalesPresentation {
     closeLabel: "Preventa",
     closeValue: `Entrega el ${copy.deliveryLabel}`,
     sizeSteps: [
-      { title: "Reservas ahora", body: "Apartas tu Mora. El precio no cambia." },
-      { title: "Te llega el medidor", body: "Un kit pequeño, antes que el anillo." },
-      { title: "Confirmas tu número", body: "Entras con tu pedido y eliges la talla." },
+      { title: "Reservas hoy", body: "Apartas tu anillo. El precio es el mismo." },
+      { title: "Te enviamos el medidor", body: "Llega a tu casa antes que el anillo." },
+      { title: "Nos cuentas tu talla", body: "Te lo pruebas con calma y eliges tu número con tu pedido." },
       {
-        title: `El anillo sale el ${copy.deliveryLabel}`,
-        body: "Cuando ya tenemos tu talla, se fabrica y se envía.",
+        title: `Tu anillo llega el ${copy.deliveryLabel}`,
+        body: "Con tu talla lista, sale directo hacia ti.",
       },
     ],
     faqWhen: `Preventa. El anillo se entrega el ${copy.deliveryLabel}.`,

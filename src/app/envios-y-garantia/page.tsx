@@ -19,7 +19,7 @@ export function generateMetadata(): Metadata {
     alternates: { canonical: "/envios-y-garantia" },
     openGraph: {
       title: `Envíos, cambios y garantía — ${BRAND.name}`,
-      description: "A todo Colombia. La talla se define antes de fabricar. Garantía de un mes.",
+      description: "A todo Colombia. Medidor de talla si lo necesitas. Garantía de un mes.",
       url: siteUrl("/envios-y-garantia"),
       locale: "es_CO",
     },
@@ -58,7 +58,7 @@ function sections(): Section[] {
               cambia, te avisamos por el canal de tu pedido.
             </p>
           ) : (
-            <p>El anillo se fabrica y se envía después del pago. El tiempo depende del destino.</p>
+            <p>Despachamos tu anillo después del pago. El tiempo depende del destino.</p>
           )}
         </>
       ),
@@ -70,8 +70,8 @@ function sections(): Section[] {
       body: (
         <>
           <p>
-            No cambiamos la talla después de fabricar el anillo. Por eso puedes pedir el medidor: llega
-            primero, te mides y confirmas el número. Entonces fabricamos.
+            No hay cambio de talla después del envío. Por eso puedes pedir el medidor: te llega
+            primero, te lo pruebas con calma, nos cuentas tu número y te enviamos el anillo.
           </p>
           <ol className="space-y-3">
             {sales.sizeSteps.map((step) => (
@@ -113,7 +113,7 @@ function sections(): Section[] {
           </p>
           <p>
             El retracto devuelve el producto. No es un cambio de talla: esa opción no existe, y el
-            medidor está para acertar antes de fabricar.
+            medidor está para que aciertes desde el principio.
           </p>
         </>
       ),
@@ -181,7 +181,7 @@ export default function EnviosPage() {
               Envíos, cambios y garantía
             </h1>
             <p className="title-whisper mt-4 max-w-lg text-[clamp(1.05rem,2.8vw,1.25rem)] text-soft">
-              A todo Colombia. La talla se define antes de fabricar. La garantía es de un mes.
+              A todo Colombia. Medidor de talla si lo necesitas. La garantía es de un mes.
             </p>
             <p className="mt-6 text-[13px] text-soft">Última actualización · {UPDATED}</p>
           </div>

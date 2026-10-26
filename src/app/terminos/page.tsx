@@ -86,8 +86,8 @@ function legalSections(sales: SalesPresentation): Section[] {
             </>
           ) : (
             <>
-              La compra se confirma con el pago. El anillo se fabrica y se envía después. Si hay un
-              cambio logístico o de fabricación, te avisaremos por el canal de contacto de tu pedido.
+              La compra se confirma con el pago. Después despachamos tu anillo. Si hay un cambio
+              logístico, te avisaremos por el canal de contacto de tu pedido.
             </>
           )}
         </p>
@@ -136,7 +136,7 @@ function legalSections(sales: SalesPresentation): Section[] {
             >
               envíos, cambios y garantía
             </Link>
-            . No hay cambio de talla después de fabricar el anillo.
+            . No hay cambio de talla después del envío.
           </p>
         </>
     ),

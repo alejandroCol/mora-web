@@ -508,6 +508,8 @@ export function CheckoutFlow() {
 
   const current = STEPS[step];
   const fullName = [draft.firstName, draft.lastName].filter(Boolean).join(" ");
+  const payNote = payMethod === "addi" && addiReady ? sales.payNoteAddi : sales.payNote;
+  const viaAddi = step === 2 && payMethod === "addi" && addiReady;
 
   if (awaiting) {
     return <PaymentAwaiting pending={awaiting} onPending={setAwaiting} />;
@@ -795,9 +797,6 @@ export function CheckoutFlow() {
                               Tarjeta, Nequi, PSE o Bancolombia
                             </span>
                           </span>
-                          <span className="text-[13px] tracking-[-0.01em] text-[#6e6e73]">
-                            al instante
-                          </span>
                         </button>
                       ) : null}
                       <button
@@ -821,67 +820,104 @@ export function CheckoutFlow() {
                     ) : null}
                   </div>
                 ) : null}
-                <p className="mt-4 text-[12px] leading-5 text-[#6e6e73]">
-                  {payMethod === "addi" && addiReady ? sales.payNoteAddi : sales.payNote}
-                </p>
+                {payNote ? (
+                  <p className="mt-4 text-[12px] leading-5 text-[#6e6e73]">{payNote}</p>
+                ) : null}
               </div>
             </div>
           ) : null}
         </section>
 
-        <aside className="check-card hidden px-6 py-5 lg:flex lg:flex-col">
-          <h2 className="title-name text-[1.65rem] tracking-[-0.04em] text-[#1d1d1f]">
-            Tu pedido
-          </h2>
-          <div className="mt-5 flex-1">
-            <OrderLines cart={cart} />
-          </div>
-          <Totals
-            subtotal={subtotal}
-            envioCop={envioCop}
-            quoteError={quoteError}
-            discount={discount}
-            offerCode={appliedOffer?.code}
-            total={shownTotal}
-          />
-          {sales.orderNote ? (
-            <p className="mt-3 text-[12px] leading-5 text-[#6e6e73]">{sales.orderNote}</p>
+        <div className="hidden lg:sticky lg:top-24 lg:flex lg:flex-col lg:gap-4">
+          <aside className="check-card flex flex-col px-6 py-5">
+            <h2 className="title-name text-[1.65rem] tracking-[-0.04em] text-[#1d1d1f]">
+              Tu pedido
+            </h2>
+            <div className="mt-5 flex-1">
+              <OrderLines cart={cart} />
+            </div>
+            <Totals
+              subtotal={subtotal}
+              envioCop={envioCop}
+              quoteError={quoteError}
+              discount={discount}
+              offerCode={appliedOffer?.code}
+              total={shownTotal}
+            />
+            {sales.orderNote ? (
+              <p className="mt-3 text-[12px] leading-5 text-[#6e6e73]">{sales.orderNote}</p>
+            ) : null}
+          </aside>
+          {step === 2 ? (
+            <CheckoutDock
+              className="check-dock check-dock-aside"
+              error={error}
+              busy={busy}
+              addi={viaAddi}
+              busyLabel={payMethod === "addi" ? "Abriendo Addi…" : "Abriendo el pago…"}
+              action={viaAddi ? "Continuar con Addi" : current.action}
+              total={shownTotal}
+              onBack={() => goTo(step - 1)}
+            />
           ) : null}
-        </aside>
+        </div>
       </div>
 
       {step === 2 ? <CaseOffer /> : null}
 
-      <div className="check-dock">
-        {error ? <p className="check-dock-error">{error}</p> : null}
-        <div className="flex items-center gap-3">
-          {step > 0 ? (
-            <button
-              type="button"
-              onClick={() => goTo(step - 1)}
-              className="shrink-0 px-2 text-[15px] tracking-[-0.016em] text-[#6e6e73] hover:text-[#1d1d1f]"
-            >
-              Atrás
-            </button>
-          ) : null}
-          <button type="submit" disabled={busy} className="elegir-cta min-w-0 flex-1">
-            {busy
-              ? payMethod === "addi"
-                ? "Abriendo Addi…"
-                : "Abriendo el pago…"
-              : step === 2 && payMethod === "addi" && addiReady
-                ? "Continuar con Addi"
-                : current.action}
-            {busy ? null : (
-              <span className="elegir-cta-note">{formatMoney(shownTotal)}</span>
-            )}
-            {busy || step !== 2 || payMethod !== "addi" || !addiReady ? null : (
-              <AddiMark className="addi-mark-on-dark" />
-            )}
-          </button>
-        </div>
-      </div>
+      <CheckoutDock
+        className={`check-dock ${step === 2 ? "lg:hidden" : ""}`}
+        error={error}
+        busy={busy}
+        addi={viaAddi}
+        busyLabel={payMethod === "addi" ? "Abriendo Addi…" : "Abriendo el pago…"}
+        action={viaAddi ? "Continuar con Addi" : current.action}
+        total={shownTotal}
+        onBack={step > 0 ? () => goTo(step - 1) : undefined}
+      />
     </form>
+  );
+}
+
+function CheckoutDock({
+  className,
+  error,
+  busy,
+  addi,
+  busyLabel,
+  action,
+  total,
+  onBack,
+}: {
+  className: string;
+  error: string;
+  busy: boolean;
+  addi: boolean;
+  busyLabel: string;
+  action: string;
+  total: number;
+  onBack?: () => void;
+}) {
+  return (
+    <div className={className}>
+      {error ? <p className="check-dock-error">{error}</p> : null}
+      <div className="flex items-center gap-3">
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className="shrink-0 px-2 text-[15px] tracking-[-0.016em] text-[#6e6e73] hover:text-[#1d1d1f]"
+          >
+            Atrás
+          </button>
+        ) : null}
+        <button type="submit" disabled={busy} className="elegir-cta min-w-0 flex-1">
+          {busy ? busyLabel : action}
+          {busy ? null : <span className="elegir-cta-note">{formatMoney(total)}</span>}
+          {busy || !addi ? null : <AddiMark className="addi-mark-on-dark" />}
+        </button>
+      </div>
+    </div>
   );
 }
 

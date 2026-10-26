@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { type FormEvent, Suspense, useEffect, useState } from "react";
+import { type FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import { BRAND } from "@/brand";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { TRACKING_STEPS, fulfillmentIndex } from "@/commerce/orderMachine";
+import { CartLineVisual } from "@/components/cart/CartLineVisual";
+import { trackingSteps } from "@/commerce/orderMachine";
 import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL } from "@/commerce/labels";
-import type { OrderStatus, PaymentStatus } from "@/commerce/types";
+import type { CatalogId, OrderStatus, PaymentStatus } from "@/commerce/types";
 import { payWithBold } from "@/components/payments/useBoldCheckout";
 import type { BoldCheckoutSession } from "@/payments/types";
 import { track } from "@/growth/track";
-import { commerceLineLabel, orderNeedsSize, tallaPath } from "@/commerce/sizing";
+import { orderNeedsSize, tallaPath } from "@/commerce/sizing";
 import { formatMoney } from "@/lib/catalog";
 import { useSales } from "@/components/sales/SalesProvider";
 
@@ -24,12 +25,17 @@ type PublicOrder = {
   needsSize?: boolean;
   hasSizer?: boolean;
   sizerTrackingNumber?: string | null;
+  sizerStatus?: string | null;
   items: {
+    kind?: "ring" | "case";
+    modelId: CatalogId;
+    finishId: string;
     name: string;
     finishTitle: string;
     size: number;
     sizing?: "kit" | "self";
     qty: number;
+    unitPrice?: number;
   }[];
   ciudad: string;
   departamento: string;
@@ -50,18 +56,92 @@ async function fetchOrder(n: string) {
   return (await res.json()) as { ok: boolean; error?: string; order?: PublicOrder };
 }
 
+/** «1050» o «mora 1050» → «MORA-1050». */
+function normalizeOrderNumber(raw: string) {
+  const value = raw.trim().toUpperCase().replace(/\s+/g, "");
+  if (/^\d+$/.test(value)) return `MORA-${value}`;
+  const match = value.match(/^MORA-?(\d+)$/);
+  return match ? `MORA-${match[1]}` : value;
+}
+
+function orderPath(orderNumber: string) {
+  return `/pedido/${encodeURIComponent(orderNumber)}`;
+}
+
+function LookupForm({
+  initial = "",
+  onSame,
+}: {
+  initial?: string;
+  onSame?: () => void;
+}) {
+  const router = useRouter();
+  const [value, setValue] = useState(initial);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    const n = normalizeOrderNumber(value);
+    if (!n) {
+      setError("Escribe el número de tu pedido. Está en el correo de confirmación.");
+      return;
+    }
+    setError("");
+    if (onSame && n === initial) {
+      onSame();
+      return;
+    }
+    setBusy(true);
+    router.push(orderPath(n));
+  }
+
+  return (
+    <>
+      <form onSubmit={onSubmit} className="reserve-sheet mt-8">
+        <label className="reserve-row">
+          <span>Número de pedido</span>
+          <input
+            value={value}
+            onChange={(event) => setValue(event.target.value.toUpperCase())}
+            placeholder="MORA-1042"
+            className="reserve-input font-medium tracking-[0.08em]"
+            autoComplete="off"
+            enterKeyHint="search"
+          />
+        </label>
+        <div className="px-5 pb-5">
+          <button
+            type="submit"
+            disabled={busy}
+            className="h-11 w-full rounded-full bg-ink text-[13px] text-white disabled:opacity-50"
+          >
+            {busy ? "Buscando…" : "Ver estado"}
+          </button>
+        </div>
+      </form>
+      {error ? (
+        <p className="mt-6 rounded-2xl bg-white/70 px-4 py-3 text-sm text-soft" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </>
+  );
+}
+
 export function OrderTracker({
   initial,
   paymentRef,
 }: {
-  initial?: string;
+  initial: string;
   paymentRef?: string;
 }) {
-  const [value, setValue] = useState(initial ?? "");
   const [order, setOrder] = useState<PublicOrder | null>(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(Boolean(initial));
+  const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!paymentRef) return;
@@ -73,14 +153,15 @@ export function OrderTracker({
   }, [paymentRef]);
 
   useEffect(() => {
-    if (!initial) return;
-    setValue(initial);
-    setLoading(true);
     let cancelled = false;
     const started = Date.now();
 
     async function load(once: boolean) {
-      const data = await fetchOrder(initial!);
+      const data = await fetchOrder(initial).catch(() => ({
+        ok: false,
+        error: "No pudimos consultar tu pedido. Inténtalo otra vez.",
+        order: undefined,
+      }));
       if (cancelled) return data.order ?? null;
       setLoading(false);
       if (!data.ok || !data.order) {
@@ -107,7 +188,7 @@ export function OrderTracker({
     return () => {
       cancelled = true;
     };
-  }, [initial, paymentRef]);
+  }, [initial, paymentRef, attempt]);
 
   useEffect(() => {
     if (!order?.paidAt) return;
@@ -128,20 +209,39 @@ export function OrderTracker({
     );
   }, [order]);
 
-  async function onSubmit(event: FormEvent) {
-    event.preventDefault();
-    const n = value.trim().toUpperCase();
-    if (!n) return;
-    setLoading(true);
-    setError("");
-    const data = await fetchOrder(n);
-    setLoading(false);
-    if (!data.ok || !data.order) {
-      setOrder(null);
-      setError(data.error ?? "No encontramos ese pedido.");
-      return;
+  const orderNumber = order?.orderNumber;
+  useEffect(() => {
+    if (!orderNumber || !resultRef.current) return;
+    const top = resultRef.current.getBoundingClientRect().top;
+    if (top > window.innerHeight * 0.6) {
+      resultRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-    setOrder(data.order);
+  }, [orderNumber]);
+
+  async function retryPay() {
+    if (!order) return;
+    setPaying(true);
+    setError("");
+    try {
+      const res = await fetch("/api/checkout/resume", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orderNumber: order.orderNumber }),
+      });
+      const data = (await res.json()) as {
+        ok: boolean;
+        error?: string;
+        session?: BoldCheckoutSession;
+      };
+      if (!data.ok || !data.session) {
+        throw new Error(data.error ?? "No pudimos reabrir el pago.");
+      }
+      await payWithBold(data.session);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "El pago no se completó.");
+    } finally {
+      setPaying(false);
+    }
   }
 
   return (
@@ -150,69 +250,50 @@ export function OrderTracker({
       <h1 className="mt-3 text-[2rem] font-medium tracking-[-0.04em] text-ink sm:text-[2.4rem]">
         Tu pedido
       </h1>
-      <p className="mt-2 text-[15px] leading-7 text-soft">
-        Usa el número que te enviamos por correo. Sin cuentas, sin fricción.
-      </p>
 
-      <form onSubmit={(event) => void onSubmit(event)} className="reserve-sheet mt-8">
-        <label className="reserve-row">
-          <span>Número de pedido</span>
-          <input
-            value={value}
-            onChange={(event) => setValue(event.target.value.toUpperCase())}
-            placeholder="MORA-1042"
-            className="reserve-input font-medium tracking-[0.08em]"
-            autoComplete="off"
-          />
-        </label>
-        <div className="px-5 pb-5">
-          <button
-            type="submit"
-            disabled={loading}
-            className="h-11 w-full rounded-full bg-ink text-[13px] text-white disabled:opacity-50"
-          >
-            {loading ? "Buscando…" : "Ver estado"}
-          </button>
+      {loading ? (
+        <div className="receipt-sheet mt-8 rounded-[1.35rem] bg-white/70 px-5 py-10 text-center">
+          <span className="mx-auto block h-2 w-2 animate-pulse rounded-full bg-ink" />
+          <p className="mt-4 text-[14px] text-soft">Buscando {initial}…</p>
         </div>
-      </form>
+      ) : null}
 
-      {error ? (
-        <p className="mt-6 rounded-2xl bg-white/70 px-4 py-3 text-sm text-soft">{error}</p>
+      {!loading && !order ? (
+        <>
+          <LookupForm
+            initial={initial}
+            onSame={() => {
+              setLoading(true);
+              setError("");
+              setAttempt((n) => n + 1);
+            }}
+          />
+          {error ? (
+            <p className="mt-6 rounded-2xl bg-white/70 px-4 py-3 text-sm text-soft" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </>
       ) : null}
 
       {order ? (
-        <OrderStatusCard
-          order={order}
-          paying={paying}
-          onRetry={
-            order.canRetry
-              ? async () => {
-                  setPaying(true);
-                  setError("");
-                  try {
-                    const res = await fetch("/api/checkout/resume", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ orderNumber: order.orderNumber }),
-                    });
-                    const data = (await res.json()) as {
-                      ok: boolean;
-                      error?: string;
-                      session?: BoldCheckoutSession;
-                    };
-                    if (!data.ok || !data.session) {
-                      throw new Error(data.error ?? "No pudimos reabrir el pago.");
-                    }
-                    await payWithBold(data.session);
-                  } catch (err) {
-                    setError(err instanceof Error ? err.message : "El pago no se completó.");
-                  } finally {
-                    setPaying(false);
-                  }
-                }
-              : undefined
-          }
-        />
+        <div ref={resultRef} className="scroll-mt-24">
+          {error ? (
+            <p className="mt-6 rounded-2xl bg-white/70 px-4 py-3 text-sm text-soft" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <OrderStatusCard
+            order={order}
+            paying={paying}
+            onRetry={order.canRetry ? () => void retryPay() : undefined}
+          />
+          <p className="mt-6 text-center text-[13px] text-soft">
+            <Link href="/pedido" className="underline underline-offset-4 hover:text-ink">
+              Buscar otro pedido
+            </Link>
+          </p>
+        </div>
       ) : null}
     </div>
   );
@@ -228,12 +309,26 @@ function OrderStatusCard({
   paying?: boolean;
 }) {
   const sales = useSales();
-  const index = fulfillmentIndex(order.status);
   const cancelled = order.status === "cancelled";
   const waitingPay = order.status === "awaiting_payment";
+  const needsSize = Boolean(order.needsSize || orderNeedsSize(order.items));
+  const steps = trackingSteps({
+    status: order.status,
+    hasSizer: order.hasSizer,
+    needsSize,
+    sizerStatus: order.sizerStatus,
+    deliveryLabel: sales.mode === "presale" ? sales.deliveryLabel : undefined,
+  });
+  const current = steps.findIndex((step) => !step.done);
+  const sizerHeadline =
+    order.sizerStatus === "delivered"
+      ? "Tu medidor ya llegó. ¿Qué talla te quedó?"
+      : order.status === "sizer_transit" || order.sizerStatus === "in_transit"
+        ? "Tu medidor ya va en camino."
+        : "Primero te enviamos el medidor.";
 
   return (
-    <div className="receipt-sheet mt-10 rounded-[1.35rem] bg-white/70 px-5 py-6 sm:px-6 sm:py-7">
+    <div className="receipt-sheet mt-8 rounded-[1.35rem] bg-white/70 px-5 py-6 sm:px-6 sm:py-7">
       <div className="mb-6 flex items-center justify-between gap-4 border-b border-line pb-5">
         <BrandLogo variant="mark" className="h-8 w-8 object-contain" />
         <p className="kicker">Recibo</p>
@@ -255,10 +350,10 @@ function OrderStatusCard({
       {waitingPay ? (
         <p className="mt-8 rounded-2xl bg-white/70 px-5 py-4 text-[14px] leading-6 text-soft">
           {order.paymentStatus === "pending"
-            ? "Estamos confirmando el pago. Nequi y PSE tardan un momento."
+            ? "Estamos confirmando tu pago. Nequi y PSE tardan un momento."
             : order.paymentStatus
               ? `Pago ${PAYMENT_STATUS_LABEL[order.paymentStatus].toLowerCase()}.`
-              : "Estamos esperando el pago."}
+              : "Estamos esperando tu pago."}
         </p>
       ) : null}
 
@@ -273,15 +368,13 @@ function OrderStatusCard({
         </button>
       ) : null}
 
-      {order.hasSizer ? (
+      {!cancelled && !waitingPay && needsSize ? (
         <div className="mt-6 rounded-[1.2rem] bg-white/80 px-5 py-5">
-          <p className="kicker">Medidor</p>
+          <p className="kicker">Medidor de tallas</p>
           <p className="title-whisper mt-2 text-[1.25rem] text-ink">
-            {order.status === "sizer_transit" ? "El medidor va en camino." : "Primero el medidor. Luego tu talla."}
+            {sizerHeadline}
           </p>
-          <p className="mt-2 text-[13px] leading-6 text-soft">
-            Cuando lo uses, entra con este pedido y pide el anillo. {sales.promise}
-          </p>
+          <p className="mt-2 text-[13px] leading-6 text-soft">{sales.sizerNote}</p>
           {order.sizerTrackingNumber ? (
             <p className="mt-2 text-[13px] text-ink">Guía del medidor {order.sizerTrackingNumber}</p>
           ) : null}
@@ -289,58 +382,42 @@ function OrderStatusCard({
             href={tallaPath(order.orderNumber)}
             className="mt-4 flex h-11 items-center justify-center rounded-full bg-ink text-[13px] text-white"
           >
-            Pedir mi talla
+            Contarles mi talla
           </Link>
         </div>
-      ) : order.needsSize || orderNeedsSize(order.items) ? (
-        <div className="mt-6 rounded-[1.2rem] bg-white/80 px-5 py-5">
-          <p className="kicker">Medidor</p>
-          <p className="title-whisper mt-2 text-[1.25rem] text-ink">
-            Primero el medidor. Luego tu talla.
-          </p>
-          <p className="mt-2 text-[13px] leading-6 text-soft">
-            Cuando lo uses, entra con este pedido y pide el anillo. {sales.promise}
-          </p>
-          <Link
-            href={tallaPath(order.orderNumber)}
-            className="mt-4 flex h-11 items-center justify-center rounded-full bg-ink text-[13px] text-white"
-          >
-            Pedir mi talla
-          </Link>
-        </div>
-      ) : order.status === "paid" ? (
-        <p className="mt-6 text-[13px] leading-6 text-soft">{sales.promise}</p>
       ) : null}
 
       {cancelled ? (
         <p className="mt-8 rounded-2xl bg-white/70 px-5 py-4 text-[14px] leading-6 text-soft">
-          Este pedido fue cancelado. Si pagaste, escríbenos con el número de pedido.
+          Este pedido fue cancelado. Si pagaste, escríbenos con el número de pedido y te ayudamos.
         </p>
       ) : (
         <ol className="mt-8">
-          {TRACKING_STEPS.map((step, i) => {
-            const done = index >= i;
-            const current = index === i;
+          {steps.map((step, i) => {
+            const next = steps[i + 1];
             return (
-              <li key={step.status} className="relative flex gap-4 pb-7 last:pb-0">
-                {i < TRACKING_STEPS.length - 1 ? (
+              <li key={step.key} className="relative flex gap-4 pb-7 last:pb-0">
+                {next ? (
                   <span
                     className={`absolute left-[11px] top-7 h-[calc(100%-8px)] w-px ${
-                      done && index > i ? "bg-ink" : "bg-ink/12"
+                      step.done && next.done ? "bg-ink" : "bg-ink/12"
                     }`}
                   />
                 ) : null}
                 <span
-                  className={`relative z-[1] mt-0.5 h-[22px] w-[22px] rounded-full ${
-                    done ? "bg-ink" : "border border-ink/20 bg-paper"
-                  } ${current ? "ring-4 ring-lilac/80" : ""}`}
+                  className={`relative z-[1] mt-0.5 h-[22px] w-[22px] shrink-0 rounded-full ${
+                    step.done ? "bg-ink" : "border border-ink/20 bg-paper"
+                  } ${i === current ? "ring-4 ring-lilac/80" : ""}`}
                 />
                 <div>
-                  <p className={`text-[15px] ${done ? "text-ink" : "text-soft"}`}>
+                  <p className={`text-[15px] ${step.done ? "text-ink" : "text-soft"}`}>
                     {step.label}
                   </p>
                   <p className="mt-1 text-[13px] leading-5 text-soft">{step.description}</p>
-                  {step.status === "in_transit" && done && order.trackingNumber ? (
+                  {step.key === "sizer_transit" && order.sizerTrackingNumber ? (
+                    <p className="mt-2 text-[13px] text-ink">Guía {order.sizerTrackingNumber}</p>
+                  ) : null}
+                  {step.key === "in_transit" && step.done && order.trackingNumber ? (
                     <p className="mt-2 text-[13px] text-ink">
                       Guía {order.trackingNumber}
                       {order.carrierLabel ? ` · ${order.carrierLabel}` : ""}
@@ -353,12 +430,13 @@ function OrderStatusCard({
         </ol>
       )}
 
-      <ul className="mt-8 divide-y divide-line text-[14px]">
+      <ul className="mt-8 space-y-4 border-t border-line pt-6">
         {order.items.map((item, i) => (
-          <li key={`${item.name}-${i}`} className="flex justify-between py-3">
-            <span className="text-ink">
-              {commerceLineLabel(item)}
-            </span>
+          <li key={`${item.modelId}-${item.finishId}-${i}`}>
+            <CartLineVisual
+              line={item}
+              price={item.unitPrice != null ? formatMoney(item.unitPrice * item.qty) : undefined}
+            />
           </li>
         ))}
       </ul>
@@ -367,21 +445,36 @@ function OrderStatusCard({
   );
 }
 
-function TrackerFromQuery() {
+function IndexInner() {
   const params = useSearchParams();
+  const router = useRouter();
   const ref = params.get("ref") ?? params.get("n") ?? "";
-  return <OrderTracker initial={ref || undefined} />;
+  const n = ref ? normalizeOrderNumber(ref) : "";
+
+  useEffect(() => {
+    if (n.startsWith("MORA-")) router.replace(orderPath(n));
+  }, [n, router]);
+
+  return (
+    <div className="mx-auto max-w-lg">
+      <p className="kicker">Seguimiento</p>
+      <h1 className="mt-3 text-[2rem] font-medium tracking-[-0.04em] text-ink sm:text-[2.4rem]">
+        Tu pedido
+      </h1>
+      <LookupForm initial={n} />
+    </div>
+  );
 }
 
 export function PedidoIndexPage() {
   return (
     <div className="hero-wash min-h-dvh px-6 pt-[calc(5.5rem+env(safe-area-inset-top))] pb-20">
       <Suspense>
-        <TrackerFromQuery />
+        <IndexInner />
       </Suspense>
       <p className="mx-auto mt-12 max-w-lg text-center text-[12px] text-soft">
         <Link href="/" className="hover:text-ink">
-          Volver a {BRAND.name}
+          Volver a Mora Ring
         </Link>
       </p>
     </div>
@@ -391,17 +484,10 @@ export function PedidoIndexPage() {
 function PedidoNumberInner() {
   const params = useParams<{ orderNumber: string }>();
   const search = useSearchParams();
-  const router = useRouter();
-  const n = decodeURIComponent(params.orderNumber ?? "");
+  const n = normalizeOrderNumber(decodeURIComponent(params.orderNumber ?? ""));
   const paymentRef = search.get("bold-order-id") ?? search.get("ref") ?? undefined;
 
-  useEffect(() => {
-    if (n && !n.toUpperCase().startsWith("MORA-")) {
-      router.replace(`/pedido?ref=${encodeURIComponent(n)}`);
-    }
-  }, [n, router]);
-
-  return <OrderTracker initial={n.toUpperCase()} paymentRef={paymentRef} />;
+  return <OrderTracker key={n} initial={n} paymentRef={paymentRef} />;
 }
 
 export function PedidoNumberPage() {
@@ -412,7 +498,7 @@ export function PedidoNumberPage() {
       </Suspense>
       <p className="mx-auto mt-12 max-w-lg text-center text-[12px] text-soft">
         <Link href="/" className="hover:text-ink">
-          Volver a {BRAND.name}
+          Volver a Mora Ring
         </Link>
       </p>
     </div>

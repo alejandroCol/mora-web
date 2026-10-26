@@ -28,7 +28,6 @@ export function buildPresaleCopy(saleOn: string) {
     deliveryFull,
     whisper: "Reserva Pro o Ultra ahora. El anillo sale ese día.",
     promise: `Tu Mora se entrega el ${deliveryLabel}.`,
-    kitPromise: "Primero el medidor. Después, con tu pedido, pedís la talla.",
     saleOn,
   };
 }

@@ -113,8 +113,8 @@ export function SizeRequest({ initial }: { initial?: string }) {
         Tu talla.
       </h1>
       <p className="mt-3 text-[15px] leading-7 text-soft">
-        Con el número de pedido pides el anillo. El medidor ya viajó, o viaja primero.
-        El precio no cambia.
+        ¿Ya te probaste el medidor? Escribe tu número de pedido, cuéntanos qué talla te quedó
+        mejor y te enviamos tu anillo.
       </p>
 
       <form onSubmit={(event) => void onLookup(event)} className="reserve-sheet mt-8">
@@ -151,7 +151,8 @@ export function SizeRequest({ initial }: { initial?: string }) {
           <p className="kicker">{order.orderNumber}</p>
           {done || (!pending && !locked) ? (
             <p className="title-whisper mt-3 text-[1.35rem] text-ink">
-              Talla lista. {sales.promise}
+              ¡Listo! Ya tenemos tu talla. Te avisamos por correo cuando tu anillo vaya en camino.
+              {sales.paidNote ? ` ${sales.paidNote}` : ""}
             </p>
           ) : locked ? (
             <p className="mt-3 text-[15px] leading-7 text-soft">
@@ -159,7 +160,7 @@ export function SizeRequest({ initial }: { initial?: string }) {
             </p>
           ) : (
             <p className="title-whisper mt-3 text-[1.35rem] text-ink">
-              Elige el número y lo pedimos.
+              ¿Qué número te quedó mejor?
             </p>
           )}
 
@@ -211,7 +212,7 @@ export function SizeRequest({ initial }: { initial?: string }) {
               disabled={saving}
               className="mt-8 h-12 w-full rounded-full bg-ink text-[13px] text-white disabled:opacity-50"
             >
-              {saving ? "Guardando…" : "Pedir esta talla"}
+              {saving ? "Guardando…" : "Enviarme el anillo en esta talla"}
             </button>
           ) : (
             <Link

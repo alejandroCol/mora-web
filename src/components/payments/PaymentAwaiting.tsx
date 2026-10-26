@@ -7,6 +7,7 @@ import { useSales } from "@/components/sales/SalesProvider";
 import type { BoldCheckoutSession } from "@/payments/types";
 import { payWithBold } from "./useBoldCheckout";
 import { clearPendingPay, type PendingPay, writePendingPay } from "./pendingPay";
+import { paidDetail } from "./paidCopy";
 import { usePaymentWatch } from "./usePaymentWatch";
 
 export function PaymentAwaiting({
@@ -68,7 +69,7 @@ export function PaymentAwaiting({
       <AwaitingCard
         kicker={`Pedido ${pending.orderNumber}`}
         title="Ya es tuyo."
-        detail={sales.promise}
+        detail={paidDetail(sales.paidNote)}
         action={
           <Link href={href} className="elegir-cta mt-8 inline-flex">
             Ver mi pedido

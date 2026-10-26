@@ -331,7 +331,7 @@ export function selectionLabel(selection: Selection) {
   const model = products[selection.modelId];
   const size =
     selection.sizing === "kit" || !selection.size
-      ? "Medidor primero"
+      ? "Con medidor"
       : `#${selection.size}`;
   return `Mora ${model.name} · ${finishLabel(selection.modelId, selection.finishId)} · ${size}`;
 }

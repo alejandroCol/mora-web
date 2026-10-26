@@ -28,6 +28,7 @@ import { currentAttribution, track } from "@/growth/track";
 import { insightFunnel, insightProductCheckout } from "@/insights/client";
 import { PaymentAwaiting } from "@/components/payments/PaymentAwaiting";
 import {
+  clearPendingPay,
   readPendingPay,
   writePendingPay,
   type PendingPay,
@@ -115,7 +116,14 @@ export function CheckoutFlow() {
   const bold = useBoldCheckout();
   const checkoutTracked = useRef(false);
   const pendingPay = useRef<PreparedPay | null>(null);
-  const [awaiting, setAwaiting] = useState<PendingPay | null>(() => readPendingPay());
+  const [awaiting, setAwaiting] = useState<PendingPay | null>(() => {
+    const pending = readPendingPay();
+    if (pending && useMoraStore.getState().cart.length > 0) {
+      clearPendingPay();
+      return null;
+    }
+    return pending;
+  });
 
   const subtotal = subtotalOf(cart);
   const piezas = cartCount(cart);

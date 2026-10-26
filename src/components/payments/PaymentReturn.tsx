@@ -1,24 +1,15 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSales } from "@/components/sales/SalesProvider";
-import type { PaymentIntentStatus, PaymentProvider } from "@/payments/types";
+import type { BoldCheckoutSession, PaymentIntentStatus, PaymentProvider } from "@/payments/types";
+import { payWithBold } from "./useBoldCheckout";
+import { readPendingPay, writePendingPay } from "./pendingPay";
 import { PurchaseSeal } from "./PurchaseSeal";
+import { usePaymentWatch, type WatchedIntent } from "./usePaymentWatch";
 
-type IntentView = {
-  reference: string;
-  status: PaymentIntentStatus;
-  purpose: string;
-  provider?: PaymentProvider;
-  redirectPath: string;
-  metadata: Record<string, string>;
-};
-
-const POLL_MS = 2500;
-const POLL_FOR_MS = 90_000;
-
-function destination(intent: IntentView) {
+function destination(intent: WatchedIntent) {
   if (intent.redirectPath) return intent.redirectPath;
   const orderNumber = intent.metadata.orderNumber;
   if (orderNumber) return `/pedido/${encodeURIComponent(orderNumber)}`;
@@ -29,6 +20,7 @@ function copyFor(
   status: PaymentIntentStatus | "waiting",
   promise: string,
   provider?: PaymentProvider,
+  timedOut = false,
 ) {
   switch (status) {
     case "approved":
@@ -51,10 +43,17 @@ function copyFor(
         detail:
           provider === "addi"
             ? "Addi tarda un momento en confirmar las cuotas. No cierres esta pantalla."
-            : "Nequi y PSE tardan un momento. No cierres esta pantalla.",
+            : timedOut
+              ? "Aún no llega la confirmación. Si ya pagaste, espera un momento."
+              : "Nequi y PSE tardan un momento. No cierres esta pantalla.",
       };
     default:
-      return { title: "Confirmando el pago", detail: "Estamos esperando la respuesta." };
+      return {
+        title: "Confirmando el pago",
+        detail: timedOut
+          ? "Aún no llega la confirmación. Si ya pagaste, espera un momento."
+          : "Estamos esperando que el pago se haga efectivo.",
+      };
   }
 }
 
@@ -62,110 +61,90 @@ function PaymentReturnInner() {
   const sales = useSales();
   const params = useSearchParams();
   const demo = params.get("demo") === "seal";
-  const reference =
+  const urlRef =
     params.get("bold-order-id") ??
     params.get("ref") ??
     params.get("orderId") ??
     params.get("order_id") ??
     "";
-  const [status, setStatus] = useState<PaymentIntentStatus | "waiting">(
-    demo ? "approved" : "waiting",
-  );
-  const [error, setError] = useState("");
-  const [intent, setIntent] = useState<IntentView | null>(
-    demo
-      ? {
-          reference: "demo",
-          status: "approved",
-          purpose: "order",
-          redirectPath: "/pedido",
-          metadata: { orderNumber: "MORA-000" },
-        }
-      : null,
-  );
-  const synced = useRef(false);
-
+  const [stored, setStored] = useState<ReturnType<typeof readPendingPay>>(null);
+  const [storeReady, setStoreReady] = useState(false);
   useEffect(() => {
-    if (demo) return;
-    let cancelled = false;
-    const started = Date.now();
+    setStored(readPendingPay());
+    setStoreReady(true);
+  }, []);
+  const reference = urlRef || stored?.reference || "";
+  const watch = usePaymentWatch(demo || (!urlRef && !storeReady) ? null : reference || null);
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState("");
 
-    async function syncOnce() {
-      if (!reference || synced.current) return;
-      const res = await fetch("/api/payments/sync", {
+  const status = demo ? "approved" : watch.status;
+  const intent = demo
+    ? ({
+        reference: "demo",
+        status: "approved" as const,
+        purpose: "order",
+        redirectPath: "/pedido",
+        metadata: { orderNumber: "MORA-000" },
+      } satisfies WatchedIntent)
+    : watch.intent;
+  const copy = copyFor(status, sales.promise, intent?.provider, watch.timedOut);
+  const orderNumber = intent?.metadata.orderNumber ?? stored?.orderNumber;
+  const href = intent ? destination(intent) : orderNumber ? `/pedido/${orderNumber}` : "/pedido";
+  const failed =
+    status === "declined" ||
+    status === "voided" ||
+    status === "error" ||
+    Boolean(watch.error && !watch.intent);
+  const missingRef = !demo && storeReady && !reference;
+  const canRetry = Boolean(orderNumber || stored) && intent?.provider !== "addi";
+
+  async function retry() {
+    if (!canRetry) return;
+    setRetrying(true);
+    setRetryError("");
+    try {
+      const reuse = stored && !failed ? stored.session : null;
+      if (reuse) {
+        await payWithBold(reuse);
+        return;
+      }
+      if (!orderNumber) throw new Error("Falta el número de pedido.");
+      const res = await fetch("/api/checkout/resume", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reference }),
+        body: JSON.stringify({ orderNumber, method: "bold" }),
       });
-      const data = (await res.json()) as { ok: boolean; error?: string; intent?: IntentView | null };
-      if (cancelled) return;
-      synced.current = data.ok;
-      if (data.intent) {
-        setIntent(data.intent);
-        setStatus(data.intent.status);
-      } else if (!data.ok) {
-        setError(data.error ?? "No pudimos leer el pago.");
+      const data = (await res.json()) as {
+        ok: boolean;
+        error?: string;
+        session?: BoldCheckoutSession;
+      };
+      if (!data.ok || !data.session) {
+        throw new Error(data.error ?? "No pudimos reabrir el pago.");
       }
+      writePendingPay({
+        orderNumber,
+        reference: data.session.reference,
+        session: data.session,
+      });
+      await payWithBold(data.session);
+    } catch (err) {
+      setRetryError(err instanceof Error ? err.message : "No pudimos reabrir el pago.");
+    } finally {
+      setRetrying(false);
     }
+  }
 
-    async function poll() {
-      if (!reference) {
-        setError("Falta la referencia del pago.");
-        return true;
-      }
-      const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(reference)}`);
-      const data = (await res.json()) as { ok: boolean; intent?: IntentView; error?: string };
-      if (cancelled) return true;
-      if (data.ok && data.intent) {
-        setIntent(data.intent);
-        setStatus(data.intent.status);
-        if (
-          data.intent.status === "approved" ||
-          data.intent.status === "declined" ||
-          data.intent.status === "voided" ||
-          data.intent.status === "error"
-        ) {
-          return true;
-        }
-      }
-      return Date.now() - started > POLL_FOR_MS;
-    }
-
-    void (async () => {
-      try {
-        await syncOnce();
-      } catch {
-        if (!cancelled) setError("No pudimos confirmar el pago todavía.");
-      }
-      let stop = false;
-      while (!cancelled && !stop) {
-        try {
-          stop = await poll();
-        } catch {
-          stop = Date.now() - started > POLL_FOR_MS;
-        }
-        if (!stop) await new Promise((resolve) => setTimeout(resolve, POLL_MS));
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [reference, demo]);
-
-  const copy = copyFor(status, sales.promise, intent?.provider);
-  const orderNumber = intent?.metadata.orderNumber;
-  const href = intent ? destination(intent) : "/pedido";
-  const failed =
-    status === "declined" || status === "voided" || status === "error" || Boolean(error);
-
-  if (failed) {
+  if (failed || missingRef) {
     return (
       <PurchaseSeal
         phase="fail"
-        title={error ? "No se pudo confirmar" : copy.title}
-        detail={error || copy.detail}
-        failHref={intent ? href : "/checkout"}
+        title={missingRef || watch.error || retryError ? "No se pudo confirmar" : copy.title}
+        detail={missingRef ? "Falta la referencia del pago." : watch.error || retryError || copy.detail}
+        failHref={intent || orderNumber ? href : "/checkout"}
+        onRetry={canRetry ? () => void retry() : undefined}
+        retrying={retrying}
       />
     );
   }
@@ -182,7 +161,15 @@ function PaymentReturnInner() {
     );
   }
 
-  return <PurchaseSeal phase="wait" title={copy.title} detail={copy.detail} />;
+  return (
+    <PurchaseSeal
+      phase="wait"
+      title={copy.title}
+      detail={retryError || copy.detail}
+      onRetry={canRetry ? () => void retry() : undefined}
+      retrying={retrying}
+    />
+  );
 }
 
 export function PaymentReturn() {

@@ -6,12 +6,16 @@ import {
   catalog,
   finishLabel,
   finishes,
+  isFinishId,
+  isModelId,
   products,
   type FinishId,
   type ModelId,
 } from "./catalog";
+import { CASE_PRODUCT, caseLineKey, isCaseColorId, type CaseColorId } from "./cases";
 import { cartLineKey } from "@/commerce/sku";
 import { cartCount, subtotalOf } from "@/commerce/cartMath";
+import { isCaseLine } from "@/commerce/lines";
 import { PENDING_SIZE } from "@/commerce/sizing";
 import type { CartLine, CustomerSnapshot, SizingMethod } from "@/commerce/types";
 
@@ -43,6 +47,7 @@ type Store = {
   setSizing: (sizing: SizingMethod | null) => void;
   setDraft: (patch: Partial<CheckoutDraft>) => void;
   addSelectionToCart: (qty?: number) => void;
+  addCaseToCart: (colorId: CaseColorId, qty?: number) => void;
   setQty: (key: string, qty: number) => void;
   removeLine: (key: string) => void;
   clearCart: () => void;
@@ -69,6 +74,20 @@ const emptyDraft: CheckoutDraft = {
 
 function defaultFinish(modelId: ModelId): FinishId {
   return products[modelId].finishes[0];
+}
+
+function retireUnavailableSize(line: CartLine): CartLine {
+  if (!isModelId(line.modelId) || line.size !== 6) return line;
+  const finishId = isFinishId(line.finishId)
+    ? line.finishId
+    : products[line.modelId].finishes[0];
+  return {
+    ...line,
+    finishId,
+    sizing: "kit",
+    size: PENDING_SIZE,
+    key: cartLineKey(line.modelId, finishId, PENDING_SIZE, "kit"),
+  };
 }
 
 export const useMoraStore = create<Store>()(
@@ -157,6 +176,30 @@ export const useMoraStore = create<Store>()(
           return { cart, cartOpen: false };
         });
       },
+      addCaseToCart: (colorId, qty = 1) => {
+        const color = isCaseColorId(colorId) ? colorId : CASE_PRODUCT.colors[0];
+        const key = caseLineKey(color);
+        set((state) => {
+          const existing = state.cart.find((line) => line.key === key);
+          const cart = existing
+            ? state.cart.map((line) =>
+                line.key === key ? { ...line, qty: line.qty + qty } : line,
+              )
+            : [
+                ...state.cart,
+                {
+                  key,
+                  kind: "case" as const,
+                  modelId: "case" as const,
+                  finishId: color,
+                  size: 0,
+                  sizing: "self" as const,
+                  qty,
+                },
+              ];
+          return { cart, cartOpen: false };
+        });
+      },
       setQty: (key, qty) =>
         set((state) => ({
           cart:
@@ -193,7 +236,7 @@ export const useMoraStore = create<Store>()(
     }),
     {
       name: "mora-atelier",
-      version: 8,
+      version: 10,
       partialize: (state) => ({
         selection: state.selection,
         cart: state.cart,
@@ -206,6 +249,12 @@ export const useMoraStore = create<Store>()(
         const selection = saved.selection
           ? { ...current.selection, ...saved.selection, finishId: current.selection.finishId }
           : current.selection;
+        if (
+          isModelId(selection.modelId) &&
+          !products[selection.modelId].sizes.includes(selection.size)
+        ) {
+          selection.size = products[selection.modelId].sizes[0];
+        }
         return {
           ...current,
           ...saved,
@@ -236,10 +285,36 @@ export const useMoraStore = create<Store>()(
         if (data.selection && data.selection.sizing == null) {
           data.selection.sizing = "self";
         }
-        const cart = (data.cart ?? []).map((line) => ({
-          ...line,
-          sizing: line.sizing ?? "self",
-        }));
+        if (
+          data.selection &&
+          isModelId(data.selection.modelId) &&
+          !products[data.selection.modelId].sizes.includes(data.selection.size ?? 0)
+        ) {
+          data.selection.size = products[data.selection.modelId].sizes[0];
+        }
+        const cart = (data.cart ?? [])
+          .filter((line) => isCaseLine(line) || isModelId(line.modelId))
+          .map((line) =>
+            isCaseLine(line)
+              ? {
+                  ...line,
+                  kind: "case" as const,
+                  modelId: "case" as const,
+                  sizing: "self" as const,
+                  size: 0,
+                }
+              : retireUnavailableSize({
+                  ...line,
+                  kind: "ring" as const,
+                  sizing: line.sizing ?? "self",
+                }),
+          )
+          .reduce<CartLine[]>((items, line) => {
+            const hit = items.find((item) => item.key === line.key);
+            if (hit) hit.qty += line.qty;
+            else items.push(line);
+            return items;
+          }, []);
         return {
           selection: data.selection,
           cart,

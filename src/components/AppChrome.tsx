@@ -17,7 +17,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     pathname.startsWith("/encuesta") ||
     pathname.startsWith("/creadores");
   const isGallery = pathname.startsWith("/galeria");
-  const isProduct = pathname.startsWith("/anillo");
+  const isProduct = pathname.startsWith("/anillo") || pathname.startsWith("/case");
   const isCheckout = pathname.startsWith("/checkout");
   const isPago = pathname.startsWith("/pago");
   const isDownload = pathname.startsWith("/descargas");

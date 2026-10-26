@@ -27,12 +27,16 @@ export const FUNNEL_COPY: Record<
 
 export type InsightImageKind = "photo" | "ring";
 
+export const CASE_OFFER_ACTIONS = ["shown", "add", "dismiss", "pay"] as const;
+export type CaseOfferAction = (typeof CASE_OFFER_ACTIONS)[number];
+
 export type InsightEvent =
   | { name: "funnel"; step: FunnelStep }
   | { name: "product_view"; productId: string; productName?: string }
   | { name: "product_cart"; productId: string; productName?: string }
   | { name: "product_checkout"; productId: string; productName?: string }
   | { name: "product_buy"; productId: string; productName?: string }
+  | { name: "case_offer"; action: CaseOfferAction }
   | {
       name: "image_view";
       productId: string;
@@ -83,8 +87,18 @@ export type InsightFunnelRow = {
 };
 
 export type InsightAdvice = {
-  tone: "drop" | "photo" | "product" | "empty";
+  tone: "drop" | "photo" | "product" | "empty" | "case";
   text: string;
+};
+
+export type InsightCaseOffer = {
+  shown: number;
+  added: number;
+  dismissed: number;
+  paid: number;
+  addRate: number;
+  dismissRate: number;
+  payRate: number;
 };
 
 export type InsightsReport = {
@@ -97,5 +111,6 @@ export type InsightsReport = {
   leak: InsightFunnelRow | null;
   topProduct: InsightProductRow | null;
   topImage: InsightImageRow | null;
+  caseOffer: InsightCaseOffer;
   advice: InsightAdvice[];
 };

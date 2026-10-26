@@ -6,7 +6,7 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 import { siteUrl } from "@/lib/site";
 
 const UPDATED = "October 17, 2026";
-const CONTACT = "hola@mora.ring";
+const CONTACT = BRAND.contact.email;
 
 export const metadata: Metadata = {
   title: "Privacy Policy",

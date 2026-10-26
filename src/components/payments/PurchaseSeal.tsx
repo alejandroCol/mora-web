@@ -15,6 +15,8 @@ export function PurchaseSeal({
   href,
   orderNumber,
   failHref,
+  onRetry,
+  retrying = false,
 }: {
   phase: SealPhase;
   title: string;
@@ -22,6 +24,8 @@ export function PurchaseSeal({
   href?: string;
   orderNumber?: string;
   failHref?: string;
+  onRetry?: () => void;
+  retrying?: boolean;
 }) {
   const router = useRouter();
   const [narrow, setNarrow] = useState(true);
@@ -101,14 +105,38 @@ export function PurchaseSeal({
         </div>
       ) : null}
 
-      {phase === "fail" && failHref ? (
+      {phase === "wait" && onRetry ? (
         <div className="seal-dock">
-          <Link href={failHref} className="elegir-cta w-full max-w-[22rem]">
-            Volver
-            <span aria-hidden className="elegir-cta-arrow">
-              ›
-            </span>
-          </Link>
+          <button
+            type="button"
+            onClick={onRetry}
+            disabled={retrying}
+            className="text-[15px] tracking-[-0.016em] text-soft underline underline-offset-4 hover:text-ink disabled:opacity-50"
+          >
+            {retrying ? "Abriendo el pago…" : "¿Algo salió mal con el pago? Intentar de nuevo"}
+          </button>
+        </div>
+      ) : null}
+
+      {phase === "fail" && (onRetry || failHref) ? (
+        <div className="seal-dock">
+          {onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              disabled={retrying}
+              className="elegir-cta w-full max-w-[22rem] disabled:opacity-50"
+            >
+              {retrying ? "Abriendo el pago…" : "Intentar de nuevo"}
+            </button>
+          ) : (
+            <Link href={failHref!} className="elegir-cta w-full max-w-[22rem]">
+              Volver
+              <span aria-hidden className="elegir-cta-arrow">
+                ›
+              </span>
+            </Link>
+          )}
         </div>
       ) : null}
     </div>

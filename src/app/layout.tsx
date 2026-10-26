@@ -6,7 +6,8 @@ import { AppChrome } from "@/components/AppChrome";
 import { FirebaseAnalytics } from "@/components/FirebaseAnalytics";
 import { GrowthStack } from "@/components/growth/GrowthStack";
 import { SalesProvider } from "@/components/sales/SalesProvider";
-import { JsonLd } from "@/components/seo/JsonLd";
+import { OrgJsonLd } from "@/components/seo/JsonLd";
+import { ScreenFit } from "@/components/site/ScreenFit";
 import { siteOrigin } from "@/lib/site";
 import "./globals.css";
 
@@ -38,7 +39,6 @@ export function generateMetadata(): Metadata {
     authors: [{ name: BRAND.name }],
     creator: BRAND.name,
     publisher: BRAND.name,
-    alternates: { canonical: "/" },
     openGraph: {
       type: "website",
       locale: "es_CO",
@@ -72,12 +72,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${roboto.variable} h-full scroll-smooth antialiased`}
     >
       <body className="flex min-h-full flex-col bg-paper text-ink">
-        <JsonLd sales={FALLBACK_SALES} />
+        <OrgJsonLd sales={FALLBACK_SALES} />
         <FirebaseAnalytics />
         <GrowthStack />
         <SalesProvider initial={FALLBACK_SALES}>
           <AppChrome>{children}</AppChrome>
         </SalesProvider>
+        <ScreenFit />
       </body>
     </html>
   );

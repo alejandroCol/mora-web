@@ -1,9 +1,12 @@
+import { CASE_PRODUCT, caseLineKey, isCaseColorId } from "@/lib/cases";
 import {
   finishLabel,
+  isModelId,
   products,
   type FinishId,
   type ModelId,
 } from "@/lib/catalog";
+import { isCaseLine, lineFinishTitle, lineName, lineUnitPrice } from "./lines";
 import { isSizePending, PENDING_SIZE } from "./sizing";
 import type { CartLine, OrderItem, SizingMethod } from "./types";
 
@@ -18,22 +21,24 @@ export function parseInventorySku(sku: string) {
   if (!product || !product.finishes.includes(finishId)) return null;
   if (parts.length === 2) return { modelId, finishId, size: null };
   const size = Number(sizeRaw);
-  if (!product.sizes.includes(size)) return null;
+  if (!Number.isInteger(size) || size <= 0) return null;
   return { modelId, finishId, size };
 }
 
 export function stockSku(line: {
-  modelId: ModelId;
-  finishId: FinishId;
+  kind?: string;
+  modelId: string;
+  finishId: string;
   size: number;
   sizing?: SizingMethod;
 }) {
+  if (isCaseLine(line) || !isModelId(line.modelId)) return null;
   if (isSizePending(line)) return null;
   const product = products[line.modelId];
-  if (!product?.sizes.includes(line.size) || !product.finishes.includes(line.finishId)) {
+  if (!product?.sizes.includes(line.size) || !product.finishes.includes(line.finishId as FinishId)) {
     return null;
   }
-  return inventorySku(line.modelId, line.finishId, line.size);
+  return inventorySku(line.modelId, line.finishId as FinishId, line.size);
 }
 
 export function inventoryLabel(sku: string) {
@@ -54,24 +59,50 @@ export function cartLineKey(
 }
 
 export function normalizeCartLine(line: CartLine): CartLine {
+  if (isCaseLine(line)) {
+    const colorId = isCaseColorId(line.finishId) ? line.finishId : CASE_PRODUCT.colors[0];
+    return {
+      key: caseLineKey(colorId),
+      kind: "case",
+      modelId: "case",
+      finishId: colorId,
+      size: 0,
+      sizing: "self",
+      qty: Math.max(1, Math.round(line.qty || 1)),
+    };
+  }
+  if (!isModelId(line.modelId)) {
+    return normalizeCartLine({ ...line, kind: "case", modelId: "case" });
+  }
   const sizing: SizingMethod = line.sizing ?? "self";
   const size = sizing === "kit" ? line.size || PENDING_SIZE : line.size;
   return {
     ...line,
+    kind: "ring",
+    modelId: line.modelId,
     sizing,
     size,
-    key: cartLineKey(line.modelId, line.finishId, size, sizing),
+    key: cartLineKey(line.modelId, line.finishId as FinishId, size, sizing),
   };
 }
 
 export function lineToOrderItem(line: CartLine): OrderItem {
-  const model = products[line.modelId];
   const normalized = normalizeCartLine(line);
+  if (isCaseLine(normalized)) {
+    return {
+      ...normalized,
+      sku: "",
+      name: lineName(normalized),
+      finishTitle: lineFinishTitle(normalized),
+      unitPrice: lineUnitPrice(normalized),
+    };
+  }
+  const model = products[normalized.modelId as ModelId];
   return {
     ...normalized,
     sku: stockSku(normalized) ?? "",
     name: `Mora ${model.name}`,
-    finishTitle: finishLabel(line.modelId, line.finishId),
+    finishTitle: finishLabel(normalized.modelId as ModelId, normalized.finishId as FinishId),
     unitPrice: model.price,
   };
 }

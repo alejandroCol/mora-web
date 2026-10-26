@@ -1,5 +1,5 @@
-import { products } from "@/lib/catalog";
 import type { CartLine, OrderItem, OrderTotals } from "./types";
+import { lineUnitPrice } from "./lines";
 import { lineToOrderItem } from "./sku";
 
 export function demandBySku(lines: CartLine[]) {
@@ -14,8 +14,7 @@ export function demandBySku(lines: CartLine[]) {
 
 export function subtotalOf(lines: CartLine[]) {
   return lines.reduce((sum, line) => {
-    const price = products[line.modelId]?.price ?? 0;
-    return sum + price * Math.max(0, Math.round(line.qty));
+    return sum + lineUnitPrice(line) * Math.max(0, Math.round(line.qty));
   }, 0);
 }
 

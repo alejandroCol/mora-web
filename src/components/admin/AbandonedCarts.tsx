@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AbandonedCart, CartOfferKind } from "@/commerce/types";
+import { lineUnitPrice } from "@/commerce/lines";
 import { commerceLineLabel } from "@/commerce/sizing";
-import { finishLabel, formatMoney, products } from "@/lib/catalog";
+import { formatMoney } from "@/lib/catalog";
 import { siteUrl } from "@/lib/site";
 import { useAdminAuth } from "./AdminAuth";
 
@@ -280,17 +281,10 @@ function CartDrawer({
 
         <ul className="mt-6 space-y-2 text-sm">
           {cart.items.map((item) => {
-            const model = products[item.modelId];
             return (
               <li key={item.key} className="flex justify-between gap-3">
-                <span>
-                  {commerceLineLabel({
-                    ...item,
-                    name: `Mora ${model?.name ?? ""}`,
-                    finishTitle: finishLabel(item.modelId, item.finishId),
-                  })}
-                </span>
-                <span>{formatMoney((model?.price ?? 0) * item.qty)}</span>
+                <span>{commerceLineLabel(item)}</span>
+                <span>{formatMoney(lineUnitPrice(item) * item.qty)}</span>
               </li>
             );
           })}

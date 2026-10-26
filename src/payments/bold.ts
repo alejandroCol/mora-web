@@ -170,7 +170,8 @@ export function buildCheckoutConfig(
       environment,
     }),
     description: (input.description ?? "Pedido Mora").slice(0, 100),
-    redirectionUrl: httpsUrl(origin, "/pago"),
+    redirectionUrl: httpsUrl(origin, `/pago?ref=${encodeURIComponent(input.reference)}`),
+    originUrl: httpsUrl(origin, `/pago?ref=${encodeURIComponent(input.reference)}`),
     renderMode: "embedded",
   });
 }

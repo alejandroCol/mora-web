@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { absoluteBrandUrl } from "@/brand";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
+import { isRingLine } from "@/commerce/lines";
 import type { MoraOrder } from "@/commerce/types";
 import {
   ADDI_MAX_COP_DEFAULT,
@@ -197,6 +198,7 @@ function addressOf(order: MoraOrder) {
 }
 
 export function orderEligibleForAddi(order: MoraOrder) {
+  if (order.items.some((item) => isRingLine(item))) return true;
   return addiAmountAllowed(order.totals.total, addiMinCop(), addiMaxCop());
 }
 

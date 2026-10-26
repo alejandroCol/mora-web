@@ -99,11 +99,19 @@ export function storeFaq(sales: SalesPresentation) {
     },
     {
       q: "¿Cómo elijo la talla?",
-      a: "Pides el medidor —llega primero— o te mides en casa con la guía. El precio no cambia.",
+      a: "Pides el medidor —llega primero— o te mides en casa con la guía. El precio no cambia. No hay cambio de talla después.",
     },
     {
       q: "¿Cuándo llega?",
       a: sales.faqWhen,
+    },
+    {
+      q: "¿Tiene garantía?",
+      a: "Un mes desde la entrega, por fallas de fabricación.",
+    },
+    {
+      q: "¿Puedo cambiar la talla?",
+      a: "No. Por eso puedes pedir el medidor: llega primero, confirmas el número y después fabricamos el anillo.",
     },
   ];
 }
@@ -141,7 +149,7 @@ function immediatePresentation(): SalesPresentation {
     saleOn: null,
     saleAt: null,
     closeLabel: "Envío",
-    closeValue: "Colombia, cotizado al pagar",
+    closeValue: "Todo Colombia, cotizado al pagar",
     sizeSteps: [
       { title: "Compras ahora", body: "El precio no cambia." },
       { title: "Te llega el medidor", body: "Un kit pequeño, antes que el anillo." },

@@ -1072,6 +1072,9 @@ body {
 .worlds-stage {
   position: relative;
   overflow: hidden;
+  height: 100vh;
+  height: 100dvh;
+  height: var(--screen, 100dvh);
   background: #0a090e;
 }
 
@@ -1106,7 +1109,8 @@ body {
 
 .worlds {
   display: flex;
-  min-height: 100dvh;
+  height: 100%;
+  min-height: 100%;
   overflow-x: auto;
   overscroll-behavior-x: contain;
   scroll-snap-type: x mandatory;
@@ -1121,7 +1125,8 @@ body {
 .world {
   position: relative;
   display: block;
-  min-height: 100dvh;
+  height: 100%;
+  min-height: 100%;
   min-width: 84vw;
   flex: 0 0 84vw;
   overflow: hidden;
@@ -1459,8 +1464,8 @@ body {
   }
 
   .worlds {
-    height: 100dvh;
-    min-height: 100dvh;
+    height: 100%;
+    min-height: 100%;
     overflow: hidden;
     scroll-snap-type: none;
     gap: 0;
@@ -1510,6 +1515,339 @@ body {
   .world-hint,
   .world-swipe-hint {
     display: none;
+  }
+}
+
+.case-collage {
+  display: flex;
+  height: 100vh;
+  height: 100dvh;
+  height: var(--screen, 100dvh);
+  overflow-x: clip;
+  overflow-y: hidden;
+  background: #f7f6f4;
+}
+
+.case-collage-link {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 1.25rem;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  padding: calc(4.6rem + env(safe-area-inset-top)) 1.35rem max(1.35rem, env(safe-area-inset-bottom));
+  text-decoration: none;
+  color: inherit;
+}
+
+.case-collage-copy {
+  padding-top: 3.1rem;
+}
+
+.case-collage-kicker {
+  font-size: 13px;
+  font-weight: 300;
+  letter-spacing: -0.012em;
+  color: #6e6e73;
+}
+
+.case-collage-name {
+  margin-top: 0.15rem;
+  font-family: var(--font-sans);
+  font-size: clamp(3.6rem, 14vw, 5.2rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 0.98;
+  color: #1d1d1f;
+}
+
+.case-collage-finishes {
+  display: flex;
+  align-items: center;
+  margin-top: 0.95rem;
+}
+
+.case-collage-finishes .world-dot {
+  box-shadow: 0 0 0 1px rgba(29, 29, 31, 0.16);
+}
+
+.case-collage-dock {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin-top: 1.35rem;
+}
+
+.case-collage-price {
+  font-size: 17px;
+  letter-spacing: -0.022em;
+  color: #1d1d1f;
+}
+
+.case-collage-dock .elegir-cta {
+  height: 2.5rem;
+  padding: 0 1.2rem;
+  background: #000;
+  font-size: 15px;
+}
+
+.case-collage-stage {
+  position: relative;
+  min-height: 15rem;
+  height: 100%;
+  overflow: visible;
+}
+
+.case-collage-tile {
+  position: absolute;
+  top: 50%;
+  width: 42%;
+  aspect-ratio: 1;
+  overflow: visible;
+  transition: z-index 0s 0.7s;
+}
+
+.case-collage-tile-inner {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 1.15rem;
+  background: #fff;
+  box-shadow:
+    0 0 0 1px rgba(22, 20, 31, 0.05),
+    0 18px 36px rgba(22, 20, 31, 0.08);
+  transition:
+    transform 0.75s cubic-bezier(0.25, 0.1, 0.25, 1),
+    box-shadow 0.75s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+
+.case-collage-tile-0 { left: 0; z-index: 1; transform: translateY(-50%) rotate(-10deg); }
+.case-collage-tile-1 { left: 16%; z-index: 2; transform: translateY(-54%) rotate(-4deg); }
+.case-collage-tile-2 { left: 32%; z-index: 5; transform: translateY(-50%) rotate(0deg); }
+.case-collage-tile-3 { left: 48%; z-index: 3; transform: translateY(-46%) rotate(5deg); }
+.case-collage-tile-4 { left: 64%; z-index: 2; transform: translateY(-52%) rotate(11deg); }
+
+@media (hover: hover) and (pointer: fine) {
+  .case-collage-tile:hover {
+    z-index: 8;
+    transition: z-index 0s;
+  }
+
+  .case-collage-tile:hover .case-collage-tile-inner {
+    transform: translateY(-8px);
+    box-shadow:
+      0 0 0 1px rgba(22, 20, 31, 0.05),
+      0 20px 38px rgba(22, 20, 31, 0.11);
+  }
+}
+
+.case-collage-stage-in .case-collage-tile-inner {
+  animation: case-tile-hop 0.82s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.case-collage-stage-in .case-collage-tile-0 .case-collage-tile-inner { animation-delay: 0.02s; }
+.case-collage-stage-in .case-collage-tile-1 .case-collage-tile-inner { animation-delay: 0.1s; }
+.case-collage-stage-in .case-collage-tile-2 .case-collage-tile-inner { animation-delay: 0.18s; }
+.case-collage-stage-in .case-collage-tile-3 .case-collage-tile-inner { animation-delay: 0.26s; }
+.case-collage-stage-in .case-collage-tile-4 .case-collage-tile-inner { animation-delay: 0.34s; }
+
+@keyframes case-tile-hop {
+  0% {
+    transform: translateY(0);
+  }
+  38% {
+    transform: translateY(-13px);
+  }
+  68% {
+    transform: translateY(2px);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .case-collage-stage-in .case-collage-tile-inner {
+    animation: none;
+  }
+}
+
+.case-offer {
+  position: sticky;
+  bottom: calc(4.45rem + env(safe-area-inset-bottom));
+  z-index: 21;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "hit add"
+    "dots add";
+  align-items: center;
+  column-gap: 0.7rem;
+  margin: 0.55rem 0.15rem 0.2rem;
+  padding: 0.55rem 2.35rem 0.55rem 0.5rem;
+  border-radius: 1.2rem;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    0 14px 36px rgba(22, 20, 31, 0.1),
+    0 0 0 1px rgba(22, 20, 31, 0.05);
+  backdrop-filter: saturate(1.2) blur(18px);
+  animation: case-offer-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.case-offer-hit {
+  grid-area: hit;
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.case-offer-photo {
+  width: 3.15rem;
+  height: 3.15rem;
+  flex: none;
+  border-radius: 0.85rem;
+  object-fit: cover;
+  background: #f7f6f4;
+}
+
+.case-offer-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.case-offer-title {
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: -0.022em;
+  line-height: 1.2;
+  color: #1d1d1f;
+}
+
+.case-offer-meta {
+  margin-top: 0.12rem;
+  font-size: 12px;
+  letter-spacing: -0.014em;
+  color: #6e6e73;
+}
+
+.case-offer-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  grid-area: dots;
+  margin: 0.2rem 0 0 3.85rem;
+}
+
+.case-offer-dot {
+  width: 11px;
+  height: 11px;
+  border: 0;
+  border-radius: 999px;
+  padding: 0;
+  box-shadow: 0 0 0 1px rgba(29, 29, 31, 0.14);
+  cursor: pointer;
+}
+
+.case-offer-dot.on {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 3.5px #1d1d1f;
+}
+
+.case-offer-add {
+  grid-area: add;
+  flex: none;
+  height: 2.15rem;
+  padding: 0 0.95rem;
+  border: 0;
+  border-radius: 999px;
+  background: #1d1d1f;
+  color: #fff;
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: -0.018em;
+  cursor: pointer;
+}
+
+.case-offer-add:hover {
+  background: #3a3a3c;
+}
+
+.case-offer-close {
+  position: absolute;
+  top: 0.28rem;
+  right: 0.28rem;
+  display: grid;
+  place-items: center;
+  width: 1.55rem;
+  height: 1.55rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: #6e6e73;
+  cursor: pointer;
+}
+
+.case-offer-close:hover {
+  background: rgba(22, 20, 31, 0.06);
+  color: #1d1d1f;
+}
+
+@keyframes case-offer-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .case-offer {
+    position: static;
+    max-width: 28rem;
+    margin: 1.1rem 0 0;
+  }
+}
+
+@media (min-width: 768px) {
+  .case-collage-link {
+    grid-template-columns: minmax(16rem, 0.42fr) 1fr;
+    grid-template-rows: 1fr;
+    align-items: center;
+    gap: 2.5rem;
+    padding: 5rem 3rem 4.25rem;
+  }
+
+  .case-collage-stage {
+    height: min(24rem, 56vh);
+    min-height: 18rem;
+  }
+
+  .case-collage-tile {
+    width: 34%;
+  }
+
+  .case-collage-tile-inner {
+    border-radius: 1.4rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .case-collage-name {
+    font-size: clamp(4.4rem, 5.4vw, 5.8rem);
+  }
+
+  .case-collage-stage {
+    height: min(26rem, 58vh);
   }
 }
 

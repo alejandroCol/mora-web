@@ -1,5 +1,8 @@
+import type { AccessoryId } from "@/lib/cases";
 import type { FinishId, ModelId } from "@/lib/catalog";
 import type { InvoiceSnapshot } from "@/invoices/types";
+
+export type CatalogId = ModelId | AccessoryId;
 
 export type SizingMethod = "kit" | "self";
 
@@ -23,8 +26,9 @@ export type EnviaCarrier = "coordinadora" | "servientrega" | "deprisa";
 
 export type CartLine = {
   key: string;
-  modelId: ModelId;
-  finishId: FinishId;
+  kind?: "ring" | "case";
+  modelId: CatalogId;
+  finishId: string;
   size: number;
   sizing: SizingMethod;
   qty: number;

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
     url: siteUrl("/app/eliminar-cuenta"),
     locale: "en_US",
   },
-  robots: { index: true, follow: true },
+  robots: { index: false, follow: false },
 };
 
 export default function EliminarCuentaAppPage() {

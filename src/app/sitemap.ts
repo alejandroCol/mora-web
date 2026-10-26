@@ -3,61 +3,41 @@ import { catalog } from "@/lib/catalog";
 import { siteUrl } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const now = new Date();
   return [
     {
       url: siteUrl("/"),
-      lastModified: now,
       changeFrequency: "weekly",
       priority: 1,
     },
-    {
-      url: siteUrl("/checkout"),
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
-      url: siteUrl("/pedido"),
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.4,
-    },
-    {
-      url: siteUrl("/descargas"),
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.8,
-    },
-    {
-      url: siteUrl("/privacidad"),
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    {
-      url: siteUrl("/terminos"),
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    {
-      url: siteUrl("/app/eliminar-cuenta"),
-      lastModified: now,
-      changeFrequency: "yearly",
-      priority: 0.4,
-    },
     ...catalog.map((item) => ({
       url: siteUrl(`/anillo/${item.slug}`),
-      lastModified: now,
       changeFrequency: "weekly" as const,
       priority: 0.9,
     })),
-    ...catalog.map((item) => ({
-      url: siteUrl(`/galeria/${item.id}`),
-      lastModified: now,
-      changeFrequency: "weekly" as const,
+    {
+      url: siteUrl("/case"),
+      changeFrequency: "weekly",
       priority: 0.6,
-    })),
+    },
+    {
+      url: siteUrl("/descargas"),
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
+      url: siteUrl("/envios-y-garantia"),
+      changeFrequency: "monthly",
+      priority: 0.4,
+    },
+    {
+      url: siteUrl("/privacidad"),
+      changeFrequency: "yearly",
+      priority: 0.2,
+    },
+    {
+      url: siteUrl("/terminos"),
+      changeFrequency: "yearly",
+      priority: 0.2,
+    },
   ];
 }

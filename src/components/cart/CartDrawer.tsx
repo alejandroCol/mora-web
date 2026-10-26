@@ -1,19 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { IconCart, IconClose, IconTrash } from "@/components/icons/NavIcons";
-import { formatMoney, products } from "@/lib/catalog";
+import { cartCountLabel, lineUnitPrice } from "@/commerce/lines";
+import { catalog, formatMoney, PRODUCT_HOME, productPath } from "@/lib/catalog";
 import { useCartCount, useCartSubtotal, useMoraStore } from "@/lib/store";
 import { useSales } from "@/components/sales/SalesProvider";
 import { CartLineVisual } from "./CartLineVisual";
 
 export function CartDrawer() {
+  const router = useRouter();
   const sales = useSales();
-  const { cart, cartOpen, closeCart, setQty, removeLine } = useMoraStore();
+  const { cart, cartOpen, closeCart, setQty, removeLine, setModel } = useMoraStore();
   const count = useCartCount();
   const subtotal = useCartSubtotal();
-
   useEffect(() => {
     if (!cartOpen) return;
     const onKey = (event: KeyboardEvent) => {
@@ -52,7 +54,7 @@ export function CartDrawer() {
           <div>
             <p className="kicker">Carrito</p>
             <h2 className="mt-1 text-[1.35rem] tracking-[-0.03em] text-ink">
-              {count === 0 ? "Vacío" : `${count} ${count === 1 ? "anillo" : "anillos"}`}
+              {cartCountLabel(count, cart)}
             </h2>
           </div>
           <button
@@ -67,16 +69,46 @@ export function CartDrawer() {
 
         <div className="flex-1 overflow-y-auto px-6 pb-4">
           {cart.length === 0 ? (
-            <p className="mt-8 text-[15px] leading-7 text-soft">
-              Elige un anillo. Color, y si pedimos medidor o te mides ahora.
-            </p>
+            <div className="mt-6">
+              <ul className="space-y-3">
+                {catalog.map((item) => (
+                  <li key={item.id}>
+                    <Link
+                      href={productPath(item.id)}
+                      onClick={() => {
+                        setModel(item.id);
+                        closeCart();
+                      }}
+                      className="flex items-center gap-4 rounded-2xl bg-white px-3 py-3"
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={PRODUCT_HOME[item.id].src}
+                        alt=""
+                        className="h-16 w-16 rounded-xl object-cover"
+                      />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[17px] tracking-[-0.02em] text-ink">
+                          Mora {item.name}
+                        </span>
+                        <span className="mt-0.5 block text-[14px] text-soft">
+                          {formatMoney(item.price)}
+                        </span>
+                      </span>
+                      <span aria-hidden className="pr-1 text-[1.15rem] text-soft">
+                        ›
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : (
             <ul className="divide-y divide-line">
               {cart.map((line) => {
-                const model = products[line.modelId];
                 return (
                   <li key={line.key} className="py-5">
-                    <CartLineVisual line={line} price={formatMoney(model.price * line.qty)}>
+                    <CartLineVisual line={line} price={formatMoney(lineUnitPrice(line) * line.qty)}>
                       <div className="cart-line-actions">
                         <div className="flex items-center rounded-full bg-white/80">
                           <button
@@ -114,14 +146,20 @@ export function CartDrawer() {
           )}
         </div>
 
+        {cart.length === 0 ? null : (
         <footer className="border-t border-line px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <div className="flex items-baseline justify-between">
             <span className="text-[13px] text-soft">Subtotal</span>
             <span className="text-[15px] text-ink">{formatMoney(subtotal)}</span>
           </div>
-          <Link
-            href="/checkout"
-            onClick={closeCart}
+          <button
+            type="button"
+            disabled={cart.length === 0}
+            onClick={() => {
+              if (cart.length === 0) return;
+              closeCart();
+              router.push("/checkout");
+            }}
             className={`elegir-cta mt-4 w-full ${
               cart.length === 0 ? "pointer-events-none opacity-35" : ""
             }`}
@@ -130,8 +168,9 @@ export function CartDrawer() {
             <span aria-hidden className="elegir-cta-arrow">
               ›
             </span>
-          </Link>
+          </button>
         </footer>
+        )}
       </aside>
     </div>
   );
@@ -145,7 +184,7 @@ export function CartButton() {
     <button
       type="button"
       onClick={toggleCart}
-      aria-label={count > 0 ? `Carrito, ${count} anillos` : "Carrito"}
+      aria-label={count > 0 ? `Carrito, ${count}` : "Carrito"}
       className="relative text-ink transition-opacity hover:opacity-55"
     >
       <IconCart className="h-[19px] w-[19px] sm:h-5 sm:w-5" />

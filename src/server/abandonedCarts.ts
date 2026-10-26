@@ -12,7 +12,9 @@ import type {
   CustomerSnapshot,
   ShippingSnapshot,
 } from "@/commerce/types";
-import { products } from "@/lib/catalog";
+import { isCaseColorId } from "@/lib/cases";
+import { isModelId, products } from "@/lib/catalog";
+import { isCaseLine } from "@/commerce/lines";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { sendAbandonedOfferEmail } from "./email";
 import { upsertLead } from "./leads";
@@ -47,8 +49,15 @@ function compactStrings<T extends Record<string, unknown>>(input: T) {
 function sanitizeItems(raw: CartLine[]) {
   const items: CartLine[] = [];
   for (const line of raw) {
+    if (isCaseLine(line)) {
+      if (!isCaseColorId(line.finishId)) continue;
+      const qty = Math.min(5, Math.max(1, Math.round(Number(line.qty) || 1)));
+      items.push(normalizeCartLine({ ...line, qty }));
+      continue;
+    }
+    if (!isModelId(line.modelId)) continue;
     const product = products[line.modelId];
-    if (!product || !product.finishes.includes(line.finishId)) continue;
+    if (!product || !product.finishes.includes(line.finishId as typeof product.finishes[number])) continue;
     const qty = Math.min(5, Math.max(1, Math.round(Number(line.qty) || 1)));
     items.push(normalizeCartLine({ ...line, qty }));
   }

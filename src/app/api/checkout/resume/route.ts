@@ -1,4 +1,4 @@
-import { addiSessionRetry, boldSessionRetry } from "@/server/checkoutSession";
+import { addiSessionRetry, boldSessionReuse, boldSessionRetry } from "@/server/checkoutSession";
 import {
   addiIsConfigured,
   boldIsConfigured,
@@ -29,12 +29,6 @@ export async function POST(request: Request) {
     if (order.expiresAt && order.expiresAt <= Date.now()) {
       return Response.json({ ok: false, error: "El checkout expiró." }, { status: 410 });
     }
-    if (order.payment.status === "pending") {
-      return Response.json(
-        { ok: false, error: "Ese pago sigue en proceso. Espera un momento." },
-        { status: 409 },
-      );
-    }
 
     const method = body.method === "addi" || order.payment.method === "addi" ? "addi" : "bold";
     const [boldEnv, addiEnv] = await Promise.all([
@@ -53,6 +47,24 @@ export async function POST(request: Request) {
         ? (order.payment.addiReference ?? order.id)
         : (order.payment.boldReference ?? order.payment.wompiReference ?? order.id);
     const origin = requestOrigin(request);
+
+    if (order.payment.status === "pending" && method === "addi") {
+      return Response.json(
+        { ok: false, error: "Ese pago sigue en proceso. Espera un momento." },
+        { status: 409 },
+      );
+    }
+
+    if (order.payment.status === "pending" && method === "bold") {
+      const session = await boldSessionReuse(order, origin, previous);
+      return Response.json({
+        ok: true,
+        method,
+        orderNumber: order.orderNumber,
+        orderId: order.id,
+        session,
+      });
+    }
 
     if (method === "addi") {
       const session = await addiSessionRetry(order, origin, previous);

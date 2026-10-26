@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ModelId } from "@/lib/catalog";
 import { specCompare, specDisclaimer, specSheet, type SpecRow } from "@/lib/productSpec";
 
@@ -85,6 +86,14 @@ export function ProductSpecSheet({ modelId }: { modelId: ModelId }) {
       <CompareTable current={modelId} />
       <p className="mt-3 px-3.5 text-[12px] leading-4 text-[#1d1d1f]">{sheet.choose}</p>
       <p className="mt-2 px-3.5 text-[11px] leading-4 text-soft">{specDisclaimer}</p>
+      <p className="mt-3 px-3.5">
+        <Link
+          href="/envios-y-garantia"
+          className="text-[11px] leading-4 text-soft underline decoration-[#d2d2d7] underline-offset-2 hover:text-[#1d1d1f]"
+        >
+          Envíos, cambios y garantía
+        </Link>
+      </p>
     </div>
   );
 }

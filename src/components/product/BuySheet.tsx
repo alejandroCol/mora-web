@@ -106,7 +106,9 @@ export function BuySheet({
   }
 
   const offerAddi =
-    addiRange != null && addiAmountAllowed(model.price, addiRange.minCop, addiRange.maxCop);
+    addiRange != null &&
+    (model.kind === "ring" ||
+      addiAmountAllowed(model.price, addiRange.minCop, addiRange.maxCop));
 
   const hint = need || (sizing === "self" ? sales.deliveryHint : "");
 
@@ -124,7 +126,7 @@ export function BuySheet({
             {formatMoney(model.price)}
           </p>
         </div>
-        <AddiWidget price={model.price} className="mt-2" />
+        <AddiWidget price={model.price} force={model.kind === "ring"} className="mt-2" />
 
         <fieldset className="mt-4 sm:mt-7">
           <legend className="text-[12px] text-soft">Color</legend>

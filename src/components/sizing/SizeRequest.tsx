@@ -24,7 +24,7 @@ type PublicOrder = {
   items: PublicItem[];
 };
 
-const FALLBACK_SIZES = [6, 7, 8, 9, 10, 11, 12, 13];
+const FALLBACK_SIZES = products.aero.sizes;
 
 async function fetchOrder(n: string) {
   const res = await fetch(`/api/orders/track?n=${encodeURIComponent(n)}`);

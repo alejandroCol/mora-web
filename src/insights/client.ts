@@ -3,8 +3,8 @@
 import { getAnalytics, isSupported, logEvent } from "firebase/analytics";
 import { useEffect } from "react";
 import { getFirebaseApp } from "@/lib/firebase";
-import type { InsightEvent, InsightImageKind } from "./types";
-import { FUNNEL_STEPS, type FunnelStep } from "./types";
+import type { CaseOfferAction, InsightEvent, InsightImageKind } from "./types";
+import { CASE_OFFER_ACTIONS, FUNNEL_STEPS, type FunnelStep } from "./types";
 
 const VISITOR_KEY = "mora-insight";
 const QUEUE_FLUSH_MS = 900;
@@ -93,6 +93,10 @@ function mirrorFirebase(event: InsightEvent) {
           item_id: event.productId,
           image_id: event.imageId,
         });
+        return;
+      }
+      if (event.name === "case_offer") {
+        logEvent(analytics, "case_offer", { action: event.action });
       }
     })
     .catch(() => undefined);
@@ -168,6 +172,11 @@ export function insightProductCart(productId: string, productName: string) {
 
 export function insightProductCheckout(productId: string, productName: string) {
   enqueue({ name: "product_checkout", productId, productName }, `checkout:${productId}`);
+}
+
+export function insightCaseOffer(action: CaseOfferAction) {
+  if (!CASE_OFFER_ACTIONS.includes(action)) return;
+  enqueue({ name: "case_offer", action }, `case_offer:${action}`);
 }
 
 export function insightImageView(input: {

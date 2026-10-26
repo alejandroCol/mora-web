@@ -1,14 +1,68 @@
 "use client";
 
 import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { useFrame } from "@react-three/fiber";
-import { ContactShadows, Environment, useGLTF } from "@react-three/drei";
+import { useFrame, useThree } from "@react-three/fiber";
+import { ContactShadows, useEnvironment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { ParticleRing } from "./ParticleRing";
 import { RING_POSE } from "./pose";
 import { preloadRingParticles, type RingParticleCloud } from "./ringParticleCloud";
 
 const MODEL_PATH = "/models/mora-ring.glb";
+const STUDIO_INTENSITY = 0.68;
+
+if (typeof window !== "undefined") {
+  useEnvironment.preload({ preset: "studio" });
+}
+
+function mapReady(material: THREE.Material) {
+  const map = (material as THREE.Material & { map?: THREE.Texture | null }).map;
+  if (!map) return true;
+  const image = map.image as { width?: number } | undefined;
+  return Boolean(image && (image.width ?? 0) > 0);
+}
+
+function hideRing(root: THREE.Object3D) {
+  root.traverse((child) => {
+    if (!(child instanceof THREE.Mesh)) return;
+    child.castShadow = true;
+    child.receiveShadow = true;
+    const raw = child.material;
+    const list = Array.isArray(raw) ? raw : [raw];
+    const cloned = list.filter(Boolean).map((material) => material.clone());
+    child.material = Array.isArray(raw) ? cloned : cloned[0];
+    for (const material of cloned) {
+      material.transparent = true;
+      material.opacity = 0;
+      material.depthWrite = false;
+      if ("envMapIntensity" in material) material.envMapIntensity = 1.05;
+      if ("roughness" in material && typeof material.roughness === "number") {
+        material.roughness = Math.min(material.roughness, 0.38);
+      }
+    }
+  });
+}
+
+function StudioEnvironment({ onReady }: { onReady: () => void }) {
+  const texture = useEnvironment({ preset: "studio" });
+  const scene = useThree((state) => state.scene);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
+
+  useLayoutEffect(() => {
+    const previousEnvironment = scene.environment;
+    const previousIntensity = scene.environmentIntensity;
+    scene.environment = texture;
+    scene.environmentIntensity = STUDIO_INTENSITY;
+    onReadyRef.current();
+    return () => {
+      scene.environment = previousEnvironment;
+      scene.environmentIntensity = previousIntensity;
+    };
+  }, [scene, texture]);
+
+  return null;
+}
 
 type RingIntroProps = {
   scale: number;
@@ -17,46 +71,53 @@ type RingIntroProps = {
 
 function SolidRing({
   visible,
+  environmentReady,
   onReady,
 }: {
   visible: boolean;
+  environmentReady: boolean;
   onReady: () => void;
 }) {
   const { scene } = useGLTF(MODEL_PATH);
-  const cloned = useMemo(() => scene.clone(true), [scene]);
+  const cloned = useMemo(() => {
+    const next = scene.clone(true);
+    next.visible = false;
+    hideRing(next);
+    return next;
+  }, [scene]);
   const appear = useRef(0);
-
-  useLayoutEffect(() => {
-    cloned.traverse((child) => {
-      if (!(child instanceof THREE.Mesh)) return;
-      child.castShadow = true;
-      child.receiveShadow = true;
-      const raw = child.material;
-      const list = Array.isArray(raw) ? raw : [raw];
-      for (const material of list) {
-        if (!material) continue;
-        material.transparent = true;
-        material.opacity = 0;
-        if ("envMapIntensity" in material) material.envMapIntensity = 1.05;
-        if ("roughness" in material && typeof material.roughness === "number") {
-          material.roughness = Math.min(material.roughness, 0.38);
-        }
-      }
-    });
-    onReady();
-  }, [cloned, onReady]);
+  const primed = useRef(false);
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   useFrame((_, delta) => {
-    if (!visible) return;
+    if (!primed.current && environmentReady) {
+      let texturesReady = true;
+      cloned.traverse((child) => {
+        if (!(child instanceof THREE.Mesh) || !texturesReady) return;
+        const raw = child.material;
+        const list = Array.isArray(raw) ? raw : [raw];
+        if (list.some((material) => material && !mapReady(material))) texturesReady = false;
+      });
+      if (texturesReady) {
+        primed.current = true;
+        onReadyRef.current();
+      }
+    }
+
+    cloned.visible = visible;
+    if (!visible || appear.current >= 1) return;
     appear.current = Math.min(1, appear.current + delta * 1.25);
+    const shown = appear.current;
     cloned.traverse((child) => {
       if (!(child instanceof THREE.Mesh)) return;
       const raw = child.material;
       const list = Array.isArray(raw) ? raw : [raw];
       for (const material of list) {
         if (!material) continue;
-        material.transparent = appear.current < 1;
-        material.opacity = appear.current;
+        material.opacity = shown;
+        material.transparent = shown < 1;
+        material.depthWrite = shown > 0.92;
       }
     });
   });
@@ -68,8 +129,10 @@ export function RingIntro({ scale, onProgress }: RingIntroProps) {
   const [cloud, setCloud] = useState<RingParticleCloud | null>(null);
   const [assembled, setAssembled] = useState(false);
   const [meshReady, setMeshReady] = useState(false);
+  const [envReady, setEnvReady] = useState(false);
   const motion = useRef<THREE.Group>(null);
-  const reveal = assembled && meshReady;
+  // El sólido espera luz de estudio y textura. Si no, entra oscuro y tapa las partículas.
+  const reveal = assembled && meshReady && envReady;
 
   useEffect(() => {
     void preloadRingParticles().then(setCloud);
@@ -119,7 +182,11 @@ export function RingIntro({ scale, onProgress }: RingIntroProps) {
                 onAssembled={() => setAssembled(true)}
               />
               <Suspense fallback={null}>
-                <SolidRing visible={reveal} onReady={() => setMeshReady(true)} />
+                <SolidRing
+                  visible={reveal}
+                  environmentReady={envReady}
+                  onReady={() => setMeshReady(true)}
+                />
               </Suspense>
             </group>
           </group>
@@ -134,7 +201,7 @@ export function RingIntro({ scale, onProgress }: RingIntroProps) {
         color="#1c1830"
       />
       <Suspense fallback={null}>
-        <Environment preset="studio" environmentIntensity={0.68} />
+        <StudioEnvironment onReady={() => setEnvReady(true)} />
       </Suspense>
     </>
   );

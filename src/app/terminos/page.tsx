@@ -7,7 +7,7 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 import { siteUrl } from "@/lib/site";
 
 const UPDATED = "22 de octubre de 2026";
-const CONTACT = "hola@mora.ring";
+const CONTACT = BRAND.contact.email;
 const LEGAL_NAME = "PALMAPAY S.A.S.";
 
 export function generateMetadata(): Metadata {
@@ -122,11 +122,23 @@ function legalSections(sales: SalesPresentation): Section[] {
     kicker: "05",
     title: "Envíos y riesgo",
     body: (
-      <p>
-        El envío se cotiza en el checkout según destino en Colombia. El riesgo de pérdida pasa a ti cuando
-        la transportadora registra la entrega o según la ley aplicable. Revisa el paquete al recibirlo y
-        escríbenos pronto si hay daño o faltante.
-      </p>
+        <>
+          <p>
+            Enviamos a todo Colombia. El costo se cotiza en el checkout según el destino. El riesgo de
+            pérdida pasa a ti cuando la transportadora registra la entrega o según la ley aplicable. Revisa
+            el paquete al recibirlo y escríbenos pronto si hay daño o faltante.
+          </p>
+          <p>
+            El detalle de envíos, el medidor de talla y la garantía de un mes está en{" "}
+            <Link
+              href="/envios-y-garantia"
+              className="text-ink underline decoration-bloom/80 underline-offset-2"
+            >
+              envíos, cambios y garantía
+            </Link>
+            . No hay cambio de talla después de fabricar el anillo.
+          </p>
+        </>
     ),
   },
   {

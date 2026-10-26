@@ -1,6 +1,7 @@
 import { PENDING_TTL_MS } from "@/commerce/paths";
 import type { MoraOrder } from "@/commerce/types";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
+import { toCheckoutSession } from "@/payments/bold";
 import {
   boldDocumentType,
   colombianMobile,
@@ -8,6 +9,7 @@ import {
   createBoldSession,
   recreateAddiSession,
   recreateBoldSession,
+  resolveBoldEnvironment,
   type AddiCheckoutSession,
   type BoldCheckoutSession,
 } from "@/payments";
@@ -57,6 +59,17 @@ export async function boldSessionRetry(
     previousReference,
     sessionInput(order, origin, previousReference),
   );
+}
+
+export async function boldSessionReuse(
+  order: MoraOrder,
+  origin: string,
+  reference: string,
+): Promise<BoldCheckoutSession> {
+  return toCheckoutSession({
+    ...sessionInput(order, origin, reference),
+    environment: await resolveBoldEnvironment(),
+  });
 }
 
 export async function addiSessionForOrder(

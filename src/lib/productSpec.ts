@@ -1,4 +1,4 @@
-import type { ModelId } from "@/lib/catalog";
+import { sizeRangeLabel, type ModelId } from "@/lib/catalog";
 
 export type SpecRow = {
   label: string;
@@ -37,7 +37,7 @@ export const specSheet: Record<
       { label: "Batería", value: "Hasta 7 días, según el uso" },
       { label: "Agua", value: "5 ATM. Ducha y nado en superficie. Sin buceo, sauna ni jacuzzi" },
       { label: "Colores", value: "Rosa Perla, blanco y negro" },
-      { label: "Tallas", value: "6 a 13" },
+      { label: "Tallas", value: sizeRangeLabel("aero") },
       { label: "Conexión", value: "Bluetooth" },
     ],
     readings: [
@@ -58,7 +58,7 @@ export const specSheet: Record<
       { label: "Batería", value: "Hasta 6 días, según el uso" },
       { label: "Agua", value: "IP67. Polvo y un chapuzón breve. Sin nadar ni ducha larga" },
       { label: "Colores", value: "Plata, negro mate y oro" },
-      { label: "Tallas", value: "6 a 13" },
+      { label: "Tallas", value: sizeRangeLabel("titan") },
       { label: "Conexión", value: "Bluetooth" },
     ],
     readings: [

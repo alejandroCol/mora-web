@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { GalleryExperience } from "@/components/gallery/GalleryExperience";
-import { products, type ModelId } from "@/lib/catalog";
+import { productPath, products, type ModelId } from "@/lib/catalog";
 
 export function generateStaticParams() {
   return (Object.keys(products) as ModelId[]).map((modelId) => ({ modelId }));
@@ -17,7 +17,8 @@ export async function generateMetadata({
   return {
     title: `${model.name} · ${model.line}`,
     description: `${model.promise} ${model.material}. ${model.details.join(" ")} Desde ${model.price.toLocaleString("es-CO")} COP.`,
-    alternates: { canonical: `/galeria/${model.id}` },
+    alternates: { canonical: productPath(model.id) },
+    robots: { index: false, follow: true },
     openGraph: {
       title: `Mora ${model.name}`,
       description: model.promise,

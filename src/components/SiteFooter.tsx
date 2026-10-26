@@ -5,9 +5,12 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 const LINKS = [
   { href: "/anillo/pro", label: "Pro" },
   { href: "/anillo/ultra", label: "Ultra" },
+  { href: "/case", label: "Case" },
+  { href: "/descargas", label: "App" },
   { href: "/pedido", label: "Pedido" },
   { href: "/talla", label: "Talla" },
   { href: "/creadores", label: "Creadores" },
+  { href: "/envios-y-garantia", label: "Envíos y garantía" },
   { href: "/privacidad", label: "Privacidad" },
   { href: "/terminos", label: "Condiciones" },
 ] as const;

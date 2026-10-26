@@ -2,12 +2,13 @@
 
 import { BrandSignature } from "@/components/brand/BrandSignature";
 import { useSales } from "@/components/sales/SalesProvider";
+import { sizeRangeLabel } from "@/lib/catalog";
 
 export function Close() {
   const sales = useSales();
   const rows = [
     ["Autonomía", "Cinco a siete días"],
-    ["Talla", "6 a 13 · medidor o guía"],
+    ["Talla", `${sizeRangeLabel()} · medidor o guía`],
     [sales.closeLabel, sales.closeValue],
   ] as const;
 

@@ -7,6 +7,7 @@ import { SizeGuideFilm } from "./SizeGuideFilm";
 import { SizerHologram } from "./SizerHologram";
 
 const SIZE_CHART = [
+  { size: 7, around: "5,50 cm", diameter: "17,5 mm" },
   { size: 8, around: "5,75 cm", diameter: "18,3 mm" },
   { size: 9, around: "6 cm", diameter: "19,1 mm" },
   { size: 10, around: "6,28 cm", diameter: "20 mm" },

@@ -1,7 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { CASE_COLOR_LIST, CASE_PRODUCT, caseLineKey, type CaseColorId } from "@/lib/cases";
 import { cartLineKey } from "@/commerce/sku";
+import { lineUnitPrice } from "@/commerce/lines";
 import { commerceLineLabel } from "@/commerce/sizing";
 import type { CartLine, PaymentMethod } from "@/commerce/types";
 import {
@@ -41,8 +43,10 @@ export function ManualSaleForm({
     channel?: "manual" | "whatsapp";
   };
 }) {
+  const [kind, setKind] = useState<"ring" | "case">("ring");
   const [modelId, setModelId] = useState<ModelId>("aero");
   const [finishId, setFinishId] = useState<FinishId>(products.aero.finishes[0]);
+  const [caseColorId, setCaseColorId] = useState<CaseColorId>(CASE_PRODUCT.colors[0]);
   const [size, setSize] = useState(8);
   const [lines, setLines] = useState<CartLine[]>([]);
   const [firstName, setFirstName] = useState(initial?.firstName ?? "");
@@ -59,11 +63,35 @@ export function ManualSaleForm({
 
   const model = products[modelId];
   const subtotal = useMemo(
-    () => lines.reduce((sum, line) => sum + products[line.modelId].price * line.qty, 0),
+    () => lines.reduce((sum, line) => sum + lineUnitPrice(line) * line.qty, 0),
     [lines],
   );
 
   function addLine() {
+    if (kind === "case") {
+      const key = caseLineKey(caseColorId);
+      setLines((current) => {
+        const existing = current.find((line) => line.key === key);
+        if (existing) {
+          return current.map((line) =>
+            line.key === key ? { ...line, qty: line.qty + 1 } : line,
+          );
+        }
+        return [
+          ...current,
+          {
+            key,
+            kind: "case",
+            modelId: "case",
+            finishId: caseColorId,
+            size: 0,
+            sizing: "self",
+            qty: 1,
+          },
+        ];
+      });
+      return;
+    }
     const key = cartLineKey(modelId, finishId, size);
     setLines((current) => {
       const existing = current.find((line) => line.key === key);
@@ -137,11 +165,16 @@ export function ManualSaleForm({
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           <select
-            value={modelId}
+            value={kind === "case" ? "case" : modelId}
             onChange={(event) => {
-              const next = event.target.value as ModelId;
-              setModelId(next);
-              setFinishId(products[next].finishes[0]);
+              const next = event.target.value;
+              if (next === "case") {
+                setKind("case");
+                return;
+              }
+              setKind("ring");
+              setModelId(next as ModelId);
+              setFinishId(products[next as ModelId].finishes[0]);
             }}
             className="h-11 rounded-2xl bg-white/8 px-3 text-sm"
           >
@@ -150,52 +183,64 @@ export function ManualSaleForm({
                 {productTitle(item.id)}
               </option>
             ))}
+            <option value="case">Mora Case</option>
           </select>
-          <div className="flex items-center gap-2">
-            {model.finishes.map((id) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setFinishId(id)}
-                className={`jewel ${finishId === id ? "jewel-on" : ""}`}
-                style={{ background: finishes[id].swatch }}
-                aria-label={finishLabel(modelId, id)}
-              />
-            ))}
-          </div>
-          <div className="flex flex-wrap gap-1">
-            {model.sizes.map((item) => (
-              <button
-                key={item}
-                type="button"
-                onClick={() => setSize(item)}
-                className={`h-8 min-w-8 rounded-full px-2 text-[12px] ${
-                  size === item ? "bg-white text-[#16141f]" : "text-white/50"
-                }`}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
+          {kind === "case" ? (
+            <div className="flex items-center gap-2 sm:col-span-2">
+              {CASE_COLOR_LIST.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setCaseColorId(item.id)}
+                  className={`jewel ${caseColorId === item.id ? "jewel-on" : ""}`}
+                  style={{ background: item.swatch }}
+                  aria-label={item.title}
+                />
+              ))}
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                {model.finishes.map((id) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setFinishId(id)}
+                    className={`jewel ${finishId === id ? "jewel-on" : ""}`}
+                    style={{ background: finishes[id].swatch }}
+                    aria-label={finishLabel(modelId, id)}
+                  />
+                ))}
+              </div>
+              <div className="flex flex-wrap gap-1">
+                {model.sizes.map((item) => (
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => setSize(item)}
+                    className={`h-8 min-w-8 rounded-full px-2 text-[12px] ${
+                      size === item ? "bg-white text-[#16141f]" : "text-white/50"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
         <button
           type="button"
           onClick={addLine}
           className="mt-4 h-10 rounded-full bg-white px-5 text-[13px] text-[#16141f]"
         >
-          Añadir anillo
+          {kind === "case" ? "Añadir case" : "Añadir anillo"}
         </button>
 
         <ul className="mt-4 divide-y divide-white/8 text-sm">
           {lines.map((line) => (
             <li key={line.key} className="flex justify-between py-2">
-              <span>
-                {commerceLineLabel({
-                  ...line,
-                  name: `Mora ${products[line.modelId].name}`,
-                  finishTitle: finishLabel(line.modelId, line.finishId),
-                })}
-              </span>
+              <span>{commerceLineLabel(line)}</span>
               <button
                 type="button"
                 className="text-white/40"

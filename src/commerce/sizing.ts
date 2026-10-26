@@ -1,10 +1,12 @@
 import {
   finishLabel,
   finishes,
+  isModelId,
   products,
   type FinishId,
   type ModelId,
 } from "@/lib/catalog";
+import { isCaseLine, lineFinishTitle, lineName } from "./lines";
 import type { SizingMethod } from "./types";
 
 export const PENDING_SIZE = 0;
@@ -37,23 +39,29 @@ export function tallaPath(orderNumber: string) {
 }
 
 export function commerceLineLabel(item: {
+  kind?: string;
   name?: string;
-  modelId?: ModelId;
+  modelId?: ModelId | "case";
   finishTitle?: string;
-  finishId?: FinishId;
+  finishId?: string;
   size: number;
   sizing?: SizingMethod;
   qty?: number;
 }) {
+  if (isCaseLine(item)) {
+    const parts = [lineName(item), lineFinishTitle(item)].filter(Boolean);
+    const qty = item.qty && item.qty > 1 ? ` ×${item.qty}` : "";
+    return `${parts.join(" · ")}${qty}`;
+  }
   const name =
     item.name ??
-    (item.modelId ? `Mora ${products[item.modelId].name}` : "Mora");
+    (item.modelId && isModelId(item.modelId) ? `Mora ${products[item.modelId].name}` : "Mora");
   const finish =
     item.finishTitle ??
-    (item.modelId && item.finishId
-      ? finishLabel(item.modelId, item.finishId)
-      : item.finishId
-        ? finishes[item.finishId].title
+    (item.modelId && isModelId(item.modelId) && item.finishId
+      ? finishLabel(item.modelId, item.finishId as FinishId)
+      : item.finishId && item.finishId in finishes
+        ? finishes[item.finishId as FinishId].title
         : "");
   const parts = [name, finish, sizeCopy(item)].filter(Boolean);
   const qty = item.qty && item.qty > 1 ? ` ×${item.qty}` : "";

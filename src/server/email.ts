@@ -1,6 +1,6 @@
 import { BRAND } from "@/brand";
 import { commerceLineLabel, orderNeedsSize, tallaPath } from "@/commerce/sizing";
-import { finishLabel, formatMoney, products } from "@/lib/catalog";
+import { formatMoney } from "@/lib/catalog";
 import { PAYMENT_METHOD_LABEL } from "@/commerce/labels";
 import { getSalesPresentation } from "./salesPolicy";
 import type { AbandonedCart, MoraOrder } from "@/commerce/types";
@@ -298,10 +298,8 @@ export async function sendAbandonedOfferEmail(cart: AbandonedCart) {
   const name = cart.customer.firstName?.trim() || "hola";
   const lines = cart.items
     .map((item) => {
-      const model = products[item.modelId];
-      const finish = finishLabel(item.modelId, item.finishId);
       return `<tr>
-        <td style="padding:10px 0;border-bottom:1px solid ${LINE};font-size:14px;color:${INK}">Mora ${escapeHtml(model?.name ?? "")} · ${escapeHtml(finish)} <span style="color:${SOFT}">×${item.qty}</span></td>
+        <td style="padding:10px 0;border-bottom:1px solid ${LINE};font-size:14px;color:${INK}">${escapeHtml(commerceLineLabel({ ...item, qty: 1 }))} <span style="color:${SOFT}">×${item.qty}</span></td>
       </tr>`;
     })
     .join("");

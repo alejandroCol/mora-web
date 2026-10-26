@@ -16,7 +16,7 @@ import type {
   PaymentStatus,
   ShippingSnapshot,
 } from "@/commerce/types";
-import { products } from "@/lib/catalog";
+import { isModelId, products, type FinishId } from "@/lib/catalog";
 import { adminDb } from "@/lib/firebaseAdmin";
 import {
   consumeReservation,
@@ -711,14 +711,15 @@ export async function confirmOrderSizes(input: {
   const items = order.items.map((item, index) => {
     const pick = input.sizes.find((entry) => entry.index === index);
     if (!pick) return item;
-    const product = products[item.modelId];
+    if (item.kind === "case" || item.modelId === "case") return item;
+    const product = isModelId(item.modelId) ? products[item.modelId] : undefined;
     if (!product?.sizes.includes(pick.size)) {
       throw new Error("Hay una talla inválida.");
     }
     if ((item.sizing ?? "self") !== "kit" && item.size && item.size !== pick.size) {
       throw new Error("Esa talla ya estaba elegida.");
     }
-    const nextSku = inventorySku(item.modelId, item.finishId, pick.size);
+    const nextSku = inventorySku(item.modelId as "aero" | "titan", item.finishId as FinishId, pick.size);
     if (item.sku !== nextSku) {
       const qty = Math.max(1, Math.round(item.qty));
       take.set(nextSku, (take.get(nextSku) ?? 0) + qty);
@@ -769,7 +770,7 @@ export function publicOrderView(order: MoraOrder) {
       size: item.size,
       sizing: item.sizing ?? "self",
       qty: item.qty,
-      sizes: products[item.modelId]?.sizes ?? [],
+      sizes: isModelId(item.modelId) ? products[item.modelId].sizes : [],
     })),
     ciudad: order.shipping.ciudad,
     departamento: formatoDepartamentoEtiqueta(order.shipping.departamento),

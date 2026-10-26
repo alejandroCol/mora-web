@@ -1,20 +1,22 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { isCaseLine, lineFinishTitle, lineName, linePhoto, lineSwatch } from "@/commerce/lines";
 import { sizeCopy } from "@/commerce/sizing";
-import type { SizingMethod } from "@/commerce/types";
+import type { CatalogId, SizingMethod } from "@/commerce/types";
 import {
   finishLabel,
   finishes,
-  products,
+  isModelId,
   type FinishId,
   type ModelId,
 } from "@/lib/catalog";
 import { useLookPhoto } from "./useLookPhoto";
 
 type Line = {
-  modelId: ModelId;
-  finishId: FinishId;
+  kind?: "ring" | "case";
+  modelId: CatalogId;
+  finishId: string;
   size: number;
   sizing?: SizingMethod;
   qty?: number;
@@ -59,6 +61,36 @@ export function RingThumb({
   );
 }
 
+function LineThumb({
+  line,
+  size = "md",
+}: {
+  line: Line;
+  size?: "sm" | "md" | "lg";
+}) {
+  if (isCaseLine(line)) {
+    const src = linePhoto(line);
+    return (
+      <span className={`ring-thumb ring-thumb-${size}`} aria-hidden>
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt="" />
+        ) : (
+          <span className="ring-thumb-swatch" style={{ background: lineSwatch(line) }} />
+        )}
+      </span>
+    );
+  }
+  if (!isModelId(line.modelId)) return null;
+  return (
+    <RingThumb
+      modelId={line.modelId}
+      finishId={line.finishId as FinishId}
+      size={size}
+    />
+  );
+}
+
 export function CartLineVisual({
   line,
   price,
@@ -70,29 +102,29 @@ export function CartLineVisual({
   children?: ReactNode;
   compact?: boolean;
 }) {
-  const model = products[line.modelId];
+  const accessory = isCaseLine(line);
   return (
     <div className={`cart-line ${compact ? "cart-line-compact" : ""}`}>
-      <RingThumb
-        modelId={line.modelId}
-        finishId={line.finishId}
-        size={compact ? "sm" : "md"}
-      />
+      <LineThumb line={line} size={compact ? "sm" : "md"} />
       <div className="cart-line-body">
         <div className="cart-line-row">
           <p className="cart-line-name">
-            Mora {model.name}
+            {lineName(line)}
             {line.qty && line.qty > 1 ? ` ×${line.qty}` : ""}
           </p>
           {price ? <p className="cart-line-price">{price}</p> : null}
         </div>
         <p className="cart-line-meta">
-          <span className="ring-dot" style={{ background: finishes[line.finishId].swatch }} />
-          {finishLabel(line.modelId, line.finishId)}
-          <span aria-hidden className="cart-line-sep">
-            ·
-          </span>
-          {sizeCopy(line)}
+          <span className="ring-dot" style={{ background: lineSwatch(line) }} />
+          {lineFinishTitle(line)}
+          {accessory ? null : (
+            <>
+              <span aria-hidden className="cart-line-sep">
+                ·
+              </span>
+              {sizeCopy(line)}
+            </>
+          )}
         </p>
         {children}
       </div>

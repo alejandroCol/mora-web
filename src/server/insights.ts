@@ -9,10 +9,13 @@ import {
 } from "@/lib/catalog";
 import { adminDb } from "@/lib/firebaseAdmin";
 import {
+  CASE_OFFER_ACTIONS,
   FUNNEL_COPY,
   FUNNEL_STEPS,
+  type CaseOfferAction,
   type FunnelStep,
   type InsightAdvice,
+  type InsightCaseOffer,
   type InsightEvent,
   type InsightFunnelRow,
   type InsightImageKind,
@@ -40,6 +43,7 @@ type DailyDoc = {
     }
   >;
   funnel?: Record<string, { events?: number; visitors?: number }>;
+  caseOffer?: Record<string, { events?: number; visitors?: number }>;
 };
 
 function bogotaDay(ms = Date.now()) {
@@ -74,12 +78,17 @@ function isFunnelStep(value: unknown): value is FunnelStep {
   return FUNNEL_STEPS.includes(value as FunnelStep);
 }
 
+function isCaseOfferAction(value: unknown): value is CaseOfferAction {
+  return CASE_OFFER_ACTIONS.includes(value as CaseOfferAction);
+}
+
 function isModelId(value: string): value is ModelId {
   return value === "aero" || value === "titan";
 }
 
 function productNameOf(id: string, fallback?: string) {
   if (isModelId(id)) return products[id].name;
+  if (id === "case") return "Case";
   return cleanText(fallback, 40) || id;
 }
 
@@ -98,6 +107,11 @@ function normalize(event: InsightEvent | undefined): InsightEvent | null {
   if (!event || typeof event !== "object") return null;
   if (event.name === "funnel") {
     return isFunnelStep(event.step) ? { name: "funnel", step: event.step } : null;
+  }
+  if (event.name === "case_offer") {
+    return isCaseOfferAction(event.action)
+      ? { name: "case_offer", action: event.action }
+      : null;
   }
   const productId = cleanId(event.productId);
   if (!productId) return null;
@@ -183,6 +197,14 @@ export async function ingestInsights(input: {
         );
         continue;
       }
+      if (event.name === "case_offer") {
+        bump(
+          `caseOffer:${event.action}`,
+          `caseOffer.${event.action}.events`,
+          `caseOffer.${event.action}.visitors`,
+        );
+        continue;
+      }
 
       patch[`products.${event.productId}.id`] = event.productId;
       patch[`products.${event.productId}.name`] = productNameOf(
@@ -242,7 +264,7 @@ export async function ingestInsights(input: {
     }
 
     if (!dailySnap.exists) {
-      tx.set(dailyRef, { date, visitors: 0, products: {}, images: {}, funnel: {} });
+      tx.set(dailyRef, { date, visitors: 0, products: {}, images: {}, funnel: {}, caseOffer: {} });
     }
     tx.update(dailyRef, patch);
     tx.set(
@@ -361,6 +383,23 @@ function adviceFor(report: Omit<InsightsReport, "advice">): InsightAdvice[] {
       text: `La foto que más se quedan viendo es «${report.topImage.label}». Esa es la que vale la pena mandar.`,
     });
   }
+  const offer = report.caseOffer;
+  if (offer.shown >= 5 && offer.dismissRate >= 50 && offer.addRate < 12) {
+    notes.push({
+      tone: "case",
+      text: `El aviso del Case se cierra mucho (${offer.dismissed} de ${offer.shown}) y casi nadie lo agrega. Puede estar estorbando al pagar.`,
+    });
+  } else if (offer.shown >= 5 && offer.addRate >= 18) {
+    notes.push({
+      tone: "case",
+      text: `El Case se está sumando: ${offer.added} de ${offer.shown} lo agregaron al pedido.`,
+    });
+  } else if (offer.shown >= 5 && offer.payRate < 40 && offer.dismissRate >= 35) {
+    notes.push({
+      tone: "case",
+      text: `Vieron el Case y pocos siguieron a pagar (${offer.paid} de ${offer.shown}). Revisa si el aviso frena el último paso.`,
+    });
+  }
   if (!notes.length) {
     notes.push({
       tone: "drop",
@@ -387,6 +426,10 @@ export async function loadInsights(days = 30): Promise<InsightsReport> {
   const funnelMap = new Map<FunnelStep, { events: number; visitors: number }>();
   for (const step of FUNNEL_STEPS) {
     funnelMap.set(step, { events: 0, visitors: 0 });
+  }
+  const caseOfferMap = new Map<CaseOfferAction, { events: number; visitors: number }>();
+  for (const action of CASE_OFFER_ACTIONS) {
+    caseOfferMap.set(action, { events: 0, visitors: 0 });
   }
   let visitors = 0;
 
@@ -428,6 +471,12 @@ export async function loadInsights(days = 30): Promise<InsightsReport> {
       current.events += Number(row?.events ?? 0);
       current.visitors += Number(row?.visitors ?? 0);
     }
+    for (const action of CASE_OFFER_ACTIONS) {
+      const row = day.caseOffer?.[action];
+      const current = caseOfferMap.get(action)!;
+      current.events += Number(row?.events ?? 0);
+      current.visitors += Number(row?.visitors ?? 0);
+    }
   }
 
   const productRows = [...productsMap.values()]
@@ -464,6 +513,19 @@ export async function loadInsights(days = 30): Promise<InsightsReport> {
   }
 
   const paid = funnelMap.get("purchase")?.visitors ?? 0;
+  const shown = caseOfferMap.get("shown")?.visitors ?? 0;
+  const added = caseOfferMap.get("add")?.visitors ?? 0;
+  const dismissed = caseOfferMap.get("dismiss")?.visitors ?? 0;
+  const offerPaid = caseOfferMap.get("pay")?.visitors ?? 0;
+  const caseOffer: InsightCaseOffer = {
+    shown,
+    added,
+    dismissed,
+    paid: offerPaid,
+    addRate: pct(added, shown),
+    dismissRate: pct(dismissed, shown),
+    payRate: pct(offerPaid, shown),
+  };
   const topProduct =
     productRows.find((row) => row.viewers > 0 || row.views > 0) ?? null;
   const topImage = imageRows[0] && imageRows[0].views > 0 ? imageRows[0] : null;
@@ -477,6 +539,7 @@ export async function loadInsights(days = 30): Promise<InsightsReport> {
     leak,
     topProduct,
     topImage,
+    caseOffer,
   };
 
   return { ...draft, advice: adviceFor(draft) };

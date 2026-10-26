@@ -1,11 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState } from "react";
-import { catalog, formatMoney, productPath } from "@/lib/catalog";
 import { presaleRemaining } from "@/lib/presale";
 import { useSales } from "@/components/sales/SalesProvider";
-import { useMoraStore } from "@/lib/store";
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -23,7 +20,6 @@ function unitsFrom(ms: number) {
 
 export function PresaleModule() {
   const sales = useSales();
-  const setModel = useMoraStore((state) => state.setModel);
   const [remaining, setRemaining] = useState<number | null>(null);
   const saleAt = sales.saleAt ?? 0;
 
@@ -46,7 +42,7 @@ export function PresaleModule() {
   ] as const;
 
   return (
-    <section id="preventa" className="presale-wash">
+    <section id="preventa" className="presale-wash scroll-mt-24">
       <div className="mx-auto max-w-[980px] px-6 py-24 sm:py-32">
         <div className="text-center">
           <p className="presale-seal">{sales.label}</p>
@@ -88,32 +84,13 @@ export function PresaleModule() {
           </p>
         )}
 
-        <div className="mx-auto mt-16 grid max-w-3xl gap-4 sm:grid-cols-2">
-          {catalog.map((item) => (
-            <Link
-              key={item.id}
-              href={productPath(item.id)}
-              onClick={() => setModel(item.id)}
-              className="group rounded-[28px] bg-white px-7 py-8 text-left transition-colors hover:bg-white sm:px-8 sm:py-10"
-            >
-              <p className="text-[12px] text-soft">{item.line}</p>
-              <p className="title-name mt-2 text-[2.15rem] text-[#1d1d1f] sm:text-[2.5rem]">
-                {item.name}
-              </p>
-              <p className="mt-3 text-[15px] leading-6 text-soft sm:text-[17px] sm:leading-7">
-                {item.promise}
-              </p>
-              <div className="mt-8 flex items-center justify-between text-[15px] sm:text-[17px]">
-                <span className="text-[#1d1d1f]">{formatMoney(item.price)}</span>
-                <span className="elegir-cta h-10 px-5 text-[15px]">
-                  {sales.cta}
-                  <span aria-hidden className="elegir-cta-arrow">
-                    ›
-                  </span>
-                </span>
-              </div>
-            </Link>
-          ))}
+        <div className="mt-16 flex justify-center">
+          <a href="#coleccion" className="elegir-cta">
+            Elegir mi Mora
+            <span aria-hidden className="elegir-cta-arrow">
+              ›
+            </span>
+          </a>
         </div>
       </div>
     </section>

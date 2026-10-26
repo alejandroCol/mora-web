@@ -116,7 +116,7 @@ export const products: Record<ModelId, RingProduct> = {
     price: 679_000,
     water: "5 ATM",
     battery: "7 días",
-    sizes: [6, 7, 8, 9, 10, 11, 12, 13],
+    sizes: [7, 8, 9, 10, 11, 12, 13],
     finishes: ["lilac", "white", "black"],
     promise: "Se siente. No se anuncia.",
     details: [
@@ -136,7 +136,7 @@ export const products: Record<ModelId, RingProduct> = {
     price: 1_000,
     water: "IP67",
     battery: "6 días",
-    sizes: [6, 7, 8, 9, 10, 11, 12, 13],
+    sizes: [7, 8, 9, 10, 11, 12, 13],
     finishes: ["silver", "black", "gold"],
     promise: "Precisión que no pesa.",
     details: [
@@ -148,6 +148,29 @@ export const products: Record<ModelId, RingProduct> = {
 };
 
 export const catalog = [products.aero, products.titan];
+
+export function sizeRangeLabel(modelId: ModelId = "aero") {
+  const sizes = products[modelId].sizes;
+  return `${sizes[0]} a ${sizes[sizes.length - 1]}`;
+}
+
+export const PRODUCT_HOME: Record<
+  ModelId,
+  { src: string; width: number; height: number; alt: string }
+> = {
+  aero: {
+    src: "/lifestyle/pro-home.jpg",
+    width: 2560,
+    height: 2560,
+    alt: "Mora Pro en rosa cuarzo, sobre piedra clara con flores blancas.",
+  },
+  titan: {
+    src: "/lifestyle/ultra-home.jpg",
+    width: 2560,
+    height: 2338,
+    alt: "Mora Ultra en titanio, sobre piedra clara.",
+  },
+};
 
 export function resolveFinish(modelId: ModelId, finishId: FinishId): Finish {
   const base = finishes[finishId];
@@ -230,6 +253,10 @@ export function writeProductColor(modelId: ModelId, finishId: FinishId) {
   const current = `${window.location.pathname}${window.location.search}`;
   if (current === path) return;
   window.history.replaceState(null, "", path);
+}
+
+export function isModelId(value: unknown): value is ModelId {
+  return value === "aero" || value === "titan";
 }
 
 export function resolveProductSlug(slug: string): ModelId | null {

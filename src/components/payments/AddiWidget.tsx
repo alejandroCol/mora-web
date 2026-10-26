@@ -28,13 +28,15 @@ function loadAddiWidget() {
 export function AddiWidget({
   price,
   className,
+  force = false,
 }: {
   price: number;
   className?: string;
+  force?: boolean;
 }) {
   const slug = addiAllySlug();
   const amount = Math.round(price);
-  const show = Boolean(slug) && addiAmountAllowed(amount);
+  const show = Boolean(slug) && (force || addiAmountAllowed(amount));
 
   useEffect(() => {
     if (!show) return;

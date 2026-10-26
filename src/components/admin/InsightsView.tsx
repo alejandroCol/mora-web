@@ -110,6 +110,8 @@ export function InsightsView() {
         </p>
       ))}
 
+      <CaseOfferReport offer={report.caseOffer} />
+
       <section className="rounded-[1.1rem] bg-white p-5 shadow-[0_0_0_1px_rgba(0,0,0,0.06)]">
         <h2 className="text-[15px] font-medium tracking-[-0.02em]">Dónde se cae la venta</h2>
         <p className="mt-1 text-[13px] text-[var(--admin-muted)]">
@@ -153,7 +155,7 @@ export function InsightsView() {
           {report.products.map((row) => (
             <li key={row.id}>
               <div className="flex items-baseline justify-between gap-3 text-sm">
-                <span>Mora {row.name}</span>
+                <span>{row.id === "case" ? "Case" : `Mora ${row.name}`}</span>
                 <span className="text-[var(--admin-muted)]">
                   {row.viewers || row.views} lo vieron
                 </span>
@@ -213,6 +215,70 @@ export function InsightsView() {
           </ul>
         )}
       </section>
+    </div>
+  );
+}
+
+function CaseOfferReport({
+  offer,
+}: {
+  offer: InsightsReport["caseOffer"] | undefined;
+}) {
+  const shown = offer?.shown ?? 0;
+  const added = offer?.added ?? 0;
+  const dismissed = offer?.dismissed ?? 0;
+  const paid = offer?.paid ?? 0;
+  const addRate = offer?.addRate ?? 0;
+  const dismissRate = offer?.dismissRate ?? 0;
+  const payRate = offer?.payRate ?? 0;
+
+  return (
+    <section className="rounded-[1.1rem] bg-white p-5 shadow-[0_0_0_1px_rgba(0,0,0,0.06)]">
+      <h2 className="text-[15px] font-medium tracking-[-0.02em]">Aviso del Case</h2>
+      <p className="mt-1 text-[13px] text-[var(--admin-muted)]">
+        Flotante en el último paso del pedido. Si se cierra mucho y pocos pagan, está
+        estorbando. Si lo agregan, está ayudando.
+      </p>
+      {shown === 0 ? (
+        <p className="mt-4 text-sm text-[var(--admin-muted)]">
+          Cuando alguien llegue a pagar sin Case, aquí se ve si el aviso funciona.
+        </p>
+      ) : (
+        <>
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <MiniKpi label="Lo vieron" value={String(shown)} hint="Llegaron a pagar sin Case" />
+            <MiniKpi label="Lo agregaron" value={`${addRate}%`} hint={`${added} de ${shown}`} />
+            <MiniKpi label="Lo cerraron" value={`${dismissRate}%`} hint={`${dismissed} de ${shown}`} />
+            <MiniKpi label="Pagaron después" value={`${payRate}%`} hint={`${paid} de ${shown}`} />
+          </div>
+          <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[var(--admin-field)]">
+            <div
+              className="h-full rounded-full bg-[#1d1d1f]"
+              style={{ width: `${Math.max(addRate, 2)}%` }}
+              title="Quién lo agregó"
+            />
+          </div>
+          <p className="mt-2 text-[12px] text-[var(--admin-muted)]">
+            {addRate >= 18
+              ? "El aviso está sumando Cases al pedido."
+              : dismissRate >= 50 && addRate < 12
+                ? "Se cierra mucho. Puede estar frenando el pago."
+                : payRate < 40 && dismissRate >= 35
+                  ? "Vieron el aviso y pocos siguieron a pagar."
+                  : "Todavía es pronto para un veredicto. Mira si pagan después de verlo."}
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
+function MiniKpi({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div className="rounded-[0.95rem] bg-[var(--admin-field)] px-3 py-3">
+      <p className="text-[11px] text-[var(--admin-muted)]">{label}</p>
+      <p className="mt-1.5 text-[1.25rem] font-medium tracking-[-0.04em]">{value}</p>
+      <p className="mt-1 text-[11px] leading-4 text-[var(--admin-muted)]">{hint}</p>
     </div>
   );
 }

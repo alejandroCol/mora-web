@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export function CreatorsStrip() {
   return (
-    <section className="creators-strip" aria-labelledby="creators-callout-title">
+    <section id="creadores-home" className="creators-strip" aria-labelledby="creators-callout-title">
       <div className="creators-strip-art" aria-hidden>
         <span className="creators-arc creators-arc-nw" />
         <span className="creators-arc creators-arc-se" />

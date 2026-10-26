@@ -11,18 +11,26 @@ import {
 import { cartCount, discountOf, subtotalOf } from "@/commerce/cartMath";
 import type { CartLine, ShippingQuoteOption } from "@/commerce/types";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
-import { formatMoney, products } from "@/lib/catalog";
+import { cartCountLabel, isRingLine, lineUnitPrice } from "@/commerce/lines";
+import { formatMoney, isModelId, products } from "@/lib/catalog";
 import { useSales } from "@/components/sales/SalesProvider";
 import { useMoraStore } from "@/lib/store";
 import type { AddiCheckoutSession, BoldCheckoutSession, CheckoutPayMethod } from "@/payments/types";
 import { addiAmountAllowed, checkoutPrefersAddi } from "@/payments/public";
 import { loadPayMethods } from "@/payments/methodsClient";
+import { CaseOffer, noteCaseOfferPay } from "@/components/cart/CaseOffer";
 import { CartLineVisual } from "@/components/cart/CartLineVisual";
 import { AddiMark } from "@/components/payments/AddiMark";
 import { AddiWidget } from "@/components/payments/AddiWidget";
 import { ColombiaFields, useDebounced } from "./ColombiaFields";
 import { currentAttribution, track } from "@/growth/track";
 import { insightFunnel, insightProductCheckout } from "@/insights/client";
+import { PaymentAwaiting } from "@/components/payments/PaymentAwaiting";
+import {
+  readPendingPay,
+  writePendingPay,
+  type PendingPay,
+} from "@/components/payments/pendingPay";
 import { loadBoldScript, useBoldCheckout } from "@/components/payments/useBoldCheckout";
 
 type PreparedPay =
@@ -35,6 +43,8 @@ type GatewayAvailability = {
   minCop: number;
   maxCop: number;
 };
+
+const CHECKOUT_STEP_KEY = "mora-checkout-step";
 
 const STEPS = [
   {
@@ -80,12 +90,14 @@ export function CheckoutFlow() {
     draft,
     setDraft,
     clearCart,
+    closeCart,
     cartSessionId,
     offerCode,
     ensureCartSession,
     setOfferCode,
   } = useMoraStore();
   const [step, setStep] = useState(0);
+  const [stepReady, setStepReady] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
@@ -102,6 +114,7 @@ export function CheckoutFlow() {
   const bold = useBoldCheckout();
   const checkoutTracked = useRef(false);
   const pendingPay = useRef<PreparedPay | null>(null);
+  const [awaiting, setAwaiting] = useState<PendingPay | null>(() => readPendingPay());
 
   const subtotal = subtotalOf(cart);
   const piezas = cartCount(cart);
@@ -208,7 +221,10 @@ export function CheckoutFlow() {
     });
     insightFunnel("checkout");
     for (const line of cart) {
-      insightProductCheckout(line.modelId, products[line.modelId].name);
+      const name = isModelId(line.modelId)
+        ? products[line.modelId].name
+        : "Case";
+      insightProductCheckout(line.modelId, name);
     }
   }, [cart, piezas, subtotal]);
 
@@ -279,6 +295,17 @@ export function CheckoutFlow() {
   }, []);
 
   useEffect(() => {
+    const saved = Number(sessionStorage.getItem(CHECKOUT_STEP_KEY));
+    if (saved === 1 || saved === 2) setStep(saved);
+    setStepReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!stepReady) return;
+    sessionStorage.setItem(CHECKOUT_STEP_KEY, String(step));
+  }, [step, stepReady]);
+
+  useEffect(() => {
     if (step === 2 && payMethod === "bold") void loadBoldScript().catch(() => undefined);
   }, [step, payMethod]);
 
@@ -293,7 +320,9 @@ export function CheckoutFlow() {
   const total = subtotal + (envioCop ?? 0) - discount;
   const shownTotal = envioCop == null ? Math.max(0, subtotal - discount) : total;
   const addiReady =
-    gateways.addi && addiAmountAllowed(shownTotal, gateways.minCop, gateways.maxCop);
+    gateways.addi &&
+    (cart.some((line) => isRingLine(line)) ||
+      addiAmountAllowed(shownTotal, gateways.minCop, gateways.maxCop));
 
   useEffect(() => {
     if (payMethod !== "addi" || addiReady || !gateways.bold) return;
@@ -410,8 +439,15 @@ export function CheckoutFlow() {
         return;
       }
       await bold.pay(prepared.session);
+      const next: PendingPay = {
+        orderNumber: prepared.orderNumber,
+        reference: prepared.session.reference,
+        session: prepared.session,
+      };
+      writePendingPay(next);
+      setAwaiting(next);
+      closeCart();
       clearCart();
-      setError("Si cierras el pago, pulsa Pagar otra vez.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "El pago no se completó.");
     } finally {
@@ -452,11 +488,16 @@ export function CheckoutFlow() {
       return;
     }
     insightFunnel("pay");
+    noteCaseOfferPay();
     void pay();
   }
 
   const current = STEPS[step];
   const fullName = [draft.firstName, draft.lastName].filter(Boolean).join(" ");
+
+  if (awaiting) {
+    return <PaymentAwaiting pending={awaiting} onPending={setAwaiting} />;
+  }
 
   if (cart.length === 0) {
     return (
@@ -491,7 +532,7 @@ export function CheckoutFlow() {
           aria-expanded={bagOpen}
         >
           <span>
-            {piezas} {piezas === 1 ? "anillo" : "anillos"}
+            {cartCountLabel(piezas, cart)}
           </span>
           <span className="check-bag-toggle-sum">
             {formatMoney(shownTotal)}
@@ -793,6 +834,8 @@ export function CheckoutFlow() {
         </aside>
       </div>
 
+      {step === 2 ? <CaseOffer /> : null}
+
       <div className="check-dock">
         {error ? <p className="check-dock-error">{error}</p> : null}
         <div className="flex items-center gap-3">
@@ -830,12 +873,11 @@ function OrderLines({ cart }: { cart: CartLine[] }) {
   return (
     <ul className="space-y-4">
       {cart.map((line) => {
-        const model = products[line.modelId];
         return (
           <li key={line.key}>
             <CartLineVisual
               line={line}
-              price={formatMoney(model.price * line.qty)}
+              price={formatMoney(lineUnitPrice(line) * line.qty)}
               compact
             />
           </li>

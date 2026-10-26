@@ -293,6 +293,7 @@ export function filterSoldOrders(orders: MoraOrder[], month?: string) {
 
 export function soldUnitsOf(order: Pick<MoraOrder, "items">, modelId?: ModelId) {
   return order.items.reduce((sum, item) => {
+    if (item.kind === "case" || item.modelId === "case") return sum;
     if (modelId && item.modelId !== modelId) return sum;
     return sum + Math.max(0, Math.round(item.qty || 0));
   }, 0);
@@ -300,6 +301,9 @@ export function soldUnitsOf(order: Pick<MoraOrder, "items">, modelId?: ModelId) 
 
 export function soldRevenueOf(order: Pick<MoraOrder, "items">, modelId?: ModelId) {
   return order.items.reduce((sum, item) => {
+    if (item.kind === "case" || item.modelId === "case") {
+      return modelId ? sum : sum + asCop(item.unitPrice) * Math.max(0, Math.round(item.qty || 0));
+    }
     if (modelId && item.modelId !== modelId) return sum;
     return sum + asCop(item.unitPrice) * Math.max(0, Math.round(item.qty || 0));
   }, 0);

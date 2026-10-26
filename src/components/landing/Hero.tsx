@@ -13,11 +13,7 @@ const MOBILE_SCALE = DESKTOP_SCALE * 1.6;
 
 export function Hero() {
   const sales = useSales();
-  const [mobile, setMobile] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia("(max-width: 639px)").matches,
-  );
+  const [mobile, setMobile] = useState<boolean | null>(null);
 
   useEffect(() => {
     const query = window.matchMedia("(max-width: 639px)");
@@ -29,7 +25,10 @@ export function Hero() {
 
   return (
     <section className="hero-wash relative flex min-h-dvh flex-col overflow-hidden">
-      {mobile ? (
+      <h1 className="sr-only">Mora — anillo inteligente de lujo en Colombia</h1>
+      {mobile === null ? (
+        <div className="flex-1" />
+      ) : mobile ? (
         <div className="relative flex min-h-0 flex-1 items-center justify-center pt-[calc(3.5rem+env(safe-area-inset-top))]">
           <div className="mx-auto h-[min(90vw,36rem)] w-[min(90vw,36rem)] translate-x-[2vw]">
             <RingCanvas
@@ -39,11 +38,6 @@ export function Hero() {
               className="h-full w-full"
             />
           </div>
-          <a
-            href="#coleccion"
-            aria-label="Elegir mi Mora"
-            className="absolute inset-0 z-[1]"
-          />
         </div>
       ) : (
         <div className="absolute inset-0 [&_canvas]:pointer-events-none">
@@ -52,11 +46,6 @@ export function Hero() {
             intro
             scale={DESKTOP_SCALE}
             className="h-full w-full"
-          />
-          <a
-            href="#coleccion"
-            aria-label="Elegir mi Mora"
-            className="absolute left-1/2 top-[46%] z-[1] block h-[min(70vw,32rem)] w-[min(70vw,32rem)] -translate-x-1/2 -translate-y-1/2 cursor-pointer rounded-full"
           />
         </div>
       )}

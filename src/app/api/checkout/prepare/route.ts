@@ -7,7 +7,9 @@ import type {
   CustomerSnapshot,
   ShippingQuoteOption,
 } from "@/commerce/types";
-import { products } from "@/lib/catalog";
+import { isCaseColorId } from "@/lib/cases";
+import { isModelId, products } from "@/lib/catalog";
+import { isCaseLine } from "@/commerce/lines";
 import { resolveCheckoutOffer } from "@/server/abandonedCarts";
 import { upsertLead } from "@/server/leads";
 import { requestClient, sendMetaEvent } from "@/server/metaCapi";
@@ -71,8 +73,17 @@ export async function POST(request: Request) {
       return Response.json({ ok: false, error: "El carrito está vacío." }, { status: 400 });
     }
     for (const item of items) {
+      if (isCaseLine(item)) {
+        if (!isCaseColorId(item.finishId)) {
+          return Response.json({ ok: false, error: "Hay un case inválido." }, { status: 400 });
+        }
+        continue;
+      }
+      if (!isModelId(item.modelId)) {
+        return Response.json({ ok: false, error: "Hay un anillo inválido." }, { status: 400 });
+      }
       const product = products[item.modelId];
-      if (!product || !product.finishes.includes(item.finishId)) {
+      if (!product || !product.finishes.includes(item.finishId as typeof product.finishes[number])) {
         return Response.json({ ok: false, error: "Hay un anillo inválido." }, { status: 400 });
       }
       if (isSizePending(item)) continue;

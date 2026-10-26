@@ -22,10 +22,13 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
         <div className="flex items-center gap-5 sm:gap-6">
           <Link
             href="/pedido"
-            aria-label="Mi pedido"
-            className="text-ink transition-opacity hover:opacity-55"
+            aria-label="mi pedido"
+            className="flex items-center text-soft transition-opacity hover:opacity-55"
           >
-            <IconOrder className="h-[19px] w-[19px] sm:h-5 sm:w-5" />
+            <IconOrder className="h-[19px] w-[19px] sm:hidden" />
+            <span className="hidden text-[14px] leading-none tracking-[-0.01em] sm:inline">
+              mi pedido
+            </span>
           </Link>
           <CartButton />
         </div>

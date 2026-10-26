@@ -8,6 +8,7 @@ import {
   finishLabel,
   finishes,
   formatMoney,
+  PRODUCT_HOME,
   productPath,
   type ModelId,
 } from "@/lib/catalog";
@@ -16,17 +17,9 @@ import { useSales } from "@/components/sales/SalesProvider";
 import { useMoraStore } from "@/lib/store";
 import { loadPayMethods } from "@/payments/methodsClient";
 
-const LOOK: Record<ModelId, { src: string; focus: string; alt: string }> = {
-  aero: {
-    src: "/lifestyle/pro-home.jpg",
-    focus: "54% 46%",
-    alt: "Mora Pro en rosa cuarzo, sobre piedra clara con flores blancas.",
-  },
-  titan: {
-    src: "/lifestyle/ultra-home.jpg",
-    focus: "50% 58%",
-    alt: "Mora Ultra en titanio, sobre piedra clara.",
-  },
+const LOOK_FOCUS: Record<ModelId, string> = {
+  aero: "54% 46%",
+  titan: "50% 58%",
 };
 
 export function Atelier() {
@@ -155,7 +148,7 @@ export function Atelier() {
       </div>
       <div ref={scroller} className="worlds">
         {catalog.map((item) => {
-          const look = LOOK[item.id];
+          const home = PRODUCT_HOME[item.id];
           return (
             <Link
               key={item.id}
@@ -165,15 +158,15 @@ export function Atelier() {
               className="world group world-light"
             >
               <Image
-                src={look.src}
-                alt={look.alt}
+                src={home.src}
+                alt={home.alt}
                 fill
                 unoptimized
                 quality={100}
                 sizes="(min-width: 1024px) 50vw, 100vw"
                 priority={item.id === "aero"}
                 className="world-photo"
-                style={{ objectPosition: look.focus }}
+                style={{ objectPosition: LOOK_FOCUS[item.id] }}
               />
               <div className="world-veil" />
               <div className="world-copy">

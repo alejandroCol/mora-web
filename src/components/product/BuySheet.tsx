@@ -116,18 +116,20 @@ export function BuySheet({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-12 pt-3 hide-scroll sm:px-8 sm:pb-14 sm:pt-8">
-        <div className="flex items-baseline justify-between gap-4">
-          <div className="flex min-w-0 items-baseline gap-2">
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
             <h1 className="title-name text-[2.35rem] text-[#1d1d1f] sm:text-[2.85rem]">
               {model.name}
             </h1>
-            <p className="text-[11px] tracking-[-0.01em] text-soft sm:text-[12px]">{model.line}</p>
+            <p className="shrink-0 text-[11px] tracking-[-0.01em] text-soft sm:text-[12px]">
+              {model.line}
+            </p>
+            <FreeShipping className="ship-free-sm shrink-0" />
           </div>
           <p className="shrink-0 text-[17px] tracking-[-0.02em] text-[#1d1d1f]">
             {formatMoney(model.price)}
           </p>
         </div>
-        <FreeShipping detail="a toda Colombia" className="mt-2.5" />
         <AddiWidget price={model.price} force={model.kind === "ring"} className="mt-2" />
 
         <fieldset className="mt-4 sm:mt-7">

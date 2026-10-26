@@ -118,6 +118,7 @@ export type QuoteInput = {
   telefono?: string;
   subtotal: number;
   piezas: number;
+  conAnillo?: boolean;
 };
 
 export type QuoteResult = {
@@ -133,7 +134,7 @@ const quoteCache = new Map<string, { expiresAt: number; result: QuoteResult }>()
 export async function quoteShipping(input: QuoteInput): Promise<QuoteResult> {
   const settings = await loadCommerceSettings();
   const umbral = settings.freeShippingFromCop ?? 0;
-  const gratis = umbral > 0 && input.subtotal >= umbral;
+  const gratis = input.conAnillo === true || (umbral > 0 && input.subtotal >= umbral);
   if (gratis) {
     return {
       envioCop: 0,

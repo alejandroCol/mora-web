@@ -18,6 +18,7 @@ import { AddiCuotasButton } from "@/components/payments/AddiCuotasButton";
 import { AddiWidget } from "@/components/payments/AddiWidget";
 import { addiAmountAllowed, checkoutHref } from "@/payments/public";
 import { loadPayMethods } from "@/payments/methodsClient";
+import { FreeShipping } from "./FreeShipping";
 import { ProductSpecSheet } from "./ProductSpecSheet";
 import { SizeChoice } from "./SizeChoice";
 
@@ -126,6 +127,7 @@ export function BuySheet({
             {formatMoney(model.price)}
           </p>
         </div>
+        <FreeShipping detail="a toda Colombia" className="mt-2.5" />
         <AddiWidget price={model.price} force={model.kind === "ring"} className="mt-2" />
 
         <fieldset className="mt-4 sm:mt-7">

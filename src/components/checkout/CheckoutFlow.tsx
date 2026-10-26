@@ -11,7 +11,7 @@ import {
 import { cartCount, discountOf, subtotalOf } from "@/commerce/cartMath";
 import type { CartLine, ShippingQuoteOption } from "@/commerce/types";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
-import { cartCountLabel, isRingLine, lineUnitPrice } from "@/commerce/lines";
+import { cartCountLabel, cartHasRing, isRingLine, lineUnitPrice } from "@/commerce/lines";
 import { formatMoney, isModelId, products } from "@/lib/catalog";
 import { useSales } from "@/components/sales/SalesProvider";
 import { useMoraStore } from "@/lib/store";
@@ -20,6 +20,7 @@ import { addiAmountAllowed, checkoutPrefersAddi } from "@/payments/public";
 import { loadPayMethods } from "@/payments/methodsClient";
 import { CaseOffer, noteCaseOfferPay } from "@/components/cart/CaseOffer";
 import { CartLineVisual } from "@/components/cart/CartLineVisual";
+import { FreeShipping } from "@/components/product/FreeShipping";
 import { AddiMark } from "@/components/payments/AddiMark";
 import { AddiWidget } from "@/components/payments/AddiWidget";
 import { ColombiaFields, useDebounced } from "./ColombiaFields";
@@ -118,6 +119,7 @@ export function CheckoutFlow() {
 
   const subtotal = subtotalOf(cart);
   const piezas = cartCount(cart);
+  const freeShip = cartHasRing(cart);
   const discount = appliedOffer ? discountOf(subtotal, appliedOffer) : 0;
   useEffect(() => {
     const session = ensureCartSession();
@@ -237,6 +239,7 @@ export function CheckoutFlow() {
       telefono: draft.phone,
       subtotal,
       piezas,
+      conAnillo: freeShip,
     }),
     450,
   );
@@ -250,6 +253,7 @@ export function CheckoutFlow() {
       telefono: string;
       subtotal: number;
       piezas: number;
+      conAnillo: boolean;
     };
     if (!dest.departamento || !dest.ciudad || dest.direccion.trim().length < 8) {
       setQuote(null);
@@ -313,10 +317,12 @@ export function CheckoutFlow() {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }, [step]);
 
-  const envioCop =
-    quote?.opciones?.find((option) => option.carrier === carrier)?.totalPriceCop ??
-    quote?.envioCop ??
-    null;
+  const envioCop = freeShip
+    ? 0
+    : (quote?.opciones?.find((option) => option.carrier === carrier)?.totalPriceCop ??
+      quote?.envioCop ??
+      null);
+  const quoteError = freeShip ? undefined : quote?.error;
   const total = subtotal + (envioCop ?? 0) - discount;
   const shownTotal = envioCop == null ? Math.max(0, subtotal - discount) : total;
   const addiReady =
@@ -350,7 +356,7 @@ export function CheckoutFlow() {
       if (!draft.departamento || !draft.ciudad || draft.address.trim().length < 8) {
         return "Departamento, ciudad y una dirección completa.";
       }
-      if (!quote?.ok) return quote?.error ?? "Estamos cotizando el envío.";
+      if (!freeShip && !quote?.ok) return quote?.error ?? "Estamos cotizando el envío.";
     }
     return "";
   }
@@ -549,7 +555,7 @@ export function CheckoutFlow() {
           <Totals
             subtotal={subtotal}
             envioCop={envioCop}
-            quoteError={quote?.error}
+            quoteError={quoteError}
             discount={discount}
             offerCode={appliedOffer?.code}
             total={shownTotal}
@@ -593,7 +599,7 @@ export function CheckoutFlow() {
               {current.title}
             </h1>
             <p className="mt-1 text-[13px] leading-5 text-[#6e6e73] sm:text-[14px]">
-              {current.whisper}
+              {step === 1 && freeShip ? "El envío va por nuestra cuenta." : current.whisper}
             </p>
           </header>
 
@@ -677,7 +683,9 @@ export function CheckoutFlow() {
               />
               <div className="check-field">
                 <span>Envío</span>
-                {quote?.ok && envioCop != null ? (
+                {freeShip ? (
+                  <FreeShipping detail="a toda Colombia" className="mt-1.5 self-start" />
+                ) : quote?.ok && envioCop != null ? (
                   quote.gratis ? (
                     <p className="text-[17px] tracking-[-0.022em] text-[#1d1d1f]">Gratis</p>
                   ) : quote.opciones && quote.opciones.length > 0 ? (
@@ -756,7 +764,7 @@ export function CheckoutFlow() {
                 <Totals
                   subtotal={subtotal}
                   envioCop={envioCop}
-                  quoteError={quote?.error}
+                  quoteError={quoteError}
                   discount={discount}
                   offerCode={appliedOffer?.code}
                   total={shownTotal}
@@ -823,7 +831,7 @@ export function CheckoutFlow() {
           <Totals
             subtotal={subtotal}
             envioCop={envioCop}
-            quoteError={quote?.error}
+            quoteError={quoteError}
             discount={discount}
             offerCode={appliedOffer?.code}
             total={shownTotal}
@@ -908,13 +916,13 @@ function Totals({
         <span>Subtotal</span>
         <span className="text-[#1d1d1f]">{formatMoney(subtotal)}</span>
       </div>
-      <div className="mt-2 flex justify-between text-[14px] text-[#6e6e73]">
+      <div className="mt-2 flex items-center justify-between text-[14px] text-[#6e6e73]">
         <span>Envío</span>
         <span className="text-[#1d1d1f]">
           {quoteError
             ? quoteError
             : envioCop === 0
-              ? "Gratis"
+              ? <span className="ship-free ship-free-sm">Gratis</span>
               : envioCop == null
                 ? "Al completar el destino"
                 : formatMoney(envioCop)}

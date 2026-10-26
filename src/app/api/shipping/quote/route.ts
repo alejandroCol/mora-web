@@ -11,6 +11,7 @@ export async function POST(request: NextRequest) {
       telefono?: string;
       subtotal?: number;
       piezas?: number;
+      conAnillo?: boolean;
     };
     if (!body.departamento?.trim() || !body.ciudad?.trim() || !body.direccion?.trim()) {
       return Response.json(
@@ -26,6 +27,7 @@ export async function POST(request: NextRequest) {
       telefono: body.telefono,
       subtotal: Number(body.subtotal) || 0,
       piezas: Number(body.piezas) || 1,
+      conAnillo: body.conAnillo === true,
     });
     return Response.json({ ok: true, ...result });
   } catch (error) {

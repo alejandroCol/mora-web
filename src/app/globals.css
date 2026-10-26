@@ -876,6 +876,43 @@ body {
   box-shadow: none;
 }
 
+.ship-free {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  height: 1.6rem;
+  padding: 0 0.62rem 0 0.5rem;
+  border-radius: 999px;
+  background: rgba(52, 199, 89, 0.12);
+  color: #1f7a3b;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.012em;
+  white-space: nowrap;
+}
+
+.ship-free-sm {
+  height: 1.35rem;
+  padding: 0 0.55rem;
+  font-size: 12px;
+}
+
+.ship-free-icon {
+  width: 15px;
+  height: 15px;
+  flex: none;
+}
+
+.ship-free-detail {
+  font-weight: 400;
+  color: rgba(31, 122, 59, 0.72);
+}
+
+.ship-free-detail::before {
+  content: "·";
+  margin: 0 0.3rem 0 0.05rem;
+}
+
 .addi-slot {
   min-height: 1.25rem;
   max-width: 22rem;

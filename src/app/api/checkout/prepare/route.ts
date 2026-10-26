@@ -9,7 +9,7 @@ import type {
 } from "@/commerce/types";
 import { isCaseColorId } from "@/lib/cases";
 import { isModelId, products } from "@/lib/catalog";
-import { isCaseLine } from "@/commerce/lines";
+import { cartHasRing, isCaseLine } from "@/commerce/lines";
 import { resolveCheckoutOffer } from "@/server/abandonedCarts";
 import { upsertLead } from "@/server/leads";
 import { requestClient, sendMetaEvent } from "@/server/metaCapi";
@@ -126,6 +126,7 @@ export async function POST(request: Request) {
       telefono: customer.phone,
       subtotal: subtotalOf(items),
       piezas: cartCount(items),
+      conAnillo: cartHasRing(items),
     });
 
     const selected =

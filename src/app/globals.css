@@ -548,6 +548,22 @@ body {
   color: #1d1d1f;
 }
 
+.cart-suggest-add {
+  flex: none;
+  height: 2.15rem;
+  padding: 0 0.95rem;
+  border-radius: 999px;
+  background: #1d1d1f;
+  color: #fff;
+  font-size: 13px;
+  letter-spacing: -0.018em;
+  line-height: 2.15rem;
+}
+
+.cart-suggest-add:hover {
+  background: #3a3a3c;
+}
+
 .ring-dot {
   height: 0.72rem;
   width: 0.72rem;

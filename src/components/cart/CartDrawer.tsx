@@ -72,32 +72,33 @@ export function CartDrawer() {
             <div className="mt-6">
               <ul className="space-y-3">
                 {catalog.map((item) => (
-                  <li key={item.id}>
+                  <li
+                    key={item.id}
+                    className="flex items-center gap-4 rounded-2xl bg-white px-3 py-3"
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={PRODUCT_HOME[item.id].src}
+                      alt=""
+                      className="h-16 w-16 rounded-xl object-cover"
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[17px] tracking-[-0.02em] text-ink">
+                        Mora {item.name}
+                      </span>
+                      <span className="mt-0.5 block text-[14px] text-soft">
+                        {formatMoney(item.price)}
+                      </span>
+                    </span>
                     <Link
                       href={productPath(item.id)}
                       onClick={() => {
                         setModel(item.id);
                         closeCart();
                       }}
-                      className="flex items-center gap-4 rounded-2xl bg-white px-3 py-3"
+                      className="cart-suggest-add"
                     >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={PRODUCT_HOME[item.id].src}
-                        alt=""
-                        className="h-16 w-16 rounded-xl object-cover"
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-[17px] tracking-[-0.02em] text-ink">
-                          Mora {item.name}
-                        </span>
-                        <span className="mt-0.5 block text-[14px] text-soft">
-                          {formatMoney(item.price)}
-                        </span>
-                      </span>
-                      <span aria-hidden className="pr-1 text-[1.15rem] text-soft">
-                        ›
-                      </span>
+                      Agregar
                     </Link>
                   </li>
                 ))}

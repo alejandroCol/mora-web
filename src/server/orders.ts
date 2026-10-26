@@ -27,6 +27,8 @@ import {
   assertAndReserve,
 } from "./inventory";
 import {
+  sendCancelledCustomerEmail,
+  sendDeliveredCustomerEmail,
   sendDispatchedCustomerEmail,
   sendSizerDispatchedEmail,
   sendPaidCustomerEmail,
@@ -627,27 +629,46 @@ export async function transitionOrder(input: {
 
   await ref.set(patch, { merge: true });
   const next = { ...order, ...patch } as MoraOrder;
+  const emails = { ...(order.emails ?? {}) };
 
-  if (input.to === "sizer_transit") {
+  if (input.to === "paid" && !emails.paidSentAt) {
+    await sendPaidCustomerEmail(next).catch((error) =>
+      console.error("[email paid customer]", error),
+    );
+    emails.paidSentAt = Date.now();
+  }
+
+  if (input.to === "sizer_transit" && !emails.sizerDispatchedSentAt) {
     await sendSizerDispatchedEmail(next).catch((error) =>
       console.error("[email sizer]", error),
     );
-    await ref.set(
-      { emails: { ...(order.emails ?? {}), sizerDispatchedSentAt: Date.now() } },
-      { merge: true },
-    );
+    emails.sizerDispatchedSentAt = Date.now();
   }
 
-  if (input.to === "in_transit") {
+  if (input.to === "in_transit" && !emails.dispatchedSentAt) {
     await sendDispatchedCustomerEmail(next).catch((error) =>
       console.error("[email dispatch]", error),
     );
-    await ref.set(
-      {
-        emails: { ...(order.emails ?? {}), dispatchedSentAt: Date.now() },
-      },
-      { merge: true },
+    emails.dispatchedSentAt = Date.now();
+  }
+
+  if (input.to === "delivered" && !emails.deliveredSentAt) {
+    await sendDeliveredCustomerEmail(next).catch((error) =>
+      console.error("[email delivered]", error),
     );
+    emails.deliveredSentAt = Date.now();
+  }
+
+  if (input.to === "cancelled" && !emails.cancelledSentAt) {
+    await sendCancelledCustomerEmail(next).catch((error) =>
+      console.error("[email cancelled]", error),
+    );
+    emails.cancelledSentAt = Date.now();
+  }
+
+  if (JSON.stringify(emails) !== JSON.stringify(order.emails ?? {})) {
+    next.emails = emails;
+    await ref.set({ emails }, { merge: true });
   }
 
   return next;

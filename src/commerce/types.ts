@@ -175,7 +175,13 @@ export type MoraOrder = {
   totals: OrderTotals;
   notes?: string;
   timeline: OrderTimelineEvent[];
-  emails?: { paidSentAt?: number; dispatchedSentAt?: number; sizerDispatchedSentAt?: number };
+  emails?: {
+    paidSentAt?: number;
+    dispatchedSentAt?: number;
+    sizerDispatchedSentAt?: number;
+    deliveredSentAt?: number;
+    cancelledSentAt?: number;
+  };
   invoice?: InvoiceSnapshot;
   attribution?: AttributionSnapshot;
   meta?: {

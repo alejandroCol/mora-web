@@ -454,6 +454,52 @@ export async function sendSizerDispatchedEmail(order: MoraOrder) {
   );
 }
 
+export async function sendDeliveredCustomerEmail(order: MoraOrder) {
+  const photos = await linePhotos(order.items);
+  const name = firstNameOf(order);
+  const html = shell({
+    preheader: "Tu pedido ya llegó. Gracias por elegir Mora Ring.",
+    kicker: "Entregado",
+    title: "Ya está en tus manos.",
+    intro: `${name ? `Hola, ${name}. ` : ""}Tu pedido ${escapeHtml(order.orderNumber)} llegó a ${escapeHtml(order.shipping.ciudad)}. Esperamos que te quede tan bien como lo imaginaste.`,
+    body: `${sectionTitle("Tu pedido")}
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">${itemRows(order.items, photos, false)}</table>
+      ${sectionTitle("Si necesitas algo")}
+      <p style="margin:0;font-family:${FONT};font-size:15px;line-height:1.6;color:${SOFT}">Tienes un mes de garantía por fallas de fabricación. Si algo no se siente bien, escríbenos con tu número de pedido y te ayudamos.</p>`,
+    cta: button(orderTrackingUrl(order.orderNumber), "Ver mi pedido"),
+  });
+  return sendResend(
+    order.customer.email,
+    `Tu pedido llegó · ${order.orderNumber} · ${EMAIL_BRAND}`,
+    html,
+  );
+}
+
+export async function sendCancelledCustomerEmail(order: MoraOrder) {
+  const photos = await linePhotos(order.items);
+  const name = firstNameOf(order);
+  const paid = Boolean(order.paidAt) || order.payment.status === "approved";
+  const html = shell({
+    preheader: paid
+      ? "Cancelamos tu pedido. Si pagaste, te ayudamos."
+      : "Cancelamos tu pedido. No te cobramos nada.",
+    kicker: "Pedido cancelado",
+    title: "Cancelamos tu pedido.",
+    intro: paid
+      ? `${name ? `Hola, ${name}. ` : ""}Cancelamos el pedido ${escapeHtml(order.orderNumber)}. Si el pago ya se hizo, escríbenos y te ayudamos con la devolución.`
+      : `${name ? `Hola, ${name}. ` : ""}Cancelamos el pedido ${escapeHtml(order.orderNumber)}. No se cobró nada. Cuando quieras, puedes volver a pedir tu anillo.`,
+    body: `${sectionTitle("Este era tu pedido")}
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">${itemRows(order.items, photos, false)}</table>
+      <p style="margin:22px 0 0;font-family:${FONT};font-size:15px;line-height:1.6;color:${SOFT}">Si esto fue un error o tienes una duda, respóndenos este correo o escríbenos por WhatsApp. Con gusto te ayudamos.</p>`,
+    cta: button(BRAND.contact.whatsapp, "Escribirnos"),
+  });
+  return sendResend(
+    order.customer.email,
+    `Pedido cancelado ${order.orderNumber} · ${EMAIL_BRAND}`,
+    html,
+  );
+}
+
 export async function sendDispatchedCustomerEmail(order: MoraOrder) {
   const guia = order.shipments?.rings?.trackingNumber?.trim() || "";
   const carrier = order.shipments?.rings?.carrierLabel || order.shipping.carrierLabel;

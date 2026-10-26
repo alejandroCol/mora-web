@@ -18,7 +18,7 @@ export default function CheckoutPage() {
 
   return (
     <div className="check-page min-h-dvh bg-[#f5f5f7] pt-[calc(3.5rem+env(safe-area-inset-top))] sm:pt-[calc(4.25rem+env(safe-area-inset-top))]">
-      <div className="mx-auto max-w-[880px] px-3 pb-0 sm:px-8 sm:pb-16">
+      <div className="mx-auto max-w-[880px] px-3 pt-3 pb-0 sm:px-8 sm:pt-4 sm:pb-16">
         {ready ? <CheckoutFlow /> : <div className="min-h-[24rem]" aria-hidden />}
       </div>
     </div>

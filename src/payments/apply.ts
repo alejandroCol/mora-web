@@ -272,12 +272,17 @@ export async function applyAddiStatus(input: {
   };
 
   const applied = await applyVoucherToIntent(input.reference, voucher);
+  const normalized = input.status.trim().toUpperCase();
+  const paidStatus =
+    normalized === "COMPLETED" || normalized === "PAID" || normalized === "FUNDED"
+      ? "APPROVED"
+      : input.status;
   await fulfillAddiPayment({
     reference: applied?.intent.reference ?? input.reference,
     transactionId: input.applicationId,
     amountCop: input.amountCop,
     paymentType: "addi",
-    status: input.status.toUpperCase() === "COMPLETED" ? "APPROVED" : input.status,
+    status: paidStatus,
     orderId: applied?.intent.metadata.orderId,
   });
 

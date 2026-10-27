@@ -42,6 +42,9 @@ export function addiEnvironment(): AddiEnvironment {
 }
 
 export async function resolveAddiEnvironment(): Promise<AddiEnvironment> {
+  const forced = env("ADDI_ENV").toLowerCase();
+  if (forced === "prod" || forced === "production") return "prod";
+  if (forced === "sandbox" || forced === "staging" || forced === "test") return "sandbox";
   const { isPaymentsLive } = await import("@/server/paymentsPolicy");
   return (await isPaymentsLive()) ? "prod" : "sandbox";
 }

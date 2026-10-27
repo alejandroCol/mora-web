@@ -104,6 +104,11 @@ env:
     secret: ADDI_WEBHOOK_PASSWORD
     availability:
       - RUNTIME
+  - variable: NEXT_PUBLIC_ADDI_ALLY_SLUG
+    value: moraring-ecommerce
+    availability:
+      - BUILD
+      - RUNTIME
   # Heka Entrega. Los valores viven en Secret Manager, no en este archivo.
   - variable: HEKA_API_KEY
     secret: HEKA_API_KEY

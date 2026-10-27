@@ -561,7 +561,7 @@ export function CheckoutFlow() {
 
   const current = STEPS[step];
   const fullName = [draft.firstName, draft.lastName].filter(Boolean).join(" ");
-  const payNote = payMethod === "addi" && addiReady ? sales.payNoteAddi : sales.payNote;
+  const payNote = payMethod === "addi" ? "" : sales.payNote;
   const viaAddi = step === 2 && payMethod === "addi" && addiReady;
 
   if (awaiting) {

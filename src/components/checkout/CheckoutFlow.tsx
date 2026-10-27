@@ -4,6 +4,7 @@ import Link from "next/link";
 import {
   type FormEvent,
   type InputHTMLAttributes,
+  type RefObject,
   useEffect,
   useRef,
   useState,
@@ -22,6 +23,14 @@ import { CaseOffer, noteCaseOfferPay } from "@/components/cart/CaseOffer";
 import { CartLineVisual } from "@/components/cart/CartLineVisual";
 import { FreeShipping } from "@/components/product/FreeShipping";
 import { AddiMark } from "@/components/payments/AddiMark";
+import { CheckoutNotice } from "./CheckoutNotice";
+import {
+  addiPhoneIssue,
+  noticeForValidation,
+  parseCheckoutError,
+  type CheckoutFixField,
+  type CheckoutNotice as CheckoutNoticeModel,
+} from "./checkoutNotice";
 import { ColombiaFields, useDebounced } from "./ColombiaFields";
 import { currentAttribution, track } from "@/growth/track";
 import { insightFunnel, insightProductCheckout } from "@/insights/client";
@@ -99,7 +108,7 @@ export function CheckoutFlow() {
   } = useMoraStore();
   const [step, setStep] = useState(0);
   const [stepReady, setStepReady] = useState(false);
-  const [error, setError] = useState("");
+  const [notice, setNotice] = useState<CheckoutNoticeModel | null>(null);
   const [busy, setBusy] = useState(false);
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [carrier, setCarrier] = useState<string>("");
@@ -113,6 +122,11 @@ export function CheckoutFlow() {
     maxCop: 3_000_000,
   });
   const bold = useBoldCheckout();
+  const phoneRef = useRef<HTMLInputElement>(null);
+  const emailRef = useRef<HTMLInputElement>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
+  const documentRef = useRef<HTMLInputElement>(null);
+  const addressRef = useRef<HTMLInputElement>(null);
   const checkoutTracked = useRef(false);
   const pendingPay = useRef<PreparedPay | null>(null);
   const [awaiting, setAwaiting] = useState<PendingPay | null>(() => {
@@ -344,9 +358,35 @@ export function CheckoutFlow() {
 
   function goTo(index: number) {
     if (index < step) {
-      setError("");
+      setNotice(null);
       setStep(index);
     }
+  }
+
+  function focusCheckoutField(field?: CheckoutFixField) {
+    const target =
+      field === "phone"
+        ? phoneRef
+        : field === "document"
+          ? documentRef
+          : field === "email"
+            ? emailRef
+            : field === "name"
+              ? nameRef
+              : field === "shipping"
+                ? addressRef
+                : null;
+    if (!target?.current) return;
+    target.current.focus({ preventScroll: true });
+    target.current.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  function applyNoticeFix(item: CheckoutNoticeModel) {
+    setNotice(null);
+    if (!item.action) return;
+    const { step: targetStep, field } = item.action;
+    setStep(targetStep);
+    window.setTimeout(() => focusCheckoutField(field), 160);
   }
 
   function validateStep() {
@@ -364,6 +404,10 @@ export function CheckoutFlow() {
         return "Departamento, ciudad y una dirección completa.";
       }
       if (!freeShip && !quote?.ok) return quote?.error ?? "Estamos cotizando el envío.";
+    }
+    if (step === 2 && payMethod === "addi") {
+      const phoneIssue = addiPhoneIssue(draft.phone);
+      if (phoneIssue) return phoneIssue.message;
     }
     return "";
   }
@@ -442,8 +486,15 @@ export function CheckoutFlow() {
   }
 
   async function pay() {
+    if (payMethod === "addi") {
+      const phoneIssue = addiPhoneIssue(draft.phone);
+      if (phoneIssue) {
+        setNotice(phoneIssue);
+        return;
+      }
+    }
     setBusy(true);
-    setError("");
+    setNotice(null);
     try {
       const prepared = pendingPay.current ?? (await prepareCheckout());
       if (prepared.method === "addi") {
@@ -462,7 +513,8 @@ export function CheckoutFlow() {
       closeCart();
       clearCart();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "El pago no se completó.");
+      const message = err instanceof Error ? err.message : "El pago no se completó.";
+      setNotice(parseCheckoutError(message));
     } finally {
       setBusy(false);
     }
@@ -472,10 +524,12 @@ export function CheckoutFlow() {
     event.preventDefault();
     const message = validateStep();
     if (message) {
-      setError(message);
+      const addiPhone =
+        step === 2 && payMethod === "addi" ? addiPhoneIssue(draft.phone) : null;
+      setNotice(addiPhone ?? noticeForValidation(message, step));
       return;
     }
-    setError("");
+    setNotice(null);
     if (step === 0) {
       track(
         "Lead",
@@ -618,6 +672,7 @@ export function CheckoutFlow() {
                 <Field
                   label="Nombre"
                   autoComplete="given-name"
+                  inputRef={nameRef}
                   value={draft.firstName}
                   onChange={(value) => setDraft({ firstName: value })}
                 />
@@ -632,6 +687,7 @@ export function CheckoutFlow() {
                 label="Correo"
                 type="email"
                 autoComplete="email"
+                inputRef={emailRef}
                 value={draft.email}
                 onChange={(value) => setDraft({ email: value })}
               />
@@ -640,6 +696,8 @@ export function CheckoutFlow() {
                 type="tel"
                 autoComplete="tel"
                 inputMode="tel"
+                inputRef={phoneRef}
+                hint="Celular colombiano de 10 dígitos (Addi)."
                 value={draft.phone}
                 onChange={(value) => setDraft({ phone: value })}
               />
@@ -663,6 +721,7 @@ export function CheckoutFlow() {
                   label="Número"
                   autoComplete="off"
                   inputMode="numeric"
+                  inputRef={documentRef}
                   value={draft.documentNumber ?? ""}
                   onChange={(value) => setDraft({ documentNumber: value })}
                 />
@@ -681,6 +740,7 @@ export function CheckoutFlow() {
               <Field
                 label="Dirección"
                 autoComplete="street-address"
+                inputRef={addressRef}
                 value={draft.address}
                 onChange={(value) => setDraft({ address: value })}
               />
@@ -847,7 +907,6 @@ export function CheckoutFlow() {
           {step === 2 ? (
             <CheckoutDock
               className="check-dock check-dock-aside"
-              error={error}
               busy={busy}
               addi={viaAddi}
               busyLabel={payMethod === "addi" ? "Abriendo Addi…" : "Abriendo el pago…"}
@@ -861,9 +920,16 @@ export function CheckoutFlow() {
 
       {step === 2 ? <CaseOffer /> : null}
 
+      {notice ? (
+        <CheckoutNotice
+          notice={notice}
+          onFix={() => applyNoticeFix(notice)}
+          onDismiss={() => setNotice(null)}
+        />
+      ) : null}
+
       <CheckoutDock
         className={`check-dock ${step === 2 ? "lg:hidden" : ""}`}
-        error={error}
         busy={busy}
         addi={viaAddi}
         busyLabel={payMethod === "addi" ? "Abriendo Addi…" : "Abriendo el pago…"}
@@ -877,7 +943,6 @@ export function CheckoutFlow() {
 
 function CheckoutDock({
   className,
-  error,
   busy,
   addi,
   busyLabel,
@@ -886,7 +951,6 @@ function CheckoutDock({
   onBack,
 }: {
   className: string;
-  error: string;
   busy: boolean;
   addi: boolean;
   busyLabel: string;
@@ -896,7 +960,6 @@ function CheckoutDock({
 }) {
   return (
     <div className={className}>
-      {error ? <p className="check-dock-error">{error}</p> : null}
       <div className="flex items-center gap-3">
         {onBack ? (
           <button
@@ -990,6 +1053,8 @@ function Field({
   autoComplete,
   required = true,
   inputMode,
+  inputRef,
+  hint,
 }: {
   label: string;
   value: string;
@@ -998,11 +1063,14 @@ function Field({
   autoComplete?: string;
   required?: boolean;
   inputMode?: InputHTMLAttributes<HTMLInputElement>["inputMode"];
+  inputRef?: RefObject<HTMLInputElement | null>;
+  hint?: string;
 }) {
   return (
     <label className="check-field">
       <span>{label}</span>
       <input
+        ref={inputRef}
         required={required}
         type={type}
         inputMode={inputMode}
@@ -1010,6 +1078,7 @@ function Field({
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />
+      {hint ? <span className="check-field-hint">{hint}</span> : null}
     </label>
   );
 }

@@ -28,3 +28,14 @@ export function checkoutHref(pay?: "addi") {
 export function checkoutPrefersAddi(search: string) {
   return new URLSearchParams(search).get("pago") === "addi";
 }
+
+/** Últimos 10 dígitos; si viene +57, los descarta. */
+export function colombianMobileDigits(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("57") && digits.length >= 12) return digits.slice(-10);
+  return digits.slice(-10);
+}
+
+export function isColombianMobilePhone(phone: string) {
+  return /^3\d{9}$/.test(colombianMobileDigits(phone));
+}

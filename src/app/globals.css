@@ -640,6 +640,13 @@ body {
   color: #6e6e73;
 }
 
+.check-field-hint {
+  font-size: 11px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: #86868b;
+}
+
 .check-field input,
 .check-field select {
   width: 100%;
@@ -1059,6 +1066,108 @@ body {
   font-size: 13px;
   line-height: 1.4;
   color: #6e6e73;
+}
+
+.check-notice-wrap {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(5.35rem + env(safe-area-inset-bottom));
+  z-index: 45;
+  display: flex;
+  justify-content: center;
+  padding: 0 0.85rem;
+  pointer-events: none;
+}
+
+.check-notice {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  max-width: 22rem;
+  width: 100%;
+  padding: 0.75rem 0.65rem 0.75rem 0.85rem;
+  border: 1px solid rgba(29, 29, 31, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow:
+    0 12px 40px rgba(22, 20, 31, 0.14),
+    0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  backdrop-filter: blur(16px);
+  animation: check-notice-in 0.32s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.check-notice-text {
+  flex: 1;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  letter-spacing: -0.01em;
+  color: #1d1d1f;
+}
+
+.check-notice-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.check-notice-primary {
+  border: 0;
+  border-radius: 999px;
+  padding: 0.42rem 0.72rem;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: #fff;
+  background: #1d1d1f;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.check-notice-primary:hover {
+  background: #3a3a3c;
+}
+
+.check-notice-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.65rem;
+  height: 1.65rem;
+  border: 0;
+  border-radius: 999px;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: #6e6e73;
+  background: transparent;
+  cursor: pointer;
+}
+
+.check-notice-dismiss:hover {
+  background: rgba(29, 29, 31, 0.06);
+  color: #1d1d1f;
+}
+
+@keyframes check-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .check-notice-wrap {
+    bottom: 1.25rem;
+    justify-content: flex-end;
+    padding-inline: max(1rem, calc((100vw - 880px) / 2 + 1rem));
+  }
 }
 
 @media (min-width: 1024px) {

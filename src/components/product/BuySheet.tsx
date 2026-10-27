@@ -15,7 +15,6 @@ import { useSales } from "@/components/sales/SalesProvider";
 import { insightProductCart } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
 import { AddiCuotasButton } from "@/components/payments/AddiCuotasButton";
-import { AddiWidget } from "@/components/payments/AddiWidget";
 import { addiAmountAllowed, checkoutHref } from "@/payments/public";
 import { loadPayMethods } from "@/payments/methodsClient";
 import { FreeShipping } from "./FreeShipping";
@@ -130,7 +129,6 @@ export function BuySheet({
             {formatMoney(model.price)}
           </p>
         </div>
-        <AddiWidget price={model.price} force={model.kind === "ring"} className="mt-2" />
 
         <fieldset className="mt-4 sm:mt-7">
           <legend className="text-[12px] text-soft">Color</legend>
@@ -208,7 +206,7 @@ export function BuySheet({
 
       </div>
 
-      <div className="shrink-0 border-t border-line bg-white/80 px-4 py-3 backdrop-blur-xl pb-[max(0.85rem,env(safe-area-inset-bottom))] sm:px-8">
+      <div className="shrink-0 border-t border-line bg-white px-4 py-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] sm:px-8">
         <div className="buy-dock">
           <button type="button" onClick={addToCart} className="buy-cart">
             Añadir al carrito

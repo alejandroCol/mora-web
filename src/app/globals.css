@@ -960,13 +960,13 @@ body {
 .addi-cuotas {
   flex: 1.2 1 0;
   border: 1px solid rgba(29, 29, 31, 0.12);
-  background: rgba(255, 255, 255, 0.9);
+  background: #fff;
   color: #1d1d1f;
 }
 
 .buy-cart:hover,
 .addi-cuotas:hover {
-  background: #fff;
+  background: #fafafa;
 }
 
 .buy-now {

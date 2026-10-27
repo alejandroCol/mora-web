@@ -22,7 +22,6 @@ import { CaseOffer, noteCaseOfferPay } from "@/components/cart/CaseOffer";
 import { CartLineVisual } from "@/components/cart/CartLineVisual";
 import { FreeShipping } from "@/components/product/FreeShipping";
 import { AddiMark } from "@/components/payments/AddiMark";
-import { AddiWidget } from "@/components/payments/AddiWidget";
 import { ColombiaFields, useDebounced } from "./ColombiaFields";
 import { currentAttribution, track } from "@/growth/track";
 import { insightFunnel, insightProductCheckout } from "@/insights/client";
@@ -815,9 +814,6 @@ export function CheckoutFlow() {
                         <AddiMark />
                       </button>
                     </div>
-                    {payMethod === "addi" ? (
-                      <AddiWidget price={shownTotal} className="mt-3" />
-                    ) : null}
                   </div>
                 ) : null}
                 {payNote ? (

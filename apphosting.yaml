@@ -55,6 +55,11 @@ env:
     availability:
       - BUILD
       - RUNTIME
+  - variable: NEXT_PUBLIC_META_PIXEL_ID
+    value: "1427285296226562"
+    availability:
+      - BUILD
+      - RUNTIME
   - variable: RESEND_FROM
     value: "Mora Ring <no-responder@moraring.com>"
     availability:

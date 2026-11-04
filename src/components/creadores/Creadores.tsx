@@ -21,6 +21,7 @@ import {
   parseFollowers,
   type NetworkId,
 } from "@/lib/creatorApplication";
+import { track } from "@/growth/track";
 import { CreadoresTitleHero } from "./CreadoresTitleHero";
 import "./creadores.css";
 
@@ -290,6 +291,21 @@ export function Creadores() {
       }
       setEmailSent(Boolean(data.emailSent));
       setAlready(Boolean(data.already));
+      if (!data.already) {
+        track(
+          "CompleteRegistration",
+          {
+            content_name: "Registro creadores UGC",
+            content_category: "ugc",
+            content_ids: ["creadores"],
+          },
+          {
+            email,
+            phone: composedPhone().value,
+            firstName: name.trim().split(/\s+/)[0],
+          },
+        );
+      }
       setPhase("done");
     } catch (error) {
       const aborted = error instanceof DOMException && error.name === "AbortError";

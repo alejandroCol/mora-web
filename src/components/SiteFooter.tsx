@@ -10,6 +10,7 @@ const LINKS = [
   { href: "/pedido", label: "Pedido" },
   { href: "/talla", label: "Talla" },
   { href: "/creadores", label: "Creadores" },
+  { href: "/soporte", label: "Soporte" },
   { href: "/envios-y-garantia", label: "Envíos y garantía" },
   { href: "/privacidad", label: "Privacidad" },
   { href: "/terminos", label: "Condiciones" },

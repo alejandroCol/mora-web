@@ -19,6 +19,7 @@ export const COLLECTIONS = {
   abandonedCarts: "abandonedCarts",
   insightsDaily: "insightsDaily",
   insightsSeen: "insightsSeen",
+  supportTickets: "supportTickets",
 } as const;
 
 export const DOCS = {

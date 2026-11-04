@@ -720,3 +720,48 @@ export async function sendCreatorStaffEmail(input: {
     attachments: input.shots,
   });
 }
+
+export async function sendSupportStaffEmail(input: {
+  ticket: string;
+  name: string;
+  email: string;
+  topic: string;
+  message: string;
+}) {
+  const html = shell({
+    preheader: `${input.ticket} · ${input.topic}`,
+    kicker: "Soporte",
+    title: `Ticket ${input.ticket}.`,
+    intro: `${escapeHtml(input.name)} escribió desde la web.`,
+    body: `
+      <p style="margin:0 0 10px;font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:${SOFT}">${escapeHtml(input.topic)}</p>
+      <p style="margin:0 0 18px;font-size:16px;line-height:1.65;font-weight:300;white-space:pre-wrap">${escapeHtml(input.message)}</p>
+      <p style="margin:0;font-size:13px;color:${SOFT}">${escapeHtml(input.email)}</p>
+    `,
+    help: false,
+  });
+  return sendResend(staffRecipients(), `Soporte ${input.ticket} · ${input.topic}`, html, {
+    replyTo: input.email,
+  });
+}
+
+export async function sendSupportAckEmail(input: {
+  ticket: string;
+  name: string;
+  email: string;
+}) {
+  const hello = escapeHtml(input.name.trim().split(/\s+/)[0] || "");
+  const html = shell({
+    preheader: `Recibimos tu nota. ${input.ticket}`,
+    kicker: "Soporte",
+    title: "Ya te leímos.",
+    intro: hello
+      ? `Hola ${hello}. Tu ticket es ${escapeHtml(input.ticket)}.`
+      : `Tu ticket es ${escapeHtml(input.ticket)}.`,
+    body: `<p style="margin:0;font-size:16px;line-height:1.65;font-weight:300;color:${SOFT}">Te escribimos a este correo. Si tarda, WhatsApp está al pie de moraring.com/soporte.</p>`,
+    help: false,
+  });
+  return sendResend(input.email, `Recibimos tu nota · ${input.ticket}`, html, {
+    replyTo: BRAND.contact.email,
+  });
+}

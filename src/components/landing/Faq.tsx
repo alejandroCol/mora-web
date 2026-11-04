@@ -25,6 +25,10 @@ export function Faq() {
         </div>
         <div className="mt-8 flex flex-col items-start gap-3 text-[13px] tracking-[-0.012em] text-[#86868b]">
           <p className="text-[15px] tracking-normal text-ink">¿Más dudas?</p>
+          <Link href="/soporte" className="transition-colors hover:text-[#1d1d1f]">
+            Soporte
+            <span aria-hidden> ›</span>
+          </Link>
           <WhatsAppLink className="transition-colors hover:text-[#1d1d1f]" prefill="Hola Mora, tengo una duda.">
             Escríbenos por WhatsApp
           </WhatsAppLink>

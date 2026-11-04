@@ -25,6 +25,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.5,
     },
     {
+      url: siteUrl("/soporte"),
+      changeFrequency: "monthly",
+      priority: 0.5,
+    },
+    {
       url: siteUrl("/envios-y-garantia"),
       changeFrequency: "monthly",
       priority: 0.4,

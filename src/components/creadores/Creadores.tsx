@@ -25,10 +25,6 @@ import "./creadores.css";
 type Phase = "intro" | "form" | "done";
 type Issue = { field: string; text: string } | null;
 
-const STEPS = ["contacto", "redes"] as const;
-
-const HINTS = ["Así te contactamos.", "La red donde más te siguen."];
-
 const COUNTRIES = [
   { code: "CO", dial: "57", name: "Colombia", placeholder: "300 000 0000" },
   { code: "MX", dial: "52", name: "México", placeholder: "55 0000 0000" },
@@ -42,8 +38,6 @@ const COUNTRIES = [
 
 export function Creadores() {
   const [phase, setPhase] = useState<Phase>("intro");
-  const [step, setStep] = useState(0);
-  const [dir, setDir] = useState<"next" | "back">("next");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [countryCode, setCountryCode] = useState<(typeof COUNTRIES)[number]["code"]>("CO");
@@ -101,11 +95,6 @@ export function Creadores() {
     sheetRef.current?.focus();
   }, [phase]);
 
-  useEffect(() => {
-    if (phase !== "form") return;
-    scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-  }, [phase, step]);
-
   function openForm() {
     setIssue(null);
     setPhase("form");
@@ -133,52 +122,56 @@ export function Creadores() {
     return { country, digits, value: `+${country.dial}${digits}` };
   }
 
-  function validateStep(index: number): Issue {
-    if (index === 0) {
-      if (!cleanName(name)) return { field: "name", text: CREATOR_COPY.name };
-      if (!cleanEmail(email)) return { field: "email", text: CREATOR_COPY.email };
-      const composed = composedPhone();
-      if (!composed.digits) return { field: "phone", text: CREATOR_COPY.phone };
-      if (composed.country.code === "CO" && composed.digits.length !== 10) {
-        return { field: "phone", text: "En Colombia el celular tiene 10 dígitos." };
-      }
-      if (!cleanPhone(composed.value)) return { field: "phone", text: CREATOR_COPY.phone };
-      return null;
+  function validate(): Issue {
+    if (!cleanName(name)) return { field: "name", text: CREATOR_COPY.name };
+    if (!cleanEmail(email)) return { field: "email", text: CREATOR_COPY.email };
+    const composed = composedPhone();
+    if (!composed.digits) return { field: "phone", text: CREATOR_COPY.phone };
+    if (composed.country.code === "CO" && composed.digits.length !== 10) {
+      return { field: "phone", text: "En Colombia el celular tiene 10 dígitos." };
     }
-    if (index === 1) {
-      if (!isNetworkId(network)) return { field: "network", text: CREATOR_COPY.network };
-      if (network === "otra" && !cleanNetworkName(networkName)) {
-        return { field: "networkName", text: CREATOR_COPY.networkName };
+    if (!cleanPhone(composed.value)) return { field: "phone", text: CREATOR_COPY.phone };
+    if (!isNetworkId(network)) return { field: "network", text: CREATOR_COPY.network };
+    if (network === "otra" && !cleanNetworkName(networkName)) {
+      return { field: "networkName", text: CREATOR_COPY.networkName };
+    }
+    if (!cleanHandle(handle)) return { field: "handle", text: CREATOR_COPY.handle };
+    const count = parseFollowers(followers);
+    if (count == null) return { field: "followers", text: CREATOR_COPY.followersMissing };
+    if (count > MAX_FOLLOWERS) return { field: "followers", text: CREATOR_COPY.followersHigh };
+    const extra = extraOpen && (secondaryNetwork !== "" || secondaryHandle.trim() !== "");
+    if (extra) {
+      if (!isNetworkId(secondaryNetwork)) {
+        return { field: "secondaryNetwork", text: CREATOR_COPY.network };
       }
-      if (!cleanHandle(handle)) return { field: "handle", text: CREATOR_COPY.handle };
-      const count = parseFollowers(followers);
-      if (count == null) return { field: "followers", text: CREATOR_COPY.followersMissing };
-      if (count > MAX_FOLLOWERS) return { field: "followers", text: CREATOR_COPY.followersHigh };
-      const extra = extraOpen && (secondaryNetwork !== "" || secondaryHandle.trim() !== "");
-      if (extra) {
-        if (!isNetworkId(secondaryNetwork)) {
-          return { field: "secondaryNetwork", text: CREATOR_COPY.network };
-        }
-        if (secondaryNetwork === network) {
-          return { field: "secondaryNetwork", text: "Elige una red distinta." };
-        }
-        if (secondaryNetwork === "otra" && !cleanNetworkName(secondaryName)) {
-          return { field: "secondaryName", text: CREATOR_COPY.networkName };
-        }
-        if (!cleanHandle(secondaryHandle)) {
-          return { field: "secondaryHandle", text: CREATOR_COPY.handle };
-        }
+      if (secondaryNetwork === network) {
+        return { field: "secondaryNetwork", text: "Elige una red distinta." };
       }
-      return null;
+      if (secondaryNetwork === "otra" && !cleanNetworkName(secondaryName)) {
+        return { field: "secondaryName", text: CREATOR_COPY.networkName };
+      }
+      if (!cleanHandle(secondaryHandle)) {
+        return { field: "secondaryHandle", text: CREATOR_COPY.handle };
+      }
     }
     return null;
   }
 
+  function revealIssue(blocker: Issue) {
+    if (!blocker) return;
+    setIssue(blocker);
+    window.setTimeout(() => {
+      scrollRef.current
+        ?.querySelector(`[data-field="${blocker.field}"]`)
+        ?.scrollIntoView({ block: "center", behavior: "smooth" });
+    }, 30);
+  }
+
   async function submit() {
     if (sendingRef.current) return;
-    const blocker = validateStep(STEPS.length - 1);
+    const blocker = validate();
     if (blocker) {
-      setIssue(blocker);
+      revealIssue(blocker);
       return;
     }
     sendingRef.current = true;
@@ -209,7 +202,7 @@ export function Creadores() {
         already?: boolean;
       } | null;
       if (!res.ok || !data?.ok) {
-        setIssue({
+        revealIssue({
           field: data?.field || "form",
           text: data?.error || "No se pudo enviar. Intenta de nuevo.",
         });
@@ -252,29 +245,13 @@ export function Creadores() {
 
   function goNext() {
     if (pending) return;
-    const blocker = validateStep(step);
+    const blocker = validate();
     if (blocker) {
-      setIssue(blocker);
+      revealIssue(blocker);
       return;
     }
     setIssue(null);
-    if (step < STEPS.length - 1) {
-      setDir("next");
-      setStep(step + 1);
-      return;
-    }
     void submit();
-  }
-
-  function goBack() {
-    if (pending) return;
-    setIssue(null);
-    if (step === 0) {
-      closeForm();
-      return;
-    }
-    setDir("back");
-    setStep(step - 1);
   }
 
   function blurFollowers() {
@@ -373,15 +350,10 @@ export function Creadores() {
                   />
                 </svg>
               </button>
-              <div className="cr-dots" aria-hidden="true">
-                {STEPS.map((item, index) => (
-                  <i key={item} data-on={index <= step ? "true" : "false"} />
-                ))}
-              </div>
+              <span />
               <span />
             </div>
             <div className="cr-sheet-scroll" ref={scrollRef}>
-              <p className="sr-only">Paso {step + 1} de {STEPS.length}</p>
               <div className="cr-trap" aria-hidden="true">
                 <input
                   tabIndex={-1}
@@ -390,13 +362,12 @@ export function Creadores() {
                   onChange={(event) => setTrap(event.target.value)}
                 />
               </div>
-              <div key={step} className="cr-step" data-dir={dir}>
-                {step === 0 ? (
-                  <>
-                    <h2 id={`${baseId}-title`}>Cómo te escribimos</h2>
-                    <div className="cr-fields">
-                      <label className="cr-field">
-                        <span>Nombre</span>
+              <div className="cr-step">
+                <h2 id={`${baseId}-title`}>Regístrate</h2>
+                <p className="cr-section">Cómo te escribimos</p>
+                <div className="cr-fields">
+                  <label className="cr-field" data-field="name">
+                    <span>Nombre</span>
                         <input
                           id={`${baseId}-name`}
                           value={name}
@@ -411,7 +382,7 @@ export function Creadores() {
                           }}
                         />
                       </label>
-                      <label className="cr-field">
+                      <label className="cr-field" data-field="email">
                         <span>Correo</span>
                         <input
                           value={email}
@@ -429,7 +400,7 @@ export function Creadores() {
                           }}
                         />
                       </label>
-                      <div className="cr-field">
+                      <div className="cr-field" data-field="phone">
                         <span>WhatsApp</span>
                         <div className="cr-phone">
                           <div className="cr-dial">
@@ -485,14 +456,9 @@ export function Creadores() {
                         </div>
                       </div>
                     </div>
-                  </>
-                ) : null}
-
-                {step === 1 ? (
-                  <>
-                    <h2 id={`${baseId}-title`}>Tus redes</h2>
+                    <p className="cr-section">Tus redes</p>
                     <div className="cr-fields">
-                      <div className="cr-field">
+                      <div className="cr-field" data-field="network">
                         <span id={`${baseId}-net`}>Red principal</span>
                         <div className="cr-chips" role="group" aria-labelledby={`${baseId}-net`}>
                           {NETWORKS.map((item) => (
@@ -512,7 +478,7 @@ export function Creadores() {
                         </div>
                       </div>
                       {network === "otra" ? (
-                        <label className="cr-field">
+                        <label className="cr-field" data-field="networkName">
                           <span>Cuál</span>
                           <input
                             value={networkName}
@@ -526,7 +492,7 @@ export function Creadores() {
                           />
                         </label>
                       ) : null}
-                      <label className="cr-field">
+                      <label className="cr-field" data-field="handle">
                         <span>Usuario</span>
                         <input
                           value={handle}
@@ -543,13 +509,13 @@ export function Creadores() {
                           }}
                         />
                       </label>
-                      <label className="cr-field">
+                      <label className="cr-field" data-field="followers">
                         <span>Seguidores</span>
                         <input
                           value={followers}
                           inputMode="decimal"
                           placeholder="1.200"
-                          enterKeyHint="done"
+                          enterKeyHint={extraOpen ? "next" : "done"}
                           aria-invalid={invalid === "followers"}
                           onFocus={focusField}
                           onBlur={blurFollowers}
@@ -561,7 +527,7 @@ export function Creadores() {
                       </label>
                       {extraOpen ? (
                         <>
-                          <div className="cr-field">
+                          <div className="cr-field" data-field="secondaryNetwork">
                             <span id={`${baseId}-net2`}>Otra red</span>
                             <div className="cr-chips" role="group" aria-labelledby={`${baseId}-net2`}>
                               {NETWORKS.filter((item) => item.id !== network).map((item) => (
@@ -581,7 +547,7 @@ export function Creadores() {
                             </div>
                           </div>
                           {secondaryNetwork === "otra" ? (
-                            <label className="cr-field">
+                            <label className="cr-field" data-field="secondaryName">
                               <span>Cuál</span>
                               <input
                                 value={secondaryName}
@@ -594,10 +560,11 @@ export function Creadores() {
                               />
                             </label>
                           ) : null}
-                          <label className="cr-field">
+                          <label className="cr-field" data-field="secondaryHandle">
                             <span>Usuario</span>
                             <input
                               value={secondaryHandle}
+                              enterKeyHint="done"
                               autoCapitalize="none"
                               autoCorrect="off"
                               spellCheck={false}
@@ -621,14 +588,12 @@ export function Creadores() {
                         </button>
                       )}
                     </div>
-                  </>
-                ) : null}
                 {note ? (
                   <p className="cr-note cr-note--alert" role="alert">
                     {note}
                   </p>
                 ) : (
-                  <p className="cr-hint">{HINTS[step]}</p>
+                  <p className="cr-hint">Así te contactamos y vemos tu red.</p>
                 )}
               </div>
             </div>
@@ -639,13 +604,8 @@ export function Creadores() {
               </div>
             ) : null}
             <div className="cr-bar">
-              {step > 0 ? (
-                <button type="button" className="cr-back" onClick={goBack}>
-                  Atrás
-                </button>
-              ) : null}
               <button type="submit" className="cr-next" disabled={pending} aria-busy={pending}>
-                {pending ? "Enviando" : step < STEPS.length - 1 ? "Seguir" : "Enviar"}
+                {pending ? "Enviando" : "Enviar"}
               </button>
             </div>
           </form>

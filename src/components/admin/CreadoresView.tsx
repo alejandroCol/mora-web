@@ -110,7 +110,7 @@ export function CreadoresView() {
               <span className="text-[#6e6e73]"> · {formatFollowers(item.followers)} seguidores</span>
             </p>
             {item.secondary ? <p className="mt-1 text-[14px] text-[#6e6e73]">También {item.secondary}</p> : null}
-            <p className="mt-3 text-[15px] leading-relaxed">{item.audience}</p>
+            {item.audience ? <p className="mt-3 text-[15px] leading-relaxed">{item.audience}</p> : null}
             {item.shotCount > 0 ? (
               <div className="mt-3 flex gap-2">
                 {Array.from({ length: item.shotCount }, (_, index) => (

@@ -654,7 +654,7 @@ function creatorInterestShell(input: { name: string }) {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:${CREATOR_MIST};border:1px solid ${CREATOR_LINE};border-radius:16px">
                 <tr>
                   <td style="padding:20px 22px">
-                    <p style="margin:0;font-size:15px;line-height:1.6;color:${CREATOR_INK};font-weight:300">Vamos a revisar tus redes y tus estadísticas con calma.</p>
+                    <p style="margin:0;font-size:15px;line-height:1.6;color:${CREATOR_INK};font-weight:300">Vamos a revisar tus redes con calma.</p>
                     <p style="margin:14px 0 0;font-size:15px;line-height:1.6;color:${CREATOR_INK};font-weight:400">Nos comunicaremos pronto contigo.</p>
                   </td>
                 </tr>
@@ -711,8 +711,8 @@ export async function sendCreatorStaffEmail(input: {
     body: `
       <p style="margin:0 0 14px;font-size:15px;line-height:1.6">${escapeHtml(input.network)}<br />${escapeHtml(input.followersLabel)} seguidores</p>
       ${input.secondary ? `<p style="margin:0 0 14px;font-size:14px;color:${SOFT}">También ${escapeHtml(input.secondary)}</p>` : ""}
-      <p style="margin:0 0 14px;font-size:15px;line-height:1.6">${escapeHtml(input.audience)}</p>
-      <p style="margin:0;font-size:13px;color:${SOFT}">${escapeHtml(input.email)} · ${escapeHtml(input.phone)}<br />Los pantallazos van adjuntos.</p>
+      ${input.audience ? `<p style="margin:0 0 14px;font-size:15px;line-height:1.6">${escapeHtml(input.audience)}</p>` : ""}
+      <p style="margin:0;font-size:13px;color:${SOFT}">${escapeHtml(input.email)} · ${escapeHtml(input.phone)}</p>
     `,
   });
   return sendResend(to, `Creador · ${input.name} · ${input.followersLabel}`, html, {

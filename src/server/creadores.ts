@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { COLLECTIONS } from "@/commerce/paths";
 import {
+  MAX_SHOTS,
   formatFollowers,
   isNetworkId,
   networkLabel,
@@ -88,7 +89,7 @@ function extension(mime: string) {
 }
 
 export async function buffersFromFiles(files: File[]): Promise<ShotUpload[] | FieldIssue> {
-  if (files.length > 4) {
+  if (files.length > MAX_SHOTS) {
     return { field: "shots", text: "Máximo 4 pantallazos." };
   }
   const shots: ShotUpload[] = [];
@@ -110,9 +111,6 @@ export async function buffersFromFiles(files: File[]): Promise<ShotUpload[] | Fi
       mime,
       buffer,
     });
-  }
-  if (shots.length < 1) {
-    return { field: "shots", text: "Adjunta al menos un pantallazo de tus estadísticas." };
   }
   return shots;
 }

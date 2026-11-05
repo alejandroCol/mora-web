@@ -5,7 +5,7 @@ import { siteUrl } from "@/lib/site";
 export const metadata: Metadata = {
   title: "Creadores",
   description:
-    "Regístrate para probar el anillo Mora en primicia. Para creadores con más de 20 mil seguidores.",
+    "Regístrate para probar el anillo Mora en primicia.",
   alternates: { canonical: "/creadores" },
   openGraph: {
     title: "Creadores — Mora",

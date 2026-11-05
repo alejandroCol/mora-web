@@ -1,4 +1,3 @@
-export const MIN_FOLLOWERS = 20_000;
 export const MAX_FOLLOWERS = 500_000_000;
 export const MAX_SHOTS = 4;
 
@@ -19,10 +18,7 @@ export const CREATOR_COPY = {
   networkName: "Cuéntanos cuál red.",
   handle: "Escribe tu usuario, sin espacios.",
   followersMissing: "Escribe cuántos seguidores tienes.",
-  followers: "Para esta primicia hacen falta más de 20 mil seguidores.",
   followersHigh: "Revisa esa cifra de seguidores.",
-  audience: "Cuéntanos a quién le hablas, en una frase.",
-  shots: "Adjunta al menos un pantallazo de las estadísticas.",
 } as const;
 
 export function isNetworkId(value: string): value is NetworkId {
@@ -172,9 +168,6 @@ export function parseCreatorFields(input: {
   if (followers == null) {
     return { ok: false, issue: { field: "followers", text: CREATOR_COPY.followersMissing } };
   }
-  if (followers < MIN_FOLLOWERS) {
-    return { ok: false, issue: { field: "followers", text: CREATOR_COPY.followers } };
-  }
   if (followers > MAX_FOLLOWERS) {
     return { ok: false, issue: { field: "followers", text: CREATOR_COPY.followersHigh } };
   }
@@ -210,10 +203,7 @@ export function parseCreatorFields(input: {
     secondaryHandle = second;
   }
 
-  const audience = cleanAudience(input.audience);
-  if (!audience) {
-    return { ok: false, issue: { field: "audience", text: CREATOR_COPY.audience } };
-  }
+  const audience = cleanAudience(input.audience) ?? "";
 
   return {
     ok: true,

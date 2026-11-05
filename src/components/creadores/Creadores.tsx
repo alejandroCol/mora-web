@@ -4,13 +4,10 @@ import { useEffect, useId, useRef, useState, type FocusEvent } from "react";
 import { BRAND } from "@/brand";
 import { BrandLoader } from "@/components/brand/BrandLoader";
 import { BrandLogo } from "@/components/brand/BrandLogo";
-import { compressImageBlob, isImageFile } from "@/lib/compressImage";
 import {
   CREATOR_COPY,
-  MAX_SHOTS,
-  MIN_FOLLOWERS,
+  MAX_FOLLOWERS,
   NETWORKS,
-  cleanAudience,
   cleanEmail,
   cleanHandle,
   cleanName,
@@ -26,16 +23,11 @@ import { CreadoresTitleHero } from "./CreadoresTitleHero";
 import "./creadores.css";
 
 type Phase = "intro" | "form" | "done";
-type Shot = { id: string; file: File; url: string };
 type Issue = { field: string; text: string } | null;
 
-const STEPS = ["contacto", "redes", "audiencia"] as const;
+const STEPS = ["contacto", "redes"] as const;
 
-const HINTS = [
-  "Así te contactamos.",
-  "La red donde más te siguen.",
-  "Una frase y tus pantallazos.",
-];
+const HINTS = ["Así te contactamos.", "La red donde más te siguen."];
 
 const COUNTRIES = [
   { code: "CO", dial: "57", name: "Colombia", placeholder: "300 000 0000" },
@@ -65,27 +57,16 @@ export function Creadores() {
   const [secondaryNetwork, setSecondaryNetwork] = useState<NetworkId | "">("");
   const [secondaryName, setSecondaryName] = useState("");
   const [secondaryHandle, setSecondaryHandle] = useState("");
-  const [audience, setAudience] = useState("");
-  const [shots, setShots] = useState<Shot[]>([]);
   const [trap, setTrap] = useState("");
   const [issue, setIssue] = useState<Issue>(null);
-  const [pending, setPending] = useState<"compress" | "send" | null>(null);
+  const [pending, setPending] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [already, setAlready] = useState(false);
   const openRef = useRef<HTMLButtonElement>(null);
   const sheetRef = useRef<HTMLFormElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const fileRef = useRef<HTMLInputElement>(null);
   const sendingRef = useRef(false);
-  const shotsRef = useRef(shots);
   const baseId = useId();
-  shotsRef.current = shots;
-
-  useEffect(() => {
-    return () => {
-      for (const shot of shotsRef.current) URL.revokeObjectURL(shot.url);
-    };
-  }, []);
 
   useEffect(() => {
     if (phase !== "form") return;
@@ -146,39 +127,6 @@ export function Creadores() {
     }, 280);
   }
 
-  function addFiles(list: FileList | File[] | null) {
-    if (!list) return;
-    const next = [...shots];
-    let rejected = "";
-    for (const file of Array.from(list)) {
-      if (next.length >= MAX_SHOTS) {
-        rejected = "Máximo 4 pantallazos.";
-        break;
-      }
-      if (!isImageFile(file)) {
-        rejected = "Usa una imagen: JPG, PNG o una captura del teléfono.";
-        continue;
-      }
-      if (file.size > 12_000_000) {
-        rejected = "Esa imagen es muy pesada.";
-        continue;
-      }
-      next.push({ id: crypto.randomUUID(), file, url: URL.createObjectURL(file) });
-    }
-    setShots(next);
-    if (rejected) setIssue({ field: "shots", text: rejected });
-    else clearIssue("shots");
-    if (fileRef.current) fileRef.current.value = "";
-  }
-
-  function removeShot(id: string) {
-    setShots((current) => {
-      const shot = current.find((item) => item.id === id);
-      if (shot) URL.revokeObjectURL(shot.url);
-      return current.filter((item) => item.id !== id);
-    });
-  }
-
   function composedPhone() {
     const country = COUNTRIES.find((item) => item.code === countryCode) ?? COUNTRIES[0];
     const digits = localPhone.replace(/\D/g, "");
@@ -205,8 +153,7 @@ export function Creadores() {
       if (!cleanHandle(handle)) return { field: "handle", text: CREATOR_COPY.handle };
       const count = parseFollowers(followers);
       if (count == null) return { field: "followers", text: CREATOR_COPY.followersMissing };
-      if (count < MIN_FOLLOWERS) return { field: "followers", text: CREATOR_COPY.followers };
-      if (count > 500_000_000) return { field: "followers", text: CREATOR_COPY.followersHigh };
+      if (count > MAX_FOLLOWERS) return { field: "followers", text: CREATOR_COPY.followersHigh };
       const extra = extraOpen && (secondaryNetwork !== "" || secondaryHandle.trim() !== "");
       if (extra) {
         if (!isNetworkId(secondaryNetwork)) {
@@ -224,40 +171,22 @@ export function Creadores() {
       }
       return null;
     }
-    if (!cleanAudience(audience)) return { field: "audience", text: CREATOR_COPY.audience };
-    if (shots.length < 1) return { field: "shots", text: CREATOR_COPY.shots };
     return null;
   }
 
   async function submit() {
     if (sendingRef.current) return;
-    const blocker = validateStep(2);
+    const blocker = validateStep(STEPS.length - 1);
     if (blocker) {
       setIssue(blocker);
       return;
     }
     sendingRef.current = true;
-    setPending("compress");
+    setPending(true);
     setIssue(null);
     const controller = new AbortController();
     const timer = window.setTimeout(() => controller.abort(), 30_000);
     try {
-      const prepared = await Promise.all(
-        shots.map(async (shot, index) => {
-          const blob = await compressImageBlob(shot.file, 2000, 0.86);
-          const type = blob.type || "image/webp";
-          const ext = type === "image/png" ? "png" : type === "image/jpeg" ? "jpg" : "webp";
-          return new File([blob], `estadisticas-${index + 1}.${ext}`, { type });
-        }),
-      );
-      const heavy = prepared.find((file) => file.size > 1_500_000);
-      if (heavy) {
-        setIssue({
-          field: "shots",
-          text: "Ese pantallazo sigue pesando mucho. Prueba otra captura.",
-        });
-        return;
-      }
       const body = new FormData();
       body.set("name", name);
       body.set("email", email);
@@ -269,11 +198,8 @@ export function Creadores() {
       body.set("secondaryNetwork", extraOpen ? secondaryNetwork : "");
       body.set("secondaryName", extraOpen ? secondaryName : "");
       body.set("secondaryHandle", extraOpen ? secondaryHandle : "");
-      body.set("audience", audience);
       body.set("mora_hp", trap);
-      for (const file of prepared) body.append("shots", file, file.name);
 
-      setPending("send");
       const res = await fetch("/api/creadores", { method: "POST", body, signal: controller.signal });
       const data = (await res.json().catch(() => null)) as {
         ok?: boolean;
@@ -320,7 +246,7 @@ export function Creadores() {
     } finally {
       window.clearTimeout(timer);
       sendingRef.current = false;
-      setPending(null);
+      setPending(false);
     }
   }
 
@@ -355,8 +281,7 @@ export function Creadores() {
     const count = parseFollowers(followers);
     if (count == null) return;
     setFollowers(formatFollowers(count));
-    if (count < MIN_FOLLOWERS) setIssue({ field: "followers", text: CREATOR_COPY.followers });
-    else if (count > 500_000_000) setIssue({ field: "followers", text: CREATOR_COPY.followersHigh });
+    if (count > MAX_FOLLOWERS) setIssue({ field: "followers", text: CREATOR_COPY.followersHigh });
     else clearIssue("followers");
   }
 
@@ -456,7 +381,7 @@ export function Creadores() {
               <span />
             </div>
             <div className="cr-sheet-scroll" ref={scrollRef}>
-              <p className="sr-only">Paso {step + 1} de 3</p>
+              <p className="sr-only">Paso {step + 1} de {STEPS.length}</p>
               <div className="cr-trap" aria-hidden="true">
                 <input
                   tabIndex={-1}
@@ -623,8 +548,8 @@ export function Creadores() {
                         <input
                           value={followers}
                           inputMode="decimal"
-                          placeholder="20.000"
-                          enterKeyHint="next"
+                          placeholder="1.200"
+                          enterKeyHint="done"
                           aria-invalid={invalid === "followers"}
                           onFocus={focusField}
                           onBlur={blurFollowers}
@@ -698,85 +623,6 @@ export function Creadores() {
                     </div>
                   </>
                 ) : null}
-
-                {step === 2 ? (
-                  <>
-                    <h2 id={`${baseId}-title`}>Por último, cuéntanos de tu público</h2>
-                    <div className="cr-fields">
-                      <label className="cr-field">
-                        <span>Cuál es tu público objetivo</span>
-                        <textarea
-                          value={audience}
-                          maxLength={280}
-                          rows={3}
-                          placeholder="Mujeres de 25 a 35 en Colombia"
-                          enterKeyHint="done"
-                          aria-invalid={invalid === "audience"}
-                          onFocus={focusField}
-                          onChange={(event) => {
-                            setAudience(event.target.value);
-                            clearIssue("audience");
-                          }}
-                        />
-                        {audience.length > 0 ? (
-                          <span className="cr-count">{audience.length}/280</span>
-                        ) : null}
-                      </label>
-                      <div className="cr-field">
-                        <span>Pantallazos de las estadísticas</span>
-                        <div className="cr-shots">
-                          {shots.map((shot, index) => (
-                            <div className="cr-shot" key={shot.id}>
-                              <img src={shot.url} alt="" />
-                              <button
-                                type="button"
-                                aria-label={`Quitar pantallazo ${index + 1}`}
-                                onClick={() => removeShot(shot.id)}
-                              >
-                                <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
-                                  <path
-                                    d="M2 2l6 6M8 2 2 8"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    strokeWidth="1.4"
-                                    strokeLinecap="round"
-                                  />
-                                </svg>
-                              </button>
-                            </div>
-                          ))}
-                          {shots.length < MAX_SHOTS ? (
-                            <label
-                              className={shots.length === 0 ? "cr-add cr-add-wide" : "cr-add"}
-                              onDragOver={(event) => event.preventDefault()}
-                              onDrop={(event) => {
-                                event.preventDefault();
-                                addFiles(event.dataTransfer.files);
-                              }}
-                            >
-                              <input
-                                ref={fileRef}
-                                type="file"
-                                accept="image/*,.heic,.heif"
-                                multiple
-                                className="cr-file-input"
-                                onChange={(event) => addFiles(event.target.files)}
-                              />
-                              {shots.length === 0 ? (
-                                <>
-                                  <span>Añadir pantallazos</span>
-                                  <small>De tus estadísticas</small>
-                                </>
-                              ) : (
-                                <span aria-hidden="true">+</span>
-                              )}
-                            </label>
-                          ) : null}
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                ) : null}
                 {note ? (
                   <p className="cr-note cr-note--alert" role="alert">
                     {note}
@@ -788,12 +634,8 @@ export function Creadores() {
             </div>
             {pending ? (
               <div className="cr-sending" role="status" aria-live="polite">
-                <BrandLoader
-                  label={pending === "compress" ? "Preparando las fotos" : "Enviando"}
-                />
-                <p className="cr-sending-label">
-                  {pending === "compress" ? "Preparando las fotos" : "Enviando"}
-                </p>
+                <BrandLoader label="Enviando" />
+                <p className="cr-sending-label">Enviando</p>
               </div>
             ) : null}
             <div className="cr-bar">
@@ -802,14 +644,8 @@ export function Creadores() {
                   Atrás
                 </button>
               ) : null}
-              <button type="submit" className="cr-next" disabled={pending !== null} aria-busy={pending !== null}>
-                {pending === "compress"
-                  ? "Preparando fotos"
-                  : pending === "send"
-                    ? "Enviando"
-                    : step < 2
-                      ? "Seguir"
-                      : "Enviar"}
+              <button type="submit" className="cr-next" disabled={pending} aria-busy={pending}>
+                {pending ? "Enviando" : step < STEPS.length - 1 ? "Seguir" : "Enviar"}
               </button>
             </div>
           </form>

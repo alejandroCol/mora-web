@@ -17,9 +17,10 @@ function fromEnv(): GrowthSettings {
     whatsappAppSecret: process.env.WHATSAPP_APP_SECRET?.trim() ?? "",
     whatsappDisplayNumber:
       process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.replace(/\D/g, "") ?? "",
+    // Saludo neutro: llega gente a comprar y también creadoras de la campaña.
     whatsappWelcome:
       process.env.WHATSAPP_WELCOME?.trim() ??
-      "Hola, soy Mora. Dime si te queda Pro o Ultra, el color, y si quieres medidor de talla.",
+      "Hola, gracias por escribirnos. Soy del equipo de Mora: ya leí tu mensaje y en un momento te respondo.",
     whatsappPrefill:
       process.env.WHATSAPP_PREFILL?.trim() ??
       "Hola Mora, quiero un anillo. ¿Me orientan?",

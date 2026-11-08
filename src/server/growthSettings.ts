@@ -20,7 +20,7 @@ function fromEnv(): GrowthSettings {
     // Saludo neutro: llega gente a comprar y también creadoras de la campaña.
     whatsappWelcome:
       process.env.WHATSAPP_WELCOME?.trim() ??
-      "Hola, gracias por escribirnos. Soy del equipo de Mora: ya leí tu mensaje y en un momento te respondo.",
+      "Hola, gracias por escribirnos. Somos Mora Ring, en un momento una persona de nuestro equipo estará contigo.",
     whatsappPrefill:
       process.env.WHATSAPP_PREFILL?.trim() ??
       "Hola Mora, quiero un anillo. ¿Me orientan?",

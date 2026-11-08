@@ -13,11 +13,24 @@ function reply(
 export function defaultCrmReplies(): CrmQuickReply[] {
   const pro = formatMoney(products.aero.price);
   const ultra = formatMoney(products.titan.price);
+  const prices = pro === ultra ? `Los dos ${pro}.` : `Pro ${pro}, Ultra ${ultra}.`;
   return [
     reply(
       "hola",
       "Hola",
-      "Hola, soy de Mora. ¿Buscas Pro o Ultra?",
+      "Hola, soy del equipo de Mora. Cuéntame qué buscas y te oriento.",
+      "sales",
+    ),
+    reply(
+      "info",
+      "Más info",
+      `Claro. Mora es un anillo sin pantalla: lee tu sueño, pulso, estrés y pasos, y lo ves en la app. Pro es cerámica y aguanta agua; Ultra es titanio, el más ligero. ${prices} ¿Qué te importa más: dormir mejor, el estrés o el deporte?`,
+      "sales",
+    ),
+    reply(
+      "diferencia",
+      "Pro vs Ultra",
+      `${pro === ultra ? "Mismo precio, distinta piel." : "Distinta piel."} Pro: cerámica, se moja en ducha y piscina, estrés en curva todo el día. Ultra: titanio, 2,5 g, meditación guiada, mejor fuera del agua. ¿Cuál va más contigo?`,
       "sales",
     ),
     reply(

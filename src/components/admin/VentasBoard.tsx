@@ -55,6 +55,11 @@ function pendingGuideFor(order: MoraOrder) {
   return target ? guideNumberFor(order, target.kind) : "";
 }
 
+/** Ruedita dentro del botón mientras corre su acción. */
+function Spin({ on }: { on: boolean }) {
+  return on ? <span className="btn-spin" aria-hidden /> : null;
+}
+
 function CheckGlyph() {
   return (
     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
@@ -80,7 +85,7 @@ export function VentasBoard() {
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<Tab>("pipeline");
   const [tracking, setTracking] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState("");
   const [hekaError, setHekaError] = useState("");
   const [sandbox, setSandbox] = useState(true);
   const [settings, setSettings] = useState<CommerceSettings | null>(null);
@@ -116,7 +121,7 @@ export function VentasBoard() {
   }
 
   async function viewGuide(order: MoraOrder, leg?: "sizer" | "rings") {
-    setBusy(true);
+    setBusy(`${order.id}:view:${leg ?? "rings"}`);
     setHekaError("");
     try {
       const res = await authorizedFetch(
@@ -133,7 +138,7 @@ export function VentasBoard() {
     } catch (error) {
       setHekaError(error instanceof Error ? error.message : "No se pudo abrir la guía.");
     } finally {
-      setBusy(false);
+      setBusy("");
     }
   }
 
@@ -173,7 +178,7 @@ export function VentasBoard() {
   );
 
   async function runHeka(order: MoraOrder, action: "create" | "refresh") {
-    setBusy(true);
+    setBusy(`${order.id}:heka:${action}`);
     setHekaError("");
     try {
       const res = await authorizedFetch(`/api/admin/orders/${order.id}/heka`, {
@@ -188,12 +193,12 @@ export function VentasBoard() {
     } catch (error) {
       setHekaError(error instanceof Error ? error.message : "Heka no pudo crear la guía.");
     } finally {
-      setBusy(false);
+      setBusy("");
     }
   }
 
   async function changeStatus(order: MoraOrder, status: OrderStatus, trackingNumber?: string) {
-    setBusy(true);
+    setBusy(`${order.id}:status:${status}`);
     try {
       const res = await authorizedFetch(`/api/admin/orders/${order.id}`, {
         method: "PATCH",
@@ -210,7 +215,7 @@ export function VentasBoard() {
     } catch (error) {
       setHekaError(error instanceof Error ? error.message : "No se pudo cambiar el estado.");
     } finally {
-      setBusy(false);
+      setBusy("");
     }
   }
 
@@ -447,7 +452,7 @@ function OrderCard({
   onEnCamino,
 }: {
   order: MoraOrder;
-  busy: boolean;
+  busy: string;
   onOpen: () => void;
   onCreate: () => void;
   onView: (leg?: "sizer" | "rings") => void;
@@ -497,10 +502,11 @@ function OrderCard({
             {guide ? (
               <button
                 type="button"
-                disabled={busy}
+                disabled={Boolean(busy)}
                 onClick={onCreate}
                 className="h-9 rounded-full bg-[#1d1d1f] px-4 text-[12px] text-white disabled:opacity-40"
               >
+                <Spin on={busy === `${order.id}:heka:create`} />
                 {guide === "sizer"
                   ? "Guía del medidor"
                   : orderHasSizer(order.items)
@@ -511,30 +517,33 @@ function OrderCard({
             {camino ? (
               <button
                 type="button"
-                disabled={busy}
+                disabled={Boolean(busy)}
                 onClick={onEnCamino}
                 className="h-9 rounded-full bg-[#1d1d1f] px-4 text-[12px] text-white disabled:opacity-40"
               >
+                <Spin on={busy === `${order.id}:status:${camino.to}`} />
                 {camino.label}
               </button>
             ) : null}
             {sizerGuide ? (
               <button
                 type="button"
-                disabled={busy}
+                disabled={Boolean(busy)}
                 onClick={() => onView("sizer")}
                 className="h-9 rounded-full bg-[var(--admin-field)] px-4 text-[12px] disabled:opacity-40"
               >
+                <Spin on={busy === `${order.id}:view:sizer`} />
                 Ver medidor
               </button>
             ) : null}
             {ringsGuide ? (
               <button
                 type="button"
-                disabled={busy}
+                disabled={Boolean(busy)}
                 onClick={() => onView("rings")}
                 className="h-9 rounded-full bg-[var(--admin-field)] px-4 text-[12px] disabled:opacity-40"
               >
+                <Spin on={busy === `${order.id}:view:rings`} />
                 Ver guía
               </button>
             ) : null}
@@ -559,7 +568,7 @@ function OrderDrawer({
   order: MoraOrder;
   tracking: string;
   setTracking: (value: string) => void;
-  busy: boolean;
+  busy: string;
   hekaError: string;
   onClose: () => void;
   onStatus: (status: OrderStatus) => void;
@@ -652,10 +661,11 @@ function OrderDrawer({
           {next.action === "confirm_paid" ? (
             <button
               type="button"
-              disabled={busy}
+              disabled={Boolean(busy)}
               onClick={() => onStatus("paid")}
               className="admin-cta mt-4 h-11 w-full disabled:opacity-40"
             >
+              <Spin on={busy === `${order.id}:status:paid`} />
               {next.actionLabel}
             </button>
           ) : null}
@@ -663,11 +673,12 @@ function OrderDrawer({
           {next.action === "heka_create" ? (
             <button
               type="button"
-              disabled={busy}
+              disabled={Boolean(busy)}
               onClick={() => onHeka("create")}
               className="admin-cta mt-4 h-11 w-full disabled:opacity-40"
             >
-              {next.actionLabel}
+              <Spin on={busy === `${order.id}:heka:create`} />
+              {busy === `${order.id}:heka:create` ? "Creando la guía en Heka…" : next.actionLabel}
             </button>
           ) : null}
 
@@ -686,10 +697,11 @@ function OrderDrawer({
                 />
                 <button
                   type="button"
-                  disabled={busy}
+                  disabled={Boolean(busy)}
                   onClick={onEnCamino}
                   className={next.action === "en_camino" ? "admin-cta order-manual-btn" : "order-manual-btn is-soft"}
                 >
+                  <Spin on={busy === `${order.id}:status:${camino.to}`} />
                   {camino.label}
                 </button>
               </div>
@@ -699,10 +711,11 @@ function OrderDrawer({
           {next.action === "deliver" ? (
             <button
               type="button"
-              disabled={busy}
+              disabled={Boolean(busy)}
               onClick={() => onStatus("delivered")}
               className="admin-cta mt-4 h-11 w-full disabled:opacity-40"
             >
+              <Spin on={busy === `${order.id}:status:delivered`} />
               {next.actionLabel}
             </button>
           ) : null}
@@ -730,12 +743,14 @@ function OrderDrawer({
                 </p>
                 {step.detail ? <p className="order-step-detail">{step.detail}</p> : null}
                 {step.id === "sizer" && sizerGuide ? (
-                  <button type="button" disabled={busy} onClick={() => onView("sizer")} className="order-step-link">
+                  <button type="button" disabled={Boolean(busy)} onClick={() => onView("sizer")} className="order-step-link">
+                    <Spin on={busy === `${order.id}:view:sizer`} />
                     Ver guía del medidor
                   </button>
                 ) : null}
                 {step.id === "rings" && ringsGuide ? (
-                  <button type="button" disabled={busy} onClick={() => onView("rings")} className="order-step-link">
+                  <button type="button" disabled={Boolean(busy)} onClick={() => onView("rings")} className="order-step-link">
+                    <Spin on={busy === `${order.id}:view:rings`} />
                     Ver guía de los anillos
                   </button>
                 ) : null}
@@ -747,11 +762,12 @@ function OrderDrawer({
         {canRefreshHeka ? (
           <button
             type="button"
-            disabled={busy}
+            disabled={Boolean(busy)}
             onClick={() => onHeka("refresh")}
             className="order-soft-btn mt-6"
           >
-            Actualizar estado en Heka
+            <Spin on={busy === `${order.id}:heka:refresh`} />
+            {busy === `${order.id}:heka:refresh` ? "Consultando Heka…" : "Actualizar estado en Heka"}
           </button>
         ) : null}
 
@@ -779,10 +795,11 @@ function OrderDrawer({
         {order.status !== "cancelled" && order.status !== "delivered" ? (
           <button
             type="button"
-            disabled={busy}
+            disabled={Boolean(busy)}
             onClick={() => onStatus("cancelled")}
             className="mt-3 h-11 w-full rounded-full text-[13px] text-[var(--admin-danger)] hover:bg-red-50"
           >
+            <Spin on={busy === `${order.id}:status:cancelled`} />
             Cancelar pedido
           </button>
         ) : null}

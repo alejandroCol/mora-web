@@ -1846,6 +1846,24 @@
   box-shadow: -12px 0 40px rgba(0, 0, 0, 0.12);
 }
 
+/* Ruedita dentro del botón cuya acción está corriendo. Los demás quedan atenuados. */
+.btn-spin {
+  display: inline-block;
+  width: 0.8rem;
+  height: 0.8rem;
+  margin-right: 0.5rem;
+  vertical-align: -0.1rem;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: crm-spin 0.8s linear infinite;
+}
+
+.mora-admin button:disabled:has(> .btn-spin) {
+  opacity: 1 !important;
+  cursor: progress;
+}
+
 /* Pedido · «Qué sigue»: una tarjeta clara, una acción. */
 .order-next {
   margin-top: 1.75rem;

@@ -13,7 +13,6 @@ function reply(
 export function defaultCrmReplies(): CrmQuickReply[] {
   const pro = formatMoney(products.aero.price);
   const ultra = formatMoney(products.titan.price);
-  const prices = pro === ultra ? `Los dos ${pro}.` : `Pro ${pro}, Ultra ${ultra}.`;
   return [
     reply(
       "hola",
@@ -24,7 +23,7 @@ export function defaultCrmReplies(): CrmQuickReply[] {
     reply(
       "info",
       "Más info",
-      `Claro. Mora es un anillo sin pantalla: lee tu sueño, pulso, estrés y pasos, y lo ves en la app. Pro es cerámica y aguanta agua; Ultra es titanio, el más ligero. ${prices} ¿Qué te importa más: dormir mejor, el estrés o el deporte?`,
+      "Claro. Mi nombre es Lina de Mora Ring. Mora es un anillo inteligente: lo llevas puesto y la app te cuenta cómo estás. Mide tu sueño para saber qué tan bien descansas, tu pulso y oxígeno día y noche, tu estrés como una marea que sube y baja, qué tan recuperado amaneces, la temperatura de tu piel, tus pasos y entrenos, y lleva tu ciclo solo en tu teléfono. Además trae meditación guiada, Círculo para compartir tu día con alguien, meta de pasos y un aviso si tu pulso en reposo sube. Pro es cerámica y Ultra es titanio, ambos resistentes al agua. ¿Cuál es el color que más te gusta?",
       "sales",
     ),
     reply(

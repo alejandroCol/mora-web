@@ -637,11 +637,14 @@ function OrderDrawer({
         {/* Qué sigue: una tarjeta, una acción. */}
         <section className={`order-next is-${next.tone}`}>
           <p className="order-next-kicker">
-            {next.tone === "done" || next.tone === "cancelled"
-              ? "Estado"
-              : next.waiting
-                ? "En espera"
-                : "Siguiente paso"}
+            <span className="order-next-dot" aria-hidden />
+            {next.tone === "done"
+              ? "Cerrado"
+              : next.tone === "cancelled"
+                ? "Cancelado"
+                : next.waiting
+                  ? "En espera de otro"
+                  : "Te toca a ti"}
           </p>
           <h3 className="order-next-title">{next.title}</h3>
           <p className="order-next-body">{next.body}</p>

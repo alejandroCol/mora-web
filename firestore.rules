@@ -60,6 +60,11 @@ service cloud.firestore {
       allow read, write: if isStaff();
     }
 
+    // Teléfonos del equipo con la app Super Admin. Solo Admin SDK (web) y Functions.
+    match /staffDevices/{deviceId} {
+      allow read, write: if false;
+    }
+
     match /whatsappConversations/{id} {
       allow read, write: if isStaff();
       match /messages/{mid} {

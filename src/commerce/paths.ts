@@ -5,6 +5,8 @@ export const COLLECTIONS = {
   orderNumbers: "orderNumbers",
   counters: "counters",
   staff: "staff",
+  /** Teléfonos del equipo con la app Super Admin (push de la bandeja). Solo Admin SDK. */
+  staffDevices: "staffDevices",
   statsDaily: "statsDaily",
   gallery: "gallery",
   leads: "leads",

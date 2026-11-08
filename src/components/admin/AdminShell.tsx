@@ -9,7 +9,9 @@ import { BrandLoader } from "@/components/brand/BrandLoader";
 import { BrandLogo } from "@/components/brand/BrandLogo";
 import { ROLE_LABEL, type StaffPermission } from "@/commerce/roles";
 import { getFirebaseAuth } from "@/lib/firebase";
+import { unregisterNativeDevice } from "@/lib/nativeShell";
 import { AdminAuthProvider, useAdminAuth } from "./AdminAuth";
+import { NativeShellBridge } from "./NativeShellBridge";
 
 type NavItem = { href: string; label: string; permission: StaffPermission; icon: ReactNode };
 
@@ -37,7 +39,7 @@ const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
 ];
 
 function Shell({ children }: { children: ReactNode }) {
-  const { user, loading, me, can } = useAdminAuth();
+  const { user, loading, me, can, authorizedFetch } = useAdminAuth();
   const router = useRouter();
   const pathname = usePathname();
   const links = NAV.filter((item) => can(item.permission));
@@ -106,6 +108,11 @@ function Shell({ children }: { children: ReactNode }) {
     };
   }, [mobileOpen]);
 
+  async function leave() {
+    await unregisterNativeDevice(authorizedFetch);
+    await signOut(getFirebaseAuth());
+  }
+
   function toggleCollapsed() {
     window.localStorage.setItem("mora-admin-nav", collapsed ? "open" : "collapsed");
     window.dispatchEvent(new Event("mora-admin-nav"));
@@ -124,7 +131,7 @@ function Shell({ children }: { children: ReactNode }) {
       <div className="admin-app grid min-h-dvh place-items-center px-6 text-center">
         <div>
           <p className="text-lg">Esta cuenta no está en el equipo.</p>
-          <button type="button" onClick={() => void signOut(getFirebaseAuth())} className="admin-ghost mt-6">
+          <button type="button" onClick={() => void leave()} className="admin-ghost mt-6">
             Salir
           </button>
         </div>
@@ -183,7 +190,7 @@ function Shell({ children }: { children: ReactNode }) {
           </span>
           <div className="admin-user-copy">
             <p>{displayName}</p>
-            <button type="button" onClick={() => void signOut(getFirebaseAuth())} className="admin-ghost">
+            <button type="button" onClick={() => void leave()} className="admin-ghost">
               Salir
             </button>
           </div>
@@ -220,6 +227,7 @@ function Shell({ children }: { children: ReactNode }) {
               </Link>
             </div>
           </header>
+          <NativeShellBridge />
           <div className="admin-main">{children}</div>
         </div>
       </div>

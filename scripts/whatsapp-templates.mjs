@@ -58,16 +58,20 @@ function loadServiceAccount() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim()) {
     return JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
   }
+  // Mismo archivo que usa la app en desarrollo (src/lib/firebaseAdmin.ts).
+  if (existsSync(".secrets/firebase-admin.json")) {
+    return JSON.parse(readFileSync(".secrets/firebase-admin.json", "utf8"));
+  }
   const envPath = ".env.local";
-  if (!existsSync(envPath)) throw new Error("Falta FIREBASE_SERVICE_ACCOUNT_JSON o .env.local");
+  if (!existsSync(envPath)) throw new Error("Falta FIREBASE_SERVICE_ACCOUNT_JSON, .secrets/firebase-admin.json o .env.local");
   const line = readFileSync(envPath, "utf8")
     .split("\n")
     .find((row) => row.startsWith("FIREBASE_SERVICE_ACCOUNT_JSON="));
-  if (!line) throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON no está en .env.local");
-  let value = line.slice("FIREBASE_SERVICE_ACCOUNT_JSON=".length).trim();
+  let value = line ? line.slice("FIREBASE_SERVICE_ACCOUNT_JSON=".length).trim() : "";
   if ((value.startsWith("'") && value.endsWith("'")) || (value.startsWith('"') && value.endsWith('"'))) {
     value = value.slice(1, -1);
   }
+  if (!value) throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON está vacío en .env.local");
   return JSON.parse(value);
 }
 

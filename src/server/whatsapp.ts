@@ -42,8 +42,23 @@ function inboundText(raw: WebhookMessage) {
   if (raw.type === "video") return "[video]";
   if (raw.type === "document") return "[archivo]";
   if (raw.type === "sticker") return "[sticker]";
+  // Reacción: el texto es el emoji; vacío si la quitó.
+  if (raw.type === "reaction") return raw.reaction?.emoji ?? "";
   if (raw.type && raw.type !== "text") return `[${raw.type}]`;
   return "";
+}
+
+/** Texto corto para la lista de chats; el hilo muestra el archivo real. */
+function inboundPreview(raw: WebhookMessage, text: string) {
+  if (raw.type === "reaction") {
+    return raw.reaction?.emoji ? `Reaccionó ${raw.reaction.emoji} a tu mensaje` : "Quitó una reacción";
+  }
+  if (raw.type === "audio" || raw.type === "voice") return "🎤 Nota de voz";
+  if (raw.type === "image") return raw.image?.caption ? `📷 ${raw.image.caption}` : "📷 Foto";
+  if (raw.type === "video") return raw.video?.caption ? `🎬 ${raw.video.caption}` : "🎬 Video";
+  if (raw.type === "document") return `📎 ${raw.document?.filename || "Archivo"}`;
+  if (raw.type === "sticker") return "Sticker";
+  return text;
 }
 
 function inboundMedia(raw: WebhookMessage) {
@@ -422,6 +437,7 @@ type WebhookMessage = {
   video?: MediaBlob;
   document?: MediaBlob;
   sticker?: MediaBlob;
+  reaction?: { message_id?: string; emoji?: string };
   voice?: MediaBlob;
   referral?: {
     source_url?: string;
@@ -506,8 +522,17 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
           status: "received",
           mediaId: media.mediaId,
           mimeType: media.mimeType,
+          reactionTo: raw.type === "reaction" ? raw.reaction?.message_id : undefined,
         };
         await messages(phone).doc(raw.id).set(compact(message), { merge: true });
+        // La reacción también se cuelga del mensaje original para verla en su burbuja.
+        if (raw.type === "reaction" && raw.reaction?.message_id) {
+          // update() y no set(): si el mensaje original no está guardado, no crear un hueco.
+          await messages(phone)
+            .doc(raw.reaction.message_id)
+            .update({ reaction: raw.reaction.emoji ?? "" })
+            .catch(() => undefined);
+        }
 
         const source = referral || prev?.source === "ad" ? "ad" : prev?.source ?? "organic";
         const attribution: AttributionSnapshot = {
@@ -531,7 +556,7 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
             id: phone,
             phone,
             name: name || prev?.name || phone,
-            lastMessage: text,
+            lastMessage: inboundPreview(raw, text),
             lastDirection: "in",
             lastAt: at,
             lastInboundAt: at,

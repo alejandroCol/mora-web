@@ -5,6 +5,7 @@ import type { CrmSeller, WhatsAppConversation, WhatsAppMessage } from "@/growth/
 import { LOST_REASON_LABEL, PIPELINE_LABEL, SUPPORT_STATUS_LABEL, followUpLabel, isSnoozed } from "@/crm/labels";
 import { formatClock } from "@/crm/labels";
 import type { CrmLostReason, WhatsAppConversationStatus } from "@/growth/types";
+import { CrmVoiceNote } from "./CrmVoiceNote";
 
 function initial(name: string, phone: string) {
   const source = name.trim() || phone;
@@ -187,6 +188,34 @@ export function CrmThread({
 
       <div ref={scroller} className="crm-scroll flex-1 space-y-2 overflow-y-auto px-3 py-3 lg:px-5">
         {messages.map((message) => {
+          if (message.type === "reaction") {
+            // Reacción a un mensaje: línea corta, no burbuja. El emoji también
+            // va pegado a la burbuja original (message.reaction).
+            // «[reaction]» es de antes de guardar el emoji: solo sabemos que reaccionó.
+            const legacy = message.text === "[reaction]";
+            const emoji = legacy ? "" : message.text;
+            const target = emoji && message.reactionTo ? messages.find((m) => m.id === message.reactionTo) : undefined;
+            const quote = target ? reactionQuote(target) : "";
+            const who = message.direction === "out" ? "Reaccionaste" : "Reaccionó";
+            return (
+              <p
+                key={message.id}
+                className={`crm-reaction-line ${message.direction === "out" ? "ml-auto text-right" : ""}`}
+              >
+                {emoji ? (
+                  <>
+                    <span className="crm-reaction-emoji">{emoji}</span> {who}
+                    {quote ? <> a «{quote}»</> : " a un mensaje"}
+                  </>
+                ) : legacy ? (
+                  `${who} a un mensaje`
+                ) : (
+                  `${who === "Reaccionó" ? "Quitó" : "Quitaste"} una reacción`
+                )}
+                <span className="crm-reaction-time">{formatClock(message.at)}</span>
+              </p>
+            );
+          }
           const media = mediaKind(message);
           // «[foto]», «[audio]»… son relleno del webhook; con el archivo a la vista sobran.
           // En archivos el texto es el nombre y ya va en la tarjeta.
@@ -197,8 +226,13 @@ export function CrmThread({
               key={message.id}
               className={`crm-bubble max-w-[82%] rounded-2xl px-3 py-2 text-[13px] leading-6 ${
                 message.direction === "out" ? "admin-bubble-out ml-auto" : "admin-bubble-in"
-              } ${media === "image" || media === "sticker" ? "has-media" : ""}`}
+              } ${media === "image" || media === "sticker" ? "has-media" : ""} ${message.reaction ? "has-reaction" : ""}`}
             >
+              {message.reaction ? (
+                <span className="crm-reaction-badge" title="Reacción del cliente">
+                  {message.reaction}
+                </span>
+              ) : null}
               {media && message.mediaId ? (
                 <MediaBubble
                   kind={media}
@@ -247,6 +281,18 @@ type MediaKind = "image" | "sticker" | "video" | "audio" | "document";
 
 const PLACEHOLDER_RE = /^\[(foto|audio|video|archivo|sticker|voice|document|image)\]$/i;
 
+/** Cita corta del mensaje reaccionado, para «Reaccionó ❤️ a «…»». */
+function reactionQuote(message: WhatsAppMessage) {
+  const kind = mediaKind(message);
+  if (kind === "image" || kind === "sticker") return "foto";
+  if (kind === "audio") return "nota de voz";
+  if (kind === "video") return "video";
+  if (kind === "document") return "archivo";
+  const text = message.text.replace(/\s+/g, " ").trim();
+  if (!text || PLACEHOLDER_RE.test(text)) return "";
+  return text.length > 40 ? `${text.slice(0, 40).trimEnd()}…` : text;
+}
+
 function mediaKind(message: WhatsAppMessage): MediaKind | null {
   if (!message.mediaId) return null;
   const type = message.type;
@@ -275,6 +321,7 @@ function MediaBubble({
   onOpen: (src: string) => void;
 }) {
   const [src, setSrc] = useState("");
+  const [blob, setBlob] = useState<Blob | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -282,13 +329,14 @@ function MediaBubble({
     let cancelled = false;
     void authorizedFetch(`/api/admin/whatsapp/media/${mediaId}`)
       .then((res) => (res.ok ? res.blob() : null))
-      .then((blob) => {
+      .then((data) => {
         if (cancelled) return;
-        if (!blob) {
+        if (!data) {
           setFailed(true);
           return;
         }
-        url = URL.createObjectURL(blob);
+        setBlob(data);
+        url = URL.createObjectURL(data);
         setSrc(url);
       })
       .catch(() => {
@@ -326,8 +374,8 @@ function MediaBubble({
   if (kind === "video") {
     return <video src={src} controls playsInline preload="metadata" className="crm-media-video" />;
   }
-  if (kind === "audio") {
-    return <audio src={src} controls preload="metadata" className="crm-media-audio" />;
+  if (kind === "audio" && blob) {
+    return <CrmVoiceNote blob={blob} mimeType={mimeType} />;
   }
   return (
     <a

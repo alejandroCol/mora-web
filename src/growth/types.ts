@@ -129,6 +129,10 @@ export type WhatsAppMessage = {
   billingCategory?: WhatsAppBillingCategory;
   templateName?: string;
   by?: string;
+  /** Emoji con el que el cliente reaccionó a este mensaje ("" si la quitó). */
+  reaction?: string;
+  /** En mensajes `type: "reaction"`: id del mensaje al que reaccionó. */
+  reactionTo?: string;
 };
 
 export type WhatsAppUsageCategoryRow = {

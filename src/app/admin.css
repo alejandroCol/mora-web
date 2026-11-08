@@ -1272,10 +1272,216 @@
   background: #000;
 }
 
-.crm-media-audio {
-  display: block;
-  width: min(16rem, 100%);
-  height: 2.4rem;
+/* Reacciones: línea corta en el hilo y emoji colgado de la burbuja original. */
+.crm-reaction-line {
+  display: flex;
+  max-width: 82%;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0 0.4rem;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--admin-muted);
+}
+
+.crm-reaction-line.text-right {
+  justify-content: flex-end;
+}
+
+.crm-reaction-emoji {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.crm-reaction-time {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.crm-bubble.has-reaction {
+  position: relative;
+  margin-bottom: 0.9rem;
+}
+
+.crm-reaction-badge {
+  position: absolute;
+  bottom: -0.75rem;
+  left: 0.5rem;
+  z-index: 1;
+  display: inline-grid;
+  height: 1.45rem;
+  min-width: 1.45rem;
+  place-items: center;
+  border-radius: 999px;
+  padding: 0 0.3rem;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(22, 20, 31, 0.14);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.admin-bubble-out .crm-reaction-badge {
+  left: auto;
+  right: 0.5rem;
+}
+
+/* Nota de voz: botón + barra + tiempo, como WhatsApp. */
+.crm-voice {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: min(16.5rem, 100%);
+  min-width: 12rem;
+  padding: 0.3rem 0.35rem 0.3rem 0.3rem;
+}
+
+.crm-voice-btn {
+  display: grid;
+  width: 2.3rem;
+  height: 2.3rem;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 999px;
+  background: #1d1d1f;
+  color: #fff;
+  transition: transform 0.15s ease, opacity 0.2s ease;
+}
+
+.crm-voice-btn:active {
+  transform: scale(0.94);
+}
+
+.crm-voice-btn:disabled {
+  opacity: 0.55;
+}
+
+.admin-bubble-out .crm-voice-btn {
+  background: #fff;
+  color: #1d1d1f;
+}
+
+.crm-voice-spin {
+  width: 0.9rem;
+  height: 0.9rem;
+  border-radius: 999px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  animation: crm-spin 0.8s linear infinite;
+}
+
+@keyframes crm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.crm-voice-body {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.crm-voice-range {
+  width: 100%;
+  height: 1.1rem;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.crm-voice-range:disabled {
+  cursor: default;
+}
+
+.crm-voice-range::-webkit-slider-runnable-track {
+  height: 0.25rem;
+  border-radius: 999px;
+  background: linear-gradient(
+    to right,
+    #1d1d1f var(--p, 0%),
+    rgba(22, 20, 31, 0.14) var(--p, 0%)
+  );
+}
+
+.crm-voice-range::-moz-range-track {
+  height: 0.25rem;
+  border-radius: 999px;
+  background: rgba(22, 20, 31, 0.14);
+}
+
+.crm-voice-range::-moz-range-progress {
+  height: 0.25rem;
+  border-radius: 999px;
+  background: #1d1d1f;
+}
+
+.crm-voice-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 0.75rem;
+  height: 0.75rem;
+  margin-top: -0.25rem;
+  border-radius: 999px;
+  background: #1d1d1f;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.crm-voice-range::-moz-range-thumb {
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: #1d1d1f;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+.admin-bubble-out .crm-voice-range::-webkit-slider-runnable-track {
+  background: linear-gradient(
+    to right,
+    #fff var(--p, 0%),
+    rgba(255, 255, 255, 0.25) var(--p, 0%)
+  );
+}
+
+.admin-bubble-out .crm-voice-range::-moz-range-track {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.admin-bubble-out .crm-voice-range::-moz-range-progress,
+.admin-bubble-out .crm-voice-range::-webkit-slider-thumb,
+.admin-bubble-out .crm-voice-range::-moz-range-thumb {
+  background: #fff;
+  box-shadow: 0 0 0 2px #1d1d1f;
+}
+
+.crm-voice-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--admin-muted);
+}
+
+.admin-bubble-out .crm-voice-meta {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.crm-voice-speed {
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  background: rgba(22, 20, 31, 0.07);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: #1d1d1f;
+}
+
+.admin-bubble-out .crm-voice-speed {
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
 }
 
 .crm-media-file {

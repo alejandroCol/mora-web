@@ -336,6 +336,25 @@ export function CrmSettingsPanel({
                 >
                   Quitar
                 </button>
+                <textarea
+                  value={template.body ?? ""}
+                  placeholder="Texto aprobado en Meta (usa {{1}} si tiene variables). Se muestra en el hilo al enviarla."
+                  rows={2}
+                  onChange={(event) =>
+                    setTemplates((current) =>
+                      current.map((item, i) =>
+                        i === index
+                          ? {
+                              ...item,
+                              body: event.target.value,
+                              variables: new Set(event.target.value.match(/\{\{\d+\}\}/g) ?? []).size,
+                            }
+                          : item,
+                      ),
+                    )
+                  }
+                  className="rounded-xl bg-white/8 px-3 py-2 text-[13px] outline-none sm:col-span-6"
+                />
               </div>
             ))}
           </div>

@@ -129,6 +129,8 @@ async function main() {
       label: template.label,
       desk: template.desk,
       billingCategory: category === "utility" || category === "authentication" ? category : "marketing",
+      body: template.body,
+      variables: new Set(template.body.match(/\{\{\d+\}\}/g) ?? []).size,
     });
   }
 

@@ -196,6 +196,10 @@ export type CrmTemplate = {
   label: string;
   desk: CrmDesk | "both";
   billingCategory?: "marketing" | "utility" | "authentication";
+  /** Variables `{{n}}` del cuerpo en Meta. 0 = texto fijo (por defecto). */
+  variables?: number;
+  /** Texto aprobado en Meta, para mostrarlo en el hilo y en Ajustes. */
+  body?: string;
 };
 
 export type CrmSettings = {

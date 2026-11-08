@@ -168,6 +168,8 @@ export async function sendWhatsAppTemplate(input: {
   byName?: string;
   claim?: boolean;
   billingCategory?: "marketing" | "utility" | "authentication";
+  /** Cuerpo aprobado en Meta; se guarda en el hilo con las variables resueltas. */
+  preview?: string;
 }) {
   const settings = await loadGrowthSettings();
   if (!settings.whatsappPhoneNumberId || !settings.whatsappAccessToken) {
@@ -216,7 +218,9 @@ export async function sendWhatsAppTemplate(input: {
 
   const waId = data.messages?.[0]?.id;
   const at = Date.now();
-  const preview = `Plantilla ${input.name}`;
+  const preview = input.preview?.trim()
+    ? input.preview.replace(/\{\{(\d+)\}\}/g, (_, n: string) => input.params?.[Number(n) - 1] ?? "")
+    : `Plantilla ${input.name}`;
   const message: WhatsAppMessage = {
     id: waId ?? messages(to).doc().id,
     waId,

@@ -132,6 +132,8 @@ function sanitizeTemplates(templates: CrmTemplate[]): CrmTemplate[] {
           ? item.billingCategory
           : "marketing"
       ) as CrmTemplate["billingCategory"],
+      variables: Math.min(10, Math.max(0, Math.trunc(Number(item.variables) || 0))),
+      body: String(item.body ?? "").trim().slice(0, 1024),
     }))
     .filter((item) => item.name && item.label)
     .slice(0, 20);

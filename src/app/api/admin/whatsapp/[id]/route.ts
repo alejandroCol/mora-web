@@ -53,11 +53,18 @@ export async function POST(
       if (!name) {
         return Response.json({ ok: false, error: "Elige una plantilla." }, { status: 400 });
       }
+      // Meta exige exactamente las variables que tiene el cuerpo (#132000).
+      // Las plantillas registradas declaran cuántas; sin dato, texto fijo.
+      const expected = template ? (template.variables ?? 0) : (body.params?.length ?? 0);
+      const provided = (body.params ?? []).map((value) => String(value ?? "").trim());
+      const fallback = conversation.name?.split(" ")[0] || "—";
+      const params = Array.from({ length: expected }, (_, i) => provided[i] || fallback);
       const message = await sendWhatsAppTemplate({
         phone: conversation.phone,
         name,
         language: template?.language || body.language || "es",
-        params: body.params,
+        params,
+        preview: template?.body,
         billingCategory: template?.billingCategory ?? "marketing",
         ...actor,
       });

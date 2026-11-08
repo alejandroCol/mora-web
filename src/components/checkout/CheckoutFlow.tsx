@@ -1046,6 +1046,8 @@ function CheckoutDock({
 }
 
 function OrderLines({ cart }: { cart: CartLine[] }) {
+  // Cantidad editable desde el resumen: − en 1 quita la línea (setQty borra en 0).
+  const setQty = useMoraStore((state) => state.setQty);
   return (
     <ul className="space-y-4">
       {cart.map((line) => {
@@ -1055,7 +1057,32 @@ function OrderLines({ cart }: { cart: CartLine[] }) {
               line={line}
               price={formatMoney(lineUnitPrice(line) * line.qty)}
               compact
-            />
+            >
+              <div className="check-qty-row">
+                <div className="check-qty" role="group" aria-label="Cantidad">
+                  <button
+                    type="button"
+                    className="check-qty-btn"
+                    onClick={() => setQty(line.key, line.qty - 1)}
+                    aria-label={line.qty <= 1 ? "Quitar del pedido" : "Quitar uno"}
+                  >
+                    −
+                  </button>
+                  <span className="check-qty-n">{line.qty}</span>
+                  <button
+                    type="button"
+                    className="check-qty-btn"
+                    onClick={() => setQty(line.key, line.qty + 1)}
+                    aria-label="Añadir uno"
+                  >
+                    +
+                  </button>
+                </div>
+                {line.qty > 1 ? (
+                  <span className="check-qty-unit">{formatMoney(lineUnitPrice(line))} c/u</span>
+                ) : null}
+              </div>
+            </CartLineVisual>
           </li>
         );
       })}
@@ -1096,12 +1123,14 @@ function DiscountCodeField({
     return (
       <div className="check-code mt-4">
         <div className="check-code-applied">
-          <span className="min-w-0">
-            <span className="check-code-tag">{applied.code}</span>
-            <span className="ml-2 text-[13px] text-[#6e6e73]">
+          <span className="check-code-tag">{applied.code}</span>
+          <span className="check-code-info">
+            <span className="check-code-label">
               {applied.kind === "percent" ? `${applied.value} % de descuento` : "Descuento aplicado"}
-              {discount > 0 ? ` · −${formatMoney(discount)}` : ""}
             </span>
+            {discount > 0 ? (
+              <span className="check-code-amount">−{formatMoney(discount)}</span>
+            ) : null}
           </span>
           <button
             type="button"

@@ -11,6 +11,7 @@ import {
 } from "@/lib/catalog";
 import { FALLBACK_SALES } from "@/commerce/sales";
 import { siteUrl } from "@/lib/site";
+import { loadPricing } from "@/server/pricing";
 import { getProductDescriptions } from "@/server/productCopy";
 
 export function generateStaticParams() {
@@ -67,7 +68,7 @@ export default async function AnilloPage({
   if (slug !== products[modelId].slug) {
     redirect(productPath(modelId));
   }
-  const descriptions = await getProductDescriptions();
+  const [descriptions] = await Promise.all([getProductDescriptions(), loadPricing()]);
   const model = products[modelId];
   return (
     <>

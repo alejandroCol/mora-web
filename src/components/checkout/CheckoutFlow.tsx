@@ -14,7 +14,7 @@ import type { CartLine, ShippingQuoteOption } from "@/commerce/types";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
 import { cartCountLabel, cartHasRing, isRingLine, lineUnitPrice } from "@/commerce/lines";
 import { formatMoney, isModelId, products } from "@/lib/catalog";
-import { useSales } from "@/components/sales/SalesProvider";
+import { usePricing, useSales } from "@/components/sales/SalesProvider";
 import { useMoraStore } from "@/lib/store";
 import type { AddiCheckoutSession, BoldCheckoutSession, CheckoutPayMethod } from "@/payments/types";
 import { addiAmountAllowed, checkoutPrefersAddi } from "@/payments/public";
@@ -30,7 +30,7 @@ import {
   parseCheckoutError,
   type CheckoutFixField,
   type CheckoutNotice as CheckoutNoticeModel,
-} from "./checkoutNotice";
+} from "./checkoutNoticeModel";
 import { ColombiaFields, useDebounced } from "./ColombiaFields";
 import { currentAttribution, track } from "@/growth/track";
 import { insightFunnel, insightProductCheckout } from "@/insights/client";
@@ -91,10 +91,14 @@ type AppliedOffer = {
   code: string;
   kind: "percent" | "amount";
   value: number;
+  /** `code` = código del super admin; `recovery` = oferta de carrito abandonado. */
+  source?: "code" | "recovery";
 };
 
 export function CheckoutFlow() {
   const sales = useSales();
+  // Suscribe el checkout al precio vivo: subtotal y líneas se recalculan al cambiar.
+  usePricing();
   const {
     cart,
     draft,
@@ -113,6 +117,11 @@ export function CheckoutFlow() {
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [carrier, setCarrier] = useState<string>("");
   const [appliedOffer, setAppliedOffer] = useState<AppliedOffer | null>(null);
+  const [offerError, setOfferError] = useState("");
+  const [offerChecking, setOfferChecking] = useState(false);
+  const [offerTick, setOfferTick] = useState(0);
+  // Tras «Quitar», no volvemos a aplicar sola la oferta de la sesión.
+  const [autoOfferOff, setAutoOfferOff] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
   const [payMethod, setPayMethod] = useState<CheckoutPayMethod>("bold");
   const [gateways, setGateways] = useState<GatewayAvailability>({
@@ -209,28 +218,60 @@ export function CheckoutFlow() {
   }, [draftSnap]);
 
   useEffect(() => {
-    if (!offerCode && !cartSessionId) return;
+    if (!offerCode && (!cartSessionId || autoOfferOff)) return;
     const params = new URLSearchParams();
     if (offerCode) params.set("code", offerCode);
     if (cartSessionId) params.set("session", cartSessionId);
     if (draft.email) params.set("email", draft.email);
     let cancelled = false;
     void fetch(`/api/checkout/offer?${params.toString()}`)
-      .then(async (res) => (await res.json()) as { ok: boolean; offer?: AppliedOffer | null })
+      .then(
+        async (res) =>
+          (await res.json()) as {
+            ok: boolean;
+            offer?: AppliedOffer | null;
+            reason?: string | null;
+            error?: string;
+          },
+      )
       .then((data) => {
         if (cancelled) return;
         if (data.offer) {
           setAppliedOffer(data.offer);
+          setOfferError("");
           if (data.offer.code !== offerCode) setOfferCode(data.offer.code);
         } else if (offerCode) {
           setAppliedOffer(null);
+          setOfferError(data.reason ?? data.error ?? "Ese código no aplica.");
         }
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled && offerCode) setOfferError("No pudimos revisar el código. Intenta otra vez.");
+      })
+      .finally(() => {
+        if (!cancelled) setOfferChecking(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [offerCode, cartSessionId, draft.email, setOfferCode]);
+  }, [offerCode, offerTick, cartSessionId, draft.email, setOfferCode, autoOfferOff]);
+
+  function applyOfferCode(raw: string) {
+    const next = raw.trim().toUpperCase().replace(/\s+/g, "");
+    if (!next) return;
+    setOfferError("");
+    setOfferChecking(true);
+    setAutoOfferOff(false);
+    if (next === offerCode) setOfferTick((tick) => tick + 1);
+    else setOfferCode(next);
+  }
+
+  function removeOfferCode() {
+    setAutoOfferOff(true);
+    setOfferCode("");
+    setAppliedOffer(null);
+    setOfferError("");
+  }
 
   useEffect(() => {
     if (cart.length === 0 || checkoutTracked.current) return;
@@ -302,9 +343,10 @@ export function CheckoutFlow() {
   }, [destKey]);
 
   const cartKey = JSON.stringify(cart.map((line) => [line.key, line.qty]));
+  const appliedCode = appliedOffer?.code ?? "";
   useEffect(() => {
     pendingPay.current = null;
-  }, [cartKey, destKey, carrier, payMethod]);
+  }, [cartKey, destKey, carrier, payMethod, appliedCode]);
 
   useEffect(() => {
     const hinted = checkoutPrefersAddi(window.location.search);
@@ -436,7 +478,8 @@ export function CheckoutFlow() {
         notes: draft.notes,
         attribution: currentAttribution(),
         sessionId: cartSessionId || ensureCartSession(),
-        offerCode: appliedOffer?.code ?? offerCode,
+        // Solo el código que el cliente ve aplicado; el servidor lo vuelve a validar.
+        offerCode: appliedOffer?.code,
         method: payMethod,
       }),
     });
@@ -830,6 +873,17 @@ export function CheckoutFlow() {
               </button>
               <div className="px-5 py-4 sm:px-6">
                 <OrderLines cart={cart} />
+                <div className="lg:hidden">
+                  <DiscountCodeField
+                    applied={appliedOffer}
+                    discount={discount}
+                    pendingCode={offerCode}
+                    error={offerError}
+                    checking={offerChecking}
+                    onApply={applyOfferCode}
+                    onRemove={removeOfferCode}
+                  />
+                </div>
                 <Totals
                   subtotal={subtotal}
                   envioCop={envioCop}
@@ -892,6 +946,17 @@ export function CheckoutFlow() {
             <div className="mt-5 flex-1">
               <OrderLines cart={cart} />
             </div>
+            {step === 2 ? (
+              <DiscountCodeField
+                applied={appliedOffer}
+                discount={discount}
+                pendingCode={offerCode}
+                error={offerError}
+                checking={offerChecking}
+                onApply={applyOfferCode}
+                onRemove={removeOfferCode}
+              />
+            ) : null}
             <Totals
               subtotal={subtotal}
               envioCop={envioCop}
@@ -995,6 +1060,106 @@ function OrderLines({ cart }: { cart: CartLine[] }) {
         );
       })}
     </ul>
+  );
+}
+
+function DiscountCodeField({
+  applied,
+  discount,
+  pendingCode,
+  error,
+  checking,
+  onApply,
+  onRemove,
+}: {
+  applied: AppliedOffer | null;
+  discount: number;
+  /** Código guardado en la sesión aunque aún no aplique (muestra el error). */
+  pendingCode: string;
+  error: string;
+  checking: boolean;
+  onApply: (code: string) => void;
+  onRemove: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(pendingCode);
+  const [seenCode, setSeenCode] = useState(pendingCode);
+  const show = open || Boolean(error) || (Boolean(pendingCode) && !applied);
+
+  // Si la sesión trae un código (URL ?oferta= o uno anterior), lo mostramos en el campo.
+  if (pendingCode !== seenCode) {
+    setSeenCode(pendingCode);
+    if (pendingCode && !applied) setValue(pendingCode);
+  }
+
+  if (applied) {
+    return (
+      <div className="check-code mt-4">
+        <div className="check-code-applied">
+          <span className="min-w-0">
+            <span className="check-code-tag">{applied.code}</span>
+            <span className="ml-2 text-[13px] text-[#6e6e73]">
+              {applied.kind === "percent" ? `${applied.value} % de descuento` : "Descuento aplicado"}
+              {discount > 0 ? ` · −${formatMoney(discount)}` : ""}
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              setValue("");
+              setOpen(false);
+              onRemove();
+            }}
+            className="check-code-link"
+          >
+            Quitar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!show) {
+    return (
+      <div className="check-code mt-4">
+        <button type="button" onClick={() => setOpen(true)} className="check-code-link">
+          ¿Tienes un código de descuento?
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="check-code mt-4">
+      <div className="check-code-row">
+        <input
+          value={value}
+          onChange={(event) => setValue(event.target.value.toUpperCase())}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              onApply(value);
+            }
+          }}
+          placeholder="Código"
+          autoCapitalize="characters"
+          autoCorrect="off"
+          spellCheck={false}
+          aria-label="Código de descuento"
+          aria-invalid={Boolean(error)}
+          className="check-code-input"
+        />
+        <button
+          type="button"
+          disabled={checking || !value.trim()}
+          onClick={() => onApply(value)}
+          className="check-code-apply"
+        >
+          {checking ? "…" : "Aplicar"}
+        </button>
+      </div>
+      {error ? <p className="check-code-error">{error}</p> : null}
+    </div>
   );
 }
 

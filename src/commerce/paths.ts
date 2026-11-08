@@ -22,6 +22,8 @@ export const COLLECTIONS = {
   insightsDaily: "insightsDaily",
   insightsSeen: "insightsSeen",
   supportTickets: "supportTickets",
+  /** Códigos de descuento del super admin. Solo Admin SDK. */
+  discountCodes: "discountCodes",
 } as const;
 
 export const DOCS = {
@@ -32,6 +34,8 @@ export const DOCS = {
   sales: `${COLLECTIONS.settings}/sales`,
   payments: `${COLLECTIONS.settings}/payments`,
   rings: `${COLLECTIONS.settings}/rings`,
+  /** Precios vivos de Pro, Ultra y Case. */
+  pricing: `${COLLECTIONS.settings}/pricing`,
   orderCounter: `${COLLECTIONS.counters}/orders`,
   matiasInvoice: `${COLLECTIONS.counters}/matiasInvoice`,
 } as const;

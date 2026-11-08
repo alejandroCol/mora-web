@@ -48,6 +48,16 @@ export function CrmThread({
   const scroller = useRef<HTMLDivElement>(null);
   const support = (conversation.desk ?? "sales") === "support";
   const [more, setMore] = useState(false);
+  const [lightbox, setLightbox] = useState<{ src: string; caption: string } | null>(null);
+
+  useEffect(() => {
+    if (!lightbox) return;
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setLightbox(null);
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [lightbox]);
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
@@ -176,55 +186,165 @@ export function CrmThread({
       </header>
 
       <div ref={scroller} className="crm-scroll flex-1 space-y-2 overflow-y-auto px-3 py-3 lg:px-5">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`max-w-[82%] rounded-2xl px-3 py-2 text-[13px] leading-6 ${
-              message.direction === "out" ? "admin-bubble-out ml-auto" : "admin-bubble-in"
-            }`}
-          >
-            {message.mediaId && message.type === "image" ? (
-              <MediaBubble mediaId={message.mediaId} authorizedFetch={authorizedFetch} />
-            ) : null}
-            {message.text ? <p>{message.text}</p> : null}
-            <p className={`mt-1 text-[10px] ${message.direction === "out" ? "text-white/50" : "text-white/35"}`}>
-              {formatClock(message.at)}
-              {message.status && message.direction === "out" ? ` · ${message.status}` : ""}
-            </p>
-          </div>
-        ))}
+        {messages.map((message) => {
+          const media = mediaKind(message);
+          // «[foto]», «[audio]»… son relleno del webhook; con el archivo a la vista sobran.
+          // En archivos el texto es el nombre y ya va en la tarjeta.
+          const text =
+            media && (PLACEHOLDER_RE.test(message.text) || media === "document") ? "" : message.text;
+          return (
+            <div
+              key={message.id}
+              className={`crm-bubble max-w-[82%] rounded-2xl px-3 py-2 text-[13px] leading-6 ${
+                message.direction === "out" ? "admin-bubble-out ml-auto" : "admin-bubble-in"
+              } ${media === "image" || media === "sticker" ? "has-media" : ""}`}
+            >
+              {media && message.mediaId ? (
+                <MediaBubble
+                  kind={media}
+                  mediaId={message.mediaId}
+                  mimeType={message.mimeType}
+                  fileName={message.type === "document" ? message.text : ""}
+                  authorizedFetch={authorizedFetch}
+                  onOpen={(src) => setLightbox({ src, caption: text })}
+                />
+              ) : null}
+              {text ? <p className="whitespace-pre-wrap break-words">{text}</p> : null}
+              <p className={`mt-1 text-[10px] ${message.direction === "out" ? "text-white/50" : "text-white/35"}`}>
+                {formatClock(message.at)}
+                {message.status && message.direction === "out" ? ` · ${message.status}` : ""}
+              </p>
+            </div>
+          );
+        })}
       </div>
+
+      {lightbox ? (
+        <div
+          className="crm-lightbox"
+          role="dialog"
+          aria-label="Imagen"
+          onClick={() => setLightbox(null)}
+        >
+          <button type="button" className="crm-lightbox-close" aria-label="Cerrar">
+            ×
+          </button>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={lightbox.src}
+            alt={lightbox.caption}
+            className="crm-lightbox-img"
+            onClick={(event) => event.stopPropagation()}
+          />
+          {lightbox.caption ? <p className="crm-lightbox-caption">{lightbox.caption}</p> : null}
+        </div>
+      ) : null}
     </>
   );
 }
 
+type MediaKind = "image" | "sticker" | "video" | "audio" | "document";
+
+const PLACEHOLDER_RE = /^\[(foto|audio|video|archivo|sticker|voice|document|image)\]$/i;
+
+function mediaKind(message: WhatsAppMessage): MediaKind | null {
+  if (!message.mediaId) return null;
+  const type = message.type;
+  const mime = message.mimeType ?? "";
+  if (type === "image" || mime.startsWith("image/")) return type === "sticker" ? "sticker" : "image";
+  if (type === "sticker") return "sticker";
+  if (type === "video" || mime.startsWith("video/")) return "video";
+  if (type === "audio" || type === "voice" || mime.startsWith("audio/")) return "audio";
+  if (type === "document") return "document";
+  return null;
+}
+
 function MediaBubble({
+  kind,
   mediaId,
+  mimeType,
+  fileName,
   authorizedFetch,
+  onOpen,
 }: {
+  kind: MediaKind;
   mediaId: string;
+  mimeType?: string;
+  fileName?: string;
   authorizedFetch: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
+  onOpen: (src: string) => void;
 }) {
   const [src, setSrc] = useState("");
+  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     let url = "";
+    let cancelled = false;
     void authorizedFetch(`/api/admin/whatsapp/media/${mediaId}`)
       .then((res) => (res.ok ? res.blob() : null))
       .then((blob) => {
-        if (!blob) return;
+        if (cancelled) return;
+        if (!blob) {
+          setFailed(true);
+          return;
+        }
         url = URL.createObjectURL(blob);
         setSrc(url);
+      })
+      .catch(() => {
+        if (!cancelled) setFailed(true);
       });
     return () => {
+      cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
   }, [authorizedFetch, mediaId]);
 
-  if (!src) return <p className="text-white/40">[foto]</p>;
+  const label =
+    kind === "image" ? "Foto" : kind === "sticker" ? "Sticker" : kind === "video" ? "Video" : kind === "audio" ? "Audio" : "Archivo";
+
+  if (failed) {
+    return <p className="crm-media-note">{label} no disponible (WhatsApp guarda los archivos 30 días).</p>;
+  }
+  if (!src) {
+    return <div className={`crm-media-skeleton ${kind === "image" || kind === "sticker" ? "is-image" : ""}`}>{label}…</div>;
+  }
+
+  if (kind === "image" || kind === "sticker") {
+    return (
+      <button
+        type="button"
+        onClick={() => onOpen(src)}
+        className={`crm-media-img-btn ${kind === "sticker" ? "is-sticker" : ""}`}
+        aria-label="Ver imagen completa"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={src} alt="" className="crm-media-img" />
+      </button>
+    );
+  }
+  if (kind === "video") {
+    return <video src={src} controls playsInline preload="metadata" className="crm-media-video" />;
+  }
+  if (kind === "audio") {
+    return <audio src={src} controls preload="metadata" className="crm-media-audio" />;
+  }
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt="" className="mb-2 max-h-64 w-full rounded-xl object-cover" />
+    <a
+      href={src}
+      download={fileName || "archivo"}
+      target="_blank"
+      rel="noreferrer"
+      className="crm-media-file"
+    >
+      <span className="crm-media-file-icon" aria-hidden>
+        ⬇
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate">{fileName || "Archivo"}</span>
+        <span className="block text-[10px] opacity-60">{mimeType?.split("/")[1]?.toUpperCase() || "Descargar"}</span>
+      </span>
+    </a>
   );
 }
 

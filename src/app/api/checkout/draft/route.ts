@@ -1,4 +1,5 @@
 import { upsertAbandonedCart } from "@/server/abandonedCarts";
+import { ensurePricing } from "@/server/pricing";
 import type { CartLine, CustomerSnapshot, ShippingSnapshot } from "@/commerce/types";
 
 type Body = {
@@ -11,6 +12,7 @@ type Body = {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Body;
+    await ensurePricing();
     const cart = await upsertAbandonedCart({
       sessionId: body.sessionId ?? "",
       items: body.items ?? [],

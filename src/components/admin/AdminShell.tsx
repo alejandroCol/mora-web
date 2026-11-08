@@ -26,6 +26,7 @@ const NAV: NavItem[] = [
   { href: "/superadmin/estadisticas", label: "Estadísticas", permission: "stats", icon: <ChartIcon /> },
   { href: "/superadmin/analitica", label: "Analítica", permission: "insights", icon: <PulseIcon /> },
   { href: "/superadmin/inventario", label: "Inventario", permission: "inventory", icon: <BoxIcon /> },
+  { href: "/superadmin/descuentos", label: "Descuentos", permission: "discounts", icon: <TagIcon /> },
   { href: "/superadmin/galeria", label: "Galería", permission: "gallery", icon: <ImageIcon /> },
   { href: "/superadmin/envios", label: "Origen y envíos", permission: "shipping", icon: <TruckIcon /> },
   { href: "/superadmin/ajustes", label: "Ajustes", permission: "settings", icon: <GearIcon /> },
@@ -35,7 +36,7 @@ const NAV: NavItem[] = [
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: "Casa", hrefs: ["/superadmin/ventas", "/superadmin/carritos", "/superadmin/presupuesto", "/superadmin/anillos"] },
   { label: "Alcance", hrefs: ["/superadmin/crm", "/superadmin/campanas", "/superadmin/creadores", "/superadmin/estadisticas", "/superadmin/analitica"] },
-  { label: "Operación", hrefs: ["/superadmin/inventario", "/superadmin/galeria", "/superadmin/envios", "/superadmin/ajustes", "/superadmin/equipo"] },
+  { label: "Operación", hrefs: ["/superadmin/inventario", "/superadmin/descuentos", "/superadmin/galeria", "/superadmin/envios", "/superadmin/ajustes", "/superadmin/equipo"] },
 ];
 
 function Shell({ children }: { children: ReactNode }) {
@@ -377,6 +378,15 @@ function BoxIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
       <path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5v-9Z" strokeLinejoin="round" />
       <path d="M12 12 3.5 7.5M12 12v9M12 12l8.5-4.5" />
+    </svg>
+  );
+}
+
+function TagIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+      <path d="M3.5 12.2V4.5h7.7l8.8 8.8a1.6 1.6 0 0 1 0 2.3l-5.4 5.4a1.6 1.6 0 0 1-2.3 0l-8.8-8.8Z" strokeLinejoin="round" />
+      <circle cx="8" cy="9" r="1.3" />
     </svg>
   );
 }

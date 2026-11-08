@@ -1,6 +1,6 @@
 import { DOCS } from "@/commerce/paths";
 import { conversationWindow, endOfDay } from "@/crm/labels";
-import { emptyCrmSettings } from "@/crm/replies";
+import { LEGACY_PAYMENT_REPLY_BODIES, PAYMENT_REPLY_BODY, emptyCrmSettings } from "@/crm/replies";
 import type {
   CrmCounts,
   CrmDesk,
@@ -80,8 +80,15 @@ export async function loadCrmSettings(): Promise<CrmSettings> {
     const snap = await settingsDoc().get();
     if (!snap.exists) return fallback;
     const data = snap.data() as Partial<CrmSettings>;
+    const replies =
+      Array.isArray(data.replies) && data.replies.length ? data.replies : fallback.replies;
     return {
-      replies: Array.isArray(data.replies) && data.replies.length ? data.replies : fallback.replies,
+      // El texto de «Pago» de fábrica cambió (Addi, link, web): si nadie lo editó, se refresca solo.
+      replies: replies.map((item) =>
+        item.id === "pago" && LEGACY_PAYMENT_REPLY_BODIES.includes(item.body)
+          ? { ...item, body: PAYMENT_REPLY_BODY }
+          : item,
+      ),
       templates: Array.isArray(data.templates) ? data.templates : [],
       autoClaimOnReply: data.autoClaimOnReply !== false,
       updatedAt: Number(data.updatedAt ?? 0),

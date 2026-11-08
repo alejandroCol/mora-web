@@ -294,7 +294,7 @@ export function CrmWorkspace() {
   }
 
   async function send(text: string) {
-    if (!activeId) return;
+    if (!activeId) return false;
     setError("");
     const res = await authorizedFetch(`/api/admin/whatsapp/${activeId}`, {
       method: "POST",
@@ -303,11 +303,33 @@ export function CrmWorkspace() {
     const data = (await res.json()) as { ok?: boolean; error?: string; message?: WhatsAppMessage };
     if (!data.ok) {
       setError(data.error ?? "No se pudo enviar.");
-      return;
+      return false;
     }
     if (data.message) setMessages((current) => [...current, data.message!]);
     await loadWorkspace();
     await loadThread(activeId);
+    return true;
+  }
+
+  async function sendImage(file: File, caption: string) {
+    if (!activeId) return false;
+    setError("");
+    const form = new FormData();
+    form.set("file", file, file.name);
+    if (caption) form.set("caption", caption);
+    const res = await authorizedFetch(`/api/admin/whatsapp/${activeId}/media`, {
+      method: "POST",
+      body: form,
+    });
+    const data = (await res.json()) as { ok?: boolean; error?: string; message?: WhatsAppMessage };
+    if (!data.ok) {
+      setError(data.error ?? "No se pudo enviar la imagen.");
+      return false;
+    }
+    if (data.message) setMessages((current) => [...current, data.message!]);
+    await loadWorkspace();
+    await loadThread(activeId);
+    return true;
   }
 
   async function sendTemplate(templateId: string) {
@@ -453,7 +475,8 @@ export function CrmWorkspace() {
                   windowOpen={contact?.windowOpen ?? false}
                   windowClosesAt={contact?.windowClosesAt ?? null}
                   error={error}
-                  onSend={(text) => void send(text)}
+                  onSend={(text) => send(text)}
+                  onSendImage={(file, caption) => sendImage(file, caption)}
                   onTemplate={(id) => void sendTemplate(id)}
                 />
               </>

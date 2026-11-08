@@ -120,8 +120,8 @@ export const products: Record<ModelId, RingProduct> = {
     finishes: ["lilac", "white", "black"],
     promise: "Se siente. No se anuncia.",
     details: [
-      "Sueño, pulso y ciclo en un gesto.",
-      "Una superficie que no pide atención.",
+      "Estrés y presión del día, sin tocar nada.",
+      "Gestos para una foto, el pulso o jugar.",
       "Para llevar todo el día, y olvidarlo.",
     ],
   },
@@ -131,7 +131,7 @@ export const products: Record<ModelId, RingProduct> = {
     kind: "ring",
     name: "Ultra",
     line: "Titanio",
-    material: "Titanio grado médico",
+    material: "Titanio",
     weight: "2.5 g",
     price: 679_000,
     water: "IP67",
@@ -141,7 +141,7 @@ export const products: Record<ModelId, RingProduct> = {
     promise: "Precisión que no pesa.",
     details: [
       "El más ligero de la casa.",
-      "Reloj interior y recuperación.",
+      "Meditación guiada, con tu pulso del anillo.",
       "Datos, sin cara de gadget.",
     ],
   },

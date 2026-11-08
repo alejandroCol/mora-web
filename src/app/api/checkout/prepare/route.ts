@@ -10,7 +10,8 @@ import type {
 import { isCaseColorId } from "@/lib/cases";
 import { isModelId, products } from "@/lib/catalog";
 import { cartHasRing, isCaseLine } from "@/commerce/lines";
-import { resolveCheckoutOffer } from "@/server/abandonedCarts";
+import { resolveCheckoutDiscount, type CheckoutDiscount } from "@/server/discountCodes";
+import { ensurePricing } from "@/server/pricing";
 import { upsertLead } from "@/server/leads";
 import { requestClient, sendMetaEvent } from "@/server/metaCapi";
 import { createPendingOrder } from "@/server/orders";
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
     const [boldEnv, addiEnv] = await Promise.all([
       resolveBoldEnvironment(),
       resolveAddiEnvironment(),
+      ensurePricing(),
     ]);
     if (method === "bold" && !boldIsConfigured(boldEnv)) {
       return Response.json(
@@ -146,13 +148,23 @@ export async function POST(request: Request) {
       deliveryEstimate: selected?.deliveryEstimate,
     };
 
-    const offered = await resolveCheckoutOffer({
+    const discount = await resolveCheckoutDiscount({
       sessionId: body.sessionId,
       code: body.offerCode,
       email: customer.email,
-    }).catch(() => null);
-    const discountCop = offered?.offer
-      ? discountOf(subtotalOf(items), offered.offer)
+    }).catch((): CheckoutDiscount => ({ source: null }));
+    if (!discount.source && body.offerCode?.trim()) {
+      // El cliente escribió un código que ya no aplica: no cobramos sin avisar.
+      return Response.json(
+        {
+          ok: false,
+          error: `${discount.reason ?? "Ese código no aplica."} Quítalo o usa otro para continuar.`,
+        },
+        { status: 400 },
+      );
+    }
+    const discountCop = discount.source
+      ? discountOf(subtotalOf(items), { kind: discount.kind, value: discount.value })
       : 0;
 
     const paymentReference = newBoldReference(method === "addi" ? "ADDI" : "MORA");
@@ -173,8 +185,10 @@ export async function POST(request: Request) {
       addiReference: method === "addi" ? paymentReference : undefined,
       attribution: body.attribution,
       discountCop,
-      cartSessionId: body.sessionId || offered?.sessionId,
-      offerCode: offered?.offer?.code,
+      cartSessionId:
+        body.sessionId || (discount.source === "recovery" ? discount.sessionId : undefined),
+      offerCode: discount.source ? discount.code : undefined,
+      discountCode: discount.source === "code" ? discount.code : undefined,
     });
 
     const origin = requestOrigin(request);

@@ -1,6 +1,23 @@
 import type { CrmQuickReply, CrmSettings } from "@/growth/types";
 import { formatMoney, products } from "@/lib/catalog";
 
+/** Texto de «Pago» de fábrica. Si en Ajustes aún está uno de los anteriores, se actualiza solo. */
+export const PAYMENT_REPLY_BODY =
+  "Puedes pagar como prefieras:\n" +
+  "• Transferencia bancaria\n" +
+  "• Link de pago (tarjeta, Nequi o PSE)\n" +
+  "• A cuotas con Addi, solo con tu cédula y sin tarjeta de crédito\n" +
+  "• Directo en nuestra web: https://moraring.com/checkout\n\n" +
+  "¿Cuál te queda mejor?";
+
+export const LEGACY_PAYMENT_REPLY_BODIES = [
+  "Puedes pagar por transferencia, datáfono o en línea. ¿Cuál te queda bien?",
+];
+
+/** Chip corto del compositor; cabe en una línea del chat. */
+export const PAYMENT_CHIP_TEXT =
+  "Puedes pagar por transferencia, link de pago, a cuotas con Addi o directo en nuestra web: https://moraring.com/checkout";
+
 function reply(
   id: string,
   title: string,
@@ -56,12 +73,7 @@ export function defaultCrmReplies(): CrmQuickReply[] {
       "Enviamos en Colombia. Al pagar, el pedido queda listo para salir. ¿A qué ciudad va?",
       "both",
     ),
-    reply(
-      "pago",
-      "Pago",
-      "Puedes pagar por transferencia, datáfono o en línea. ¿Cuál te queda bien?",
-      "sales",
-    ),
+    reply("pago", "Pago", PAYMENT_REPLY_BODY, "sales"),
     reply(
       "cierre",
       "Apartar",

@@ -5,9 +5,11 @@ import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { CASE_COLOR_LIST, CASE_PRODUCT, casePath } from "@/lib/cases";
 import { formatMoney } from "@/lib/catalog";
+import { usePricing } from "@/components/sales/SalesProvider";
 
 export function CaseCollage() {
   const stage = useRef<HTMLDivElement>(null);
+  const price = usePricing().case;
 
   useEffect(() => {
     const root = stage.current;
@@ -46,7 +48,7 @@ export function CaseCollage() {
             </span>
           </p>
           <div className="case-collage-dock">
-            <span className="case-collage-price">{formatMoney(CASE_PRODUCT.price)}</span>
+            <span className="case-collage-price">{formatMoney(price)}</span>
             <span className="elegir-cta">
               Ver
               <span aria-hidden className="elegir-cta-arrow">

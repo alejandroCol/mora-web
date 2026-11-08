@@ -14,13 +14,15 @@ export type StaffPermission =
   | "budget"
   | "rings"
   | "insights"
-  | "settings";
+  | "settings"
+  | "discounts";
 
 const SUPERADMIN_PERMISSIONS: StaffPermission[] = [
   "sales",
   "sales_manual",
   "stats",
   "inventory",
+  "discounts",
   "gallery",
   "shipping",
   "team",
@@ -39,7 +41,7 @@ export const ROLE_LABEL: Record<StaffRole, string> = {
 
 export const ROLE_BLURB: Record<StaffRole, string> = {
   founder: "Operación completa más el presupuesto de la casa.",
-  superadmin: "Equipo, inventario, anillos, galería, envíos, campañas, CRM y ventas.",
+  superadmin: "Equipo, inventario y precios, descuentos, anillos, galería, envíos, campañas, CRM y ventas.",
   vendedor: "CRM, ventas, analítica de la tienda y despacho de pedidos.",
 };
 

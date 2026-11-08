@@ -39,6 +39,8 @@ import { recordInsightsPurchase } from "./insights";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
 import { tryEmitPaidOrderInvoice } from "@/invoices";
 import { markCartRecovered } from "./abandonedCarts";
+import { holdDiscountCode, releaseDiscountCode, settleDiscountCode } from "./discountCodes";
+import { ensurePricing } from "./pricing";
 import { markLeadSold } from "./leads";
 import { sendMetaEvent } from "./metaCapi";
 import { updateConversation } from "./whatsapp";
@@ -100,6 +102,9 @@ export async function releaseExpiredCheckouts() {
       });
     });
     await releaseReservation(db, demandFromItems(order.items)).catch(() => undefined);
+    if (order.meta?.discountCode) {
+      await releaseDiscountCode(order.meta.discountCode).catch(() => undefined);
+    }
   }
 }
 
@@ -115,12 +120,22 @@ export async function createPendingOrder(input: {
   discountCop?: number;
   cartSessionId?: string;
   offerCode?: string;
+  /** Código de descuento del super admin: aparta un uso hasta que se pague o expire. */
+  discountCode?: string;
 }): Promise<MoraOrder> {
-  await releaseExpiredCheckouts();
+  await Promise.all([releaseExpiredCheckouts(), ensurePricing()]);
   const db = adminDb();
   const orderItems = input.items.map(lineToOrderItem);
   const demand = demandBySku(input.items);
   await assertAndReserve(db, demand);
+  if (input.discountCode) {
+    try {
+      await holdDiscountCode(input.discountCode);
+    } catch (error) {
+      await releaseReservation(db, demand).catch(() => undefined);
+      throw error;
+    }
+  }
 
   const totals = totalsOf(
     orderItems,
@@ -153,10 +168,11 @@ export async function createPendingOrder(input: {
     expiresAt: now + PENDING_TTL_MS,
     createdBy: "checkout",
   };
-  if (input.cartSessionId || input.offerCode) {
+  if (input.cartSessionId || input.offerCode || input.discountCode) {
     order.meta = {
       ...(input.cartSessionId ? { cartSessionId: input.cartSessionId } : {}),
       ...(input.offerCode ? { offerCode: input.offerCode } : {}),
+      ...(input.discountCode ? { discountCode: input.discountCode } : {}),
     };
   }
 
@@ -180,6 +196,7 @@ export async function createManualOrder(input: {
   conversationId?: string;
   attribution?: AttributionSnapshot;
 }): Promise<MoraOrder> {
+  await ensurePricing();
   const db = adminDb();
   const orderItems = input.items.map(lineToOrderItem);
   const demand = demandBySku(input.items);
@@ -485,6 +502,11 @@ async function fulfillOrderDoc(
   const paid = outcome.order;
   if (outcome.kind === "applied") {
     await consumeReservation(db, demandFromItems(paid.items));
+    if (paid.meta?.discountCode) {
+      await settleDiscountCode(paid.meta.discountCode).catch((error) =>
+        console.error("[discount settle]", error),
+      );
+    }
     await bumpDailyStats(paid);
     await sendPaidCustomerEmail(paid).catch((error) =>
       console.error("[email paid customer]", error),
@@ -619,12 +641,18 @@ export async function transitionOrder(input: {
     patch.cancelledAt = now;
     if (order.status === "awaiting_payment") {
       await releaseReservation(db, demandFromItems(order.items));
+      if (order.meta?.discountCode) {
+        await releaseDiscountCode(order.meta.discountCode).catch(() => undefined);
+      }
     }
   }
   if (input.to === "paid" && order.status === "awaiting_payment") {
     patch.paidAt = now;
     patch.payment = { ...order.payment, status: "approved" };
     await consumeReservation(db, demandFromItems(order.items));
+    if (order.meta?.discountCode) {
+      await settleDiscountCode(order.meta.discountCode).catch(() => undefined);
+    }
   }
 
   await ref.set(patch, { merge: true });

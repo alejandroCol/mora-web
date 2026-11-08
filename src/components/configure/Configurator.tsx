@@ -8,12 +8,15 @@ import { catalog, formatMoney, products, resolveFinish } from "@/lib/catalog";
 import { track } from "@/growth/track";
 import { insightProductCart, useInsightProduct } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
+import { usePricing } from "@/components/sales/SalesProvider";
 
 export function Configurator() {
   const router = useRouter();
   const { selection, setModel, setFinish, setSize, addSelectionToCart, closeCart } =
     useMoraStore();
+  const pricing = usePricing();
   const model = products[selection.modelId];
+  const price = pricing[selection.modelId];
   const finish = resolveFinish(selection.modelId, selection.finishId);
   const [leaving, setLeaving] = useState(false);
 
@@ -25,10 +28,10 @@ export function Configurator() {
       content_name: `Mora ${model.name}`,
       content_type: "product",
       content_category: model.line,
-      value: model.price,
+      value: price,
       currency: "COP",
     });
-  }, [model.id, model.line, model.name, model.price]);
+  }, [model.id, model.line, model.name, price]);
 
   function openGallery() {
     closeCart();
@@ -53,7 +56,7 @@ export function Configurator() {
           </h2>
         </div>
         <p className="text-[13px] text-ink/70 sm:text-[14px]">
-          {formatMoney(model.price)}
+          {formatMoney(price)}
         </p>
       </header>
       <button
@@ -148,7 +151,7 @@ export function Configurator() {
                 content_ids: [model.id],
                 content_name: `Mora ${model.name} ${finish.title}`,
                 content_type: "product",
-                value: model.price,
+                value: price,
                 currency: "COP",
                 num_items: 1,
               });

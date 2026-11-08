@@ -1,4 +1,4 @@
-import type { AccessoryId } from "@/lib/cases";
+import type { AccessoryId, CaseColorId } from "@/lib/cases";
 import type { FinishId, ModelId } from "@/lib/catalog";
 import type { InvoiceSnapshot } from "@/invoices/types";
 
@@ -187,7 +187,10 @@ export type MoraOrder = {
   meta?: {
     purchaseEventId?: string;
     cartSessionId?: string;
+    /** Código que se mostró en el checkout: de descuento o de carrito recuperado. */
     offerCode?: string;
+    /** Solo si `offerCode` es un código de descuento del super admin (cuenta usos). */
+    discountCode?: string;
   };
   conversationId?: string;
   createdAt: number;
@@ -202,8 +205,9 @@ export type MoraOrder = {
 
 export type InventoryDoc = {
   sku: string;
-  modelId: ModelId;
-  finishId: FinishId;
+  /** `aero` / `titan` con talla, o `case` por color (sin talla). */
+  modelId: CatalogId;
+  finishId: FinishId | CaseColorId;
   size?: number;
   units: number;
   reserved: number;

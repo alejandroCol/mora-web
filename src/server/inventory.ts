@@ -1,11 +1,19 @@
 import { FieldValue, type Firestore } from "firebase-admin/firestore";
+import { CASE_PRODUCT } from "@/lib/cases";
 import { catalog } from "@/lib/catalog";
 import { COLLECTIONS } from "@/commerce/paths";
-import { availableUnits, inventoryLabel, inventorySku, parseInventorySku } from "@/commerce/sku";
+import {
+  availableUnits,
+  caseSku,
+  inventoryLabel,
+  inventorySku,
+  parseInventorySku,
+} from "@/commerce/sku";
 import type { InventoryDoc } from "@/commerce/types";
 import { adminDb } from "@/lib/firebaseAdmin";
 
 const DEFAULT_UNITS = 50;
+const DEFAULT_CASE_UNITS = 50;
 
 export function inventoryRef(db: Firestore, sku: string) {
   return db.collection(COLLECTIONS.inventory).doc(sku);
@@ -49,12 +57,31 @@ async function seedInventoryIfNeeded(db: Firestore) {
       }
     }
   }
+  for (const colorId of CASE_PRODUCT.colors) {
+    const sku = caseSku(colorId);
+    const current = have.get(sku);
+    if (current?.managed) continue;
+    if (current && (current.units > 0 || (current.reserved ?? 0) > 0)) continue;
+    const data: InventoryDoc = {
+      sku,
+      modelId: "case",
+      finishId: colorId,
+      units: DEFAULT_CASE_UNITS,
+      reserved: current?.reserved ?? 0,
+      updatedAt: now,
+      managed: false,
+    };
+    batch.set(inventoryRef(db, sku), data, { merge: true });
+    writes += 1;
+  }
   if (writes > 0) await batch.commit();
 }
 
 export async function setInventoryUnits(sku: string, units: number) {
   const parsed = parseInventorySku(sku);
-  if (!parsed?.size) throw new Error("Esa talla no existe.");
+  if (!parsed || (parsed.modelId !== "case" && !parsed.size)) {
+    throw new Error("Esa referencia no existe.");
+  }
   const db = adminDb();
   const ref = inventoryRef(db, sku);
   await db.runTransaction(async (tx) => {
@@ -77,7 +104,7 @@ export async function setInventoryUnits(sku: string, units: number) {
         sku,
         modelId: parsed.modelId,
         finishId: parsed.finishId,
-        size: parsed.size,
+        ...(parsed.size ? { size: parsed.size } : {}),
         units: nextUnits,
         reserved: current.reserved ?? 0,
         updatedAt: Date.now(),

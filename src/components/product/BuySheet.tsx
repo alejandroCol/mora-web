@@ -11,7 +11,7 @@ import {
   type ModelId,
 } from "@/lib/catalog";
 import { track } from "@/growth/track";
-import { useSales } from "@/components/sales/SalesProvider";
+import { usePricing, useSales } from "@/components/sales/SalesProvider";
 import { insightProductCart } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
 import { AddiCuotasButton } from "@/components/payments/AddiCuotasButton";
@@ -39,7 +39,9 @@ export function BuySheet({
     closeCart,
     openCart,
   } = useMoraStore();
+  const pricing = usePricing();
   const model = products[modelId];
+  const price = pricing[modelId];
   const finishId = model.finishes.includes(selection.finishId)
     ? selection.finishId
     : model.finishes[0];
@@ -83,7 +85,7 @@ export function BuySheet({
       content_ids: [model.id],
       content_name: `Mora ${model.name} ${finishLabel(modelId, finishId)}`,
       content_type: "product",
-      value: model.price,
+      value: price,
       currency: "COP",
       num_items: 1,
     });
@@ -108,7 +110,7 @@ export function BuySheet({
   const offerAddi =
     addiRange != null &&
     (model.kind === "ring" ||
-      addiAmountAllowed(model.price, addiRange.minCop, addiRange.maxCop));
+      addiAmountAllowed(price, addiRange.minCop, addiRange.maxCop));
 
   const hint = need || (sizing === "self" ? sales.deliveryHint : "");
 
@@ -126,7 +128,7 @@ export function BuySheet({
             <FreeShipping className="ship-free-sm shrink-0" />
           </div>
           <p className="shrink-0 text-[17px] tracking-[-0.02em] text-[#1d1d1f]">
-            {formatMoney(model.price)}
+            {formatMoney(price)}
           </p>
         </div>
 

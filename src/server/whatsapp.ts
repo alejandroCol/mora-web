@@ -159,6 +159,119 @@ export async function sendWhatsAppText(input: {
   return message;
 }
 
+/** Formatos que la Cloud API acepta como `image` (webp va como sticker, no aquí). */
+export const WHATSAPP_IMAGE_MIME = ["image/jpeg", "image/png"] as const;
+/** Tope de Meta para imágenes. */
+export const WHATSAPP_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
+export async function sendWhatsAppImage(input: {
+  phone: string;
+  bytes: Buffer;
+  mimeType: string;
+  fileName?: string;
+  caption?: string;
+  by?: string;
+  byName?: string;
+  claim?: boolean;
+}) {
+  const settings = await loadGrowthSettings();
+  if (!settings.whatsappPhoneNumberId || !settings.whatsappAccessToken) {
+    throw Object.assign(new Error("WhatsApp Business aún no está conectado."), {
+      status: 503,
+    });
+  }
+  if (!(WHATSAPP_IMAGE_MIME as readonly string[]).includes(input.mimeType)) {
+    throw Object.assign(new Error("Solo JPG o PNG."), { status: 400 });
+  }
+  if (input.bytes.byteLength > WHATSAPP_IMAGE_MAX_BYTES) {
+    throw Object.assign(new Error("La imagen pesa más de 5 MB."), { status: 400 });
+  }
+
+  const to = conversationIdFromPhone(input.phone);
+  const auth = { Authorization: `Bearer ${settings.whatsappAccessToken}` };
+
+  // 1) Subir el binario a Meta → media id reutilizable (30 días).
+  const form = new FormData();
+  form.set("messaging_product", "whatsapp");
+  form.set("type", input.mimeType);
+  form.set(
+    "file",
+    new Blob([new Uint8Array(input.bytes)], { type: input.mimeType }),
+    input.fileName || (input.mimeType === "image/png" ? "foto.png" : "foto.jpg"),
+  );
+  const upload = await fetch(`${GRAPH}/${settings.whatsappPhoneNumberId}/media`, {
+    method: "POST",
+    headers: auth,
+    body: form,
+  });
+  const uploaded = (await upload.json()) as { id?: string; error?: { message?: string } };
+  if (!upload.ok || !uploaded.id) {
+    throw Object.assign(
+      new Error(uploaded.error?.message ?? "WhatsApp no recibió la imagen."),
+      { status: 400 },
+    );
+  }
+
+  // 2) Enviar el mensaje apuntando a ese media id.
+  const caption = input.caption?.trim() || "";
+  const res = await fetch(`${GRAPH}/${settings.whatsappPhoneNumberId}/messages`, {
+    method: "POST",
+    headers: { ...auth, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to,
+      type: "image",
+      image: { id: uploaded.id, ...(caption ? { caption } : {}) },
+    }),
+  });
+  const data = (await res.json()) as {
+    messages?: { id: string }[];
+    error?: { message?: string };
+  };
+  if (!res.ok) {
+    throw Object.assign(
+      new Error(data.error?.message ?? "WhatsApp no aceptó la imagen."),
+      { status: 400 },
+    );
+  }
+
+  const waId = data.messages?.[0]?.id;
+  const at = Date.now();
+  const message: WhatsAppMessage = {
+    id: waId ?? messages(to).doc().id,
+    waId,
+    direction: "out",
+    type: "image",
+    text: caption,
+    at,
+    status: "sent",
+    mediaId: uploaded.id,
+    mimeType: input.mimeType,
+    billingCategory: "service",
+    by: input.by,
+  };
+  await messages(to).doc(message.id).set(compact(message), { merge: true });
+  const existing = await getConversation(to);
+  const claim =
+    input.claim && input.by && input.by !== "auto" && !existing?.assignedTo
+      ? { assignedTo: input.by, assignedName: input.byName ?? "", assignedAt: at }
+      : {};
+  await conversations().doc(to).set(
+    compact({
+      id: to,
+      phone: to,
+      lastMessage: caption ? `📷 ${caption}` : "📷 Foto",
+      lastDirection: "out",
+      lastAt: at,
+      lastOutboundAt: at,
+      unread: 0,
+      ...claim,
+    }),
+    { merge: true },
+  );
+  return message;
+}
+
 export async function sendWhatsAppTemplate(input: {
   phone: string;
   name: string;

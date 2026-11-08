@@ -37,6 +37,10 @@ const FAQ = [
     a: "No. Ciclo e intimidad se quedan en el teléfono.",
   },
   {
+    q: "¿Se conecta con Salud de Apple o Health Connect?",
+    a: "Sí. En iPhone, Yo → Salud de Apple; en Android, Yo → Health Connect. Mora guarda pasos, pulso, oxígeno, sueño, entrenos y minutos de calma. Solo escribe; nunca lee tus datos de Salud ni de Health Connect.",
+  },
+  {
     q: "¿Cómo borro mi cuenta?",
     a: "En la app, Yo → Eliminar mi cuenta. También en moraring.com/app/eliminar-cuenta.",
   },

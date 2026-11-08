@@ -35,9 +35,14 @@ service cloud.firestore {
     }
 
     match /settings/{doc} {
-      allow read, write: if doc == "growth" || doc == "sales" || doc == "payments" || doc == "rings"
+      allow read, write: if doc == "growth" || doc == "sales" || doc == "payments" || doc == "rings" || doc == "pricing"
         ? isPrivileged()
         : isStaff();
+    }
+
+    // Códigos de descuento (Operación › Descuentos). Solo Admin SDK (web).
+    match /discountCodes/{code} {
+      allow read, write: if false;
     }
 
     match /financeExpenses/{id} {

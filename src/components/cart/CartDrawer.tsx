@@ -5,17 +5,20 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { IconCart, IconClose, IconTrash } from "@/components/icons/NavIcons";
 import { cartCountLabel, lineUnitPrice } from "@/commerce/lines";
+import { subtotalOf } from "@/commerce/cartMath";
 import { catalog, formatMoney, PRODUCT_HOME, productPath } from "@/lib/catalog";
-import { useCartCount, useCartSubtotal, useMoraStore } from "@/lib/store";
-import { useSales } from "@/components/sales/SalesProvider";
+import { useCartCount, useMoraStore } from "@/lib/store";
+import { usePricing, useSales } from "@/components/sales/SalesProvider";
 import { CartLineVisual } from "./CartLineVisual";
 
 export function CartDrawer() {
   const router = useRouter();
   const sales = useSales();
+  const pricing = usePricing();
   const { cart, cartOpen, closeCart, setQty, removeLine, setModel } = useMoraStore();
   const count = useCartCount();
-  const subtotal = useCartSubtotal();
+  // Se recalcula con el carrito y con el precio vivo (pricing cambia tras /api/sales).
+  const subtotal = subtotalOf(cart);
   useEffect(() => {
     if (!cartOpen) return;
     const onKey = (event: KeyboardEvent) => {
@@ -87,7 +90,7 @@ export function CartDrawer() {
                         Mora {item.name}
                       </span>
                       <span className="mt-0.5 block text-[14px] text-soft">
-                        {formatMoney(item.price)}
+                        {formatMoney(pricing[item.id])}
                       </span>
                     </span>
                     <Link

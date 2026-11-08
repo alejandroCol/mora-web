@@ -6,18 +6,22 @@ export type SpecRow = {
 };
 
 export const previewCopy: Record<ModelId, string> = {
-  aero: "Anillo de cerámica. Sueño, pulso y actividad, con hasta 7 días de batería.",
-  titan: "Anillo de titanio, el más ligero. Sueño, pulso y recuperación, con hasta 6 días de batería.",
+  aero: "Anillo de cerámica. Sueño y pulso, con el estrés y la presión del día en curva. Hasta 7 días de batería.",
+  titan: "Anillo de titanio, el más ligero. Sueño y pulso, con meditación guiada. Hasta 6 días de batería.",
 };
 
 const readingsShared: SpecRow[] = [
   { label: "Noche", value: "Cómo dormiste" },
   { label: "Pulso", value: "Latidos por minuto" },
   { label: "Oxígeno", value: "Oxígeno en sangre" },
+  { label: "Recuperación", value: "Cómo responde el cuerpo" },
   { label: "Piel", value: "Temperatura del dedo. No es fiebre" },
   { label: "Movimiento", value: "Pasos y deporte" },
   { label: "Ciclo", value: "Queda guardado en el teléfono" },
 ];
+
+const vitals = readingsShared.slice(0, 4);
+const daily = readingsShared.slice(4);
 
 export const specSheet: Record<
   ModelId,
@@ -41,14 +45,14 @@ export const specSheet: Record<
       { label: "Conexión", value: "Bluetooth" },
     ],
     readings: [
-      ...readingsShared.slice(0, 3),
-      { label: "Recuperación", value: "Cómo responde el cuerpo" },
+      ...vitals,
+      { label: "Estrés", value: "Solo, con la curva del día" },
       { label: "Presión", value: "Estimación, con la curva del día. No es un tensiómetro" },
-      { label: "Estrés", value: "Con la curva del día" },
-      ...readingsShared.slice(3),
+      { label: "Deporte en vivo", value: "Pasos, distancia y energía mientras entrenas" },
+      ...daily,
     ],
-    extra: "Gestos del anillo, por ejemplo para una foto, y un modo de juego en la app. También meta de pasos, alarmas y un aviso si el pulso en reposo sube.",
-    choose: "Elige Pro para cerámica, un poco más de batería y poder mojarlo en la ducha o al nadar en superficie.",
+    extra: "Gestos del anillo: una foto, medir el pulso y un juego con el dedo. Juegos en la app, Círculo para compartir el día, meta de pasos, alarmas, buscar el anillo y un aviso si el pulso en reposo sube.",
+    choose: "Elige Pro para que el estrés y la presión se lean solos todo el día, más gestos y poder mojarlo en la ducha o al nadar en superficie.",
   },
   titan: {
     lead: "Titanio, 2,5 g. Es el más ligero de la línea. La app Mora Ring, en iPhone y Android, muestra el día. El anillo no tiene pantalla.",
@@ -62,15 +66,14 @@ export const specSheet: Record<
       { label: "Conexión", value: "Bluetooth" },
     ],
     readings: [
-      ...readingsShared.slice(0, 3),
-      { label: "Recuperación", value: "Recuperación y reloj interior" },
-      { label: "Presión", value: "Estimación al medir. No es un tensiómetro" },
+      ...vitals,
       { label: "Estrés", value: "Al medir" },
-      { label: "Meditación", value: "Una sesión desde el anillo" },
-      ...readingsShared.slice(3),
+      { label: "Presión", value: "Estimación al medir. No es un tensiómetro" },
+      { label: "Meditación", value: "Guiada en la app, con tu pulso del anillo al cerrar" },
+      ...daily,
     ],
-    extra: "Gestos del anillo, por ejemplo para una foto. También meta de pasos, alarmas y un aviso si el pulso en reposo sube.",
-    choose: "Elige Ultra para el menor peso y el acabado en titanio, con el anillo fuera del agua.",
+    extra: "Gestos del anillo, por ejemplo para una foto. Juegos en la app, Círculo para compartir el día, meta de pasos, alarmas, buscar el anillo y un aviso si el pulso en reposo sube.",
+    choose: "Elige Ultra para el menor peso, el titanio y la meditación guiada, con el anillo fuera del agua.",
   },
 };
 
@@ -79,6 +82,9 @@ export const specCompare: { label: string; aero: string; titan: string }[] = [
   { label: "Peso", aero: "3,3 g", titan: "2,5 g" },
   { label: "Batería", aero: "Hasta 7 días", titan: "Hasta 6 días" },
   { label: "Agua", aero: "5 ATM", titan: "IP67" },
+  { label: "Estrés y presión", aero: "Curva del día, sola", titan: "Al medir" },
+  { label: "Meditación guiada", aero: "—", titan: "Sí" },
+  { label: "Gestos", aero: "Foto, pulso y juego", titan: "Foto" },
   { label: "Colores", aero: "Rosa Perla, blanco, negro", titan: "Plata, negro mate, oro" },
 ];
 

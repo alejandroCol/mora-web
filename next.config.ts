@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
   images: {
     qualities: [75, 100],
   },
+  async headers() {
+    return [
+      {
+        source: "/.well-known/apple-app-site-association",
+        headers: [{ key: "Content-Type", value: "application/json" }],
+      },
+    ];
+  },
   experimental: {
     serverActions: {
       bodySizeLimit: "12mb",

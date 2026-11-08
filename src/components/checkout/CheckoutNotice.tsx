@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import type { CheckoutNotice as CheckoutNoticeModel } from "./checkoutNotice";
+import type { CheckoutNotice as CheckoutNoticeModel } from "./checkoutNoticeModel";
 
 function dialogTitle(notice: CheckoutNoticeModel) {
   switch (notice.action?.field) {

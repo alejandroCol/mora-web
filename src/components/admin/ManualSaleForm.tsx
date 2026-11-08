@@ -17,6 +17,7 @@ import {
   type ModelId,
 } from "@/lib/catalog";
 import { ColombiaFields } from "@/components/checkout/ColombiaFields";
+import { usePricing } from "@/components/sales/SalesProvider";
 import { PAYMENT_METHOD_LABEL } from "@/commerce/labels";
 
 const MANUAL_METHODS: Exclude<PaymentMethod, "bold" | "wompi" | "addi">[] = [
@@ -61,10 +62,13 @@ export function ManualSaleForm({
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const pricing = usePricing();
   const model = products[modelId];
   const subtotal = useMemo(
     () => lines.reduce((sum, line) => sum + lineUnitPrice(line) * line.qty, 0),
-    [lines],
+    // pricing: el precio vivo cambia el subtotal aunque las líneas sean las mismas.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- pricing re-run
+    [lines, pricing],
   );
 
   function addLine() {

@@ -14,6 +14,7 @@ import {
 } from "@/lib/cases";
 import { formatMoney } from "@/lib/catalog";
 import { useMoraStore } from "@/lib/store";
+import { usePricing } from "@/components/sales/SalesProvider";
 
 const SEEN_KEY = "mora-case-offer-seen";
 const HIDE_KEY = "mora-case-offer-hide";
@@ -34,6 +35,7 @@ export function CaseOffer() {
   const router = useRouter();
   const cart = useMoraStore((state) => state.cart);
   const addCaseToCart = useMoraStore((state) => state.addCaseToCart);
+  const price = usePricing().case;
   const [colorId, setColorId] = useState<CaseColorId>(CASE_PRODUCT.colors[0]);
   const [open, setOpen] = useState(false);
   const color = caseColor(colorId);
@@ -83,8 +85,13 @@ export function CaseOffer() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={color.src} alt="" className="case-offer-photo" />
         <span className="case-offer-body">
-          <span className="case-offer-title">Agrega un Case a tu pedido</span>
-          <span className="case-offer-meta">{formatMoney(CASE_PRODUCT.price)}</span>
+          <span className="case-offer-title">
+            <span className="case-offer-title-lead">Agrega un Case a tu</span>
+            <span className="case-offer-pedido-row">
+              <span className="case-offer-pedido">pedido</span>
+              <span className="case-offer-price">{formatMoney(price)}</span>
+            </span>
+          </span>
         </span>
       </button>
       <div className="case-offer-dots" role="group" aria-label="Color">

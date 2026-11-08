@@ -24,7 +24,8 @@ export function discountOf(
 ) {
   if (!offer || !Number.isFinite(offer.value) || offer.value <= 0) return 0;
   if (offer.kind === "percent") {
-    const pct = Math.min(50, Math.max(1, offer.value));
+    // El tope por fuente va en quien crea la oferta (carritos: 50 %, códigos: 100 %).
+    const pct = Math.min(100, Math.max(1, offer.value));
     return Math.round(subtotal * (pct / 100));
   }
   return Math.min(subtotal, Math.max(0, Math.round(offer.value)));

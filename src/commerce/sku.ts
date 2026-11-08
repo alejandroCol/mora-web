@@ -1,4 +1,10 @@
-import { CASE_PRODUCT, caseLineKey, isCaseColorId } from "@/lib/cases";
+import {
+  CASE_PRODUCT,
+  caseColor,
+  caseLineKey,
+  isCaseColorId,
+  type CaseColorId,
+} from "@/lib/cases";
 import {
   finishLabel,
   isModelId,
@@ -14,8 +20,22 @@ export function inventorySku(modelId: ModelId, finishId: FinishId, size: number)
   return `${modelId}__${finishId}__${size}`;
 }
 
-export function parseInventorySku(sku: string) {
+/** El case no tiene talla: una referencia de stock por color. */
+export function caseSku(colorId: CaseColorId) {
+  return `case__${colorId}`;
+}
+
+export type ParsedSku =
+  | { modelId: ModelId; finishId: FinishId; size: number | null }
+  | { modelId: "case"; finishId: CaseColorId; size: null };
+
+export function parseInventorySku(sku: string): ParsedSku | null {
   const parts = sku.split("__");
+  if (parts[0] === "case") {
+    const colorId = parts[1];
+    if (parts.length !== 2 || !isCaseColorId(colorId)) return null;
+    return { modelId: "case", finishId: colorId, size: null };
+  }
   const [modelId, finishId, sizeRaw] = parts as [ModelId, FinishId, string?];
   const product = products[modelId];
   if (!product || !product.finishes.includes(finishId)) return null;
@@ -32,7 +52,10 @@ export function stockSku(line: {
   size: number;
   sizing?: SizingMethod;
 }) {
-  if (isCaseLine(line) || !isModelId(line.modelId)) return null;
+  if (isCaseLine(line)) {
+    return isCaseColorId(line.finishId) ? caseSku(line.finishId) : null;
+  }
+  if (!isModelId(line.modelId)) return null;
   if (isSizePending(line)) return null;
   const product = products[line.modelId];
   if (!product?.sizes.includes(line.size) || !product.finishes.includes(line.finishId as FinishId)) {
@@ -43,7 +66,10 @@ export function stockSku(line: {
 
 export function inventoryLabel(sku: string) {
   const parsed = parseInventorySku(sku);
-  if (!parsed) return "ese anillo";
+  if (!parsed) return "esa pieza";
+  if (parsed.modelId === "case") {
+    return `Mora ${CASE_PRODUCT.name} ${caseColor(parsed.finishId).title}`;
+  }
   const name = `Mora ${products[parsed.modelId].name} ${finishLabel(parsed.modelId, parsed.finishId)}`;
   return parsed.size ? `${name} talla ${parsed.size}` : name;
 }
@@ -91,7 +117,7 @@ export function lineToOrderItem(line: CartLine): OrderItem {
   if (isCaseLine(normalized)) {
     return {
       ...normalized,
-      sku: "",
+      sku: stockSku(normalized) ?? "",
       name: lineName(normalized),
       finishTitle: lineFinishTitle(normalized),
       unitPrice: lineUnitPrice(normalized),

@@ -13,7 +13,7 @@ import {
   type ModelId,
 } from "@/lib/catalog";
 import { AddiCuotasChip } from "@/components/payments/AddiCuotasChip";
-import { useSales } from "@/components/sales/SalesProvider";
+import { usePricing, useSales } from "@/components/sales/SalesProvider";
 import { useMoraStore } from "@/lib/store";
 import { loadPayMethods } from "@/payments/methodsClient";
 
@@ -24,6 +24,7 @@ const LOOK_FOCUS: Record<ModelId, string> = {
 
 export function Atelier() {
   const sales = useSales();
+  const pricing = usePricing();
   const setModel = useMoraStore((state) => state.setModel);
   const scroller = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
@@ -188,7 +189,7 @@ export function Atelier() {
                   </span>
                 </p>
                 <div className="world-dock">
-                  <span className="world-price">{formatMoney(item.price)}</span>
+                  <span className="world-price">{formatMoney(pricing[item.id])}</span>
                   <div className="world-actions">
                     <span className="elegir-cta">
                       {sales.cta}

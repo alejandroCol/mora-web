@@ -101,6 +101,23 @@ function english(): LegalCopy {
             <strong className={strong}>Google Firebase</strong> (Firestore, Cloud Functions,
             Authentication), with traffic encrypted in transit (HTTPS/TLS).
           </p>
+          <p>
+            <strong className={strong}>Apple Health (iOS, optional):</strong> if you turn on “Save to
+            Health” in the app, Mora <strong className={strong}>writes</strong> steps, distance, active
+            energy, heart rate, blood oxygen, sleep stages, workouts and mindful minutes measured by your
+            ring into the Health app on your iPhone. Mora{" "}
+            <strong className={strong}>never reads</strong> data from Health, and nothing from Health is
+            sent to our servers or used for advertising. You can switch each data type off in Health ›
+            Sharing › Apps › Mora, and delete what was written from Health at any time.
+          </p>
+          <p>
+            <strong className={strong}>Health Connect (Android, optional):</strong> the same applies on
+            Android. If you turn on “Save to Health Connect”, Mora{" "}
+            <strong className={strong}>writes</strong> steps, distance, active energy, heart rate, blood
+            oxygen, sleep sessions, workouts and mindful minutes into Health Connect. Mora asks for
+            write‑only permissions and <strong className={strong}>never reads</strong> from Health
+            Connect. You can revoke each permission or delete Mora’s data from the Health Connect app.
+          </p>
         </>
       ),
     },
@@ -340,6 +357,24 @@ function spanish(): LegalCopy {
             Los servicios en la nube (cuenta, Círculo, resúmenes opcionales) usan{" "}
             <strong className={strong}>Google Firebase</strong> (Firestore, Cloud Functions,
             Authentication), con el tráfico cifrado en tránsito (HTTPS/TLS).
+          </p>
+          <p>
+            <strong className={strong}>Salud de Apple (iOS, opcional):</strong> si activas «Guardar en
+            Salud» en la app, Mora <strong className={strong}>escribe</strong> en la app Salud de tu
+            iPhone los pasos, la distancia, la energía activa, el pulso, el oxígeno, las fases de sueño,
+            los entrenos y los minutos de calma que midió tu anillo. Mora{" "}
+            <strong className={strong}>nunca lee</strong> datos de Salud, y nada de Salud se envía a
+            nuestros servidores ni se usa para publicidad. Puedes apagar cada tipo en Salud › Compartir ›
+            Apps › Mora y borrar lo escrito desde Salud cuando quieras.
+          </p>
+          <p>
+            <strong className={strong}>Health Connect (Android, opcional):</strong> en Android pasa lo
+            mismo. Si activas «Guardar en Health Connect», Mora{" "}
+            <strong className={strong}>escribe</strong> en Health Connect los pasos, la distancia, la
+            energía activa, el pulso, el oxígeno, las sesiones de sueño, los entrenos y los minutos de
+            calma. Mora pide permisos solo de escritura y <strong className={strong}>nunca lee</strong>{" "}
+            de Health Connect. Puedes quitar cada permiso o borrar los datos de Mora desde la app Health
+            Connect.
           </p>
         </>
       ),

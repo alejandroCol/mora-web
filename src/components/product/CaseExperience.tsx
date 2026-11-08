@@ -17,7 +17,7 @@ import { insightCaseOffer, insightProductCart, useInsightProduct } from "@/insig
 import { useMoraStore } from "@/lib/store";
 import { checkoutHref } from "@/payments/public";
 import { hideCaseOffer } from "@/components/cart/CaseOffer";
-import { useSales } from "@/components/sales/SalesProvider";
+import { usePricing, useSales } from "@/components/sales/SalesProvider";
 
 export function CaseExperience({
   color = null,
@@ -28,6 +28,7 @@ export function CaseExperience({
 }) {
   const router = useRouter();
   const sales = useSales();
+  const price = usePricing().case;
   const { addCaseToCart, closeCart, openCart } = useMoraStore();
   const opened = landingCaseColor(color);
   const [colorId, setColorId] = useState<CaseColorId>(opened);
@@ -41,9 +42,11 @@ export function CaseExperience({
       content_name: `Mora ${CASE_PRODUCT.name}`,
       content_type: "product",
       content_category: CASE_PRODUCT.line,
-      value: CASE_PRODUCT.price,
+      value: price,
       currency: "COP",
     });
+    // Solo al abrir la página; el precio vivo se lee en ese momento.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- view once
   }, []);
 
   useLayoutEffect(() => {
@@ -62,7 +65,7 @@ export function CaseExperience({
       content_ids: [CASE_PRODUCT.id],
       content_name: `Mora Case ${current.title}`,
       content_type: "product",
-      value: CASE_PRODUCT.price,
+      value: price,
       currency: "COP",
       num_items: 1,
     });
@@ -132,7 +135,7 @@ export function CaseExperience({
                   </p>
                 </div>
                 <p className="shrink-0 text-[17px] tracking-[-0.02em] text-[#1d1d1f]">
-                  {formatMoney(CASE_PRODUCT.price)}
+                  {formatMoney(price)}
                 </p>
               </div>
 

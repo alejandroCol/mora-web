@@ -1057,6 +1057,7 @@ function OrderLines({ cart }: { cart: CartLine[] }) {
               line={line}
               price={formatMoney(lineUnitPrice(line) * line.qty)}
               compact
+              kitTag
             >
               <div className="check-qty-row">
                 <div className="check-qty" role="group" aria-label="Cantidad">

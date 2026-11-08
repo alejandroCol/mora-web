@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { isCaseLine, lineFinishTitle, lineName, linePhoto, lineSwatch } from "@/commerce/lines";
-import { sizeCopy } from "@/commerce/sizing";
+import { isSizePending, sizeCopy } from "@/commerce/sizing";
 import type { CatalogId, SizingMethod } from "@/commerce/types";
 import {
   finishLabel,
@@ -96,13 +96,17 @@ export function CartLineVisual({
   price,
   children,
   compact = false,
+  kitTag = false,
 }: {
   line: Line;
   price?: string;
   children?: ReactNode;
   compact?: boolean;
+  /** Checkout: la talla con medidor va como etiqueta aparte, no en la línea de color. */
+  kitTag?: boolean;
 }) {
   const accessory = isCaseLine(line);
+  const kitPending = kitTag && !accessory && isSizePending(line);
   return (
     <div className={`cart-line ${compact ? "cart-line-compact" : ""}`}>
       <LineThumb line={line} size={compact ? "sm" : "md"} />
@@ -117,7 +121,7 @@ export function CartLineVisual({
         <p className="cart-line-meta">
           <span className="ring-dot" style={{ background: lineSwatch(line) }} />
           {lineFinishTitle(line)}
-          {accessory ? null : (
+          {accessory || kitPending ? null : (
             <>
               <span aria-hidden className="cart-line-sep">
                 ·
@@ -126,6 +130,7 @@ export function CartLineVisual({
             </>
           )}
         </p>
+        {kitPending ? <span className="cart-line-tag">Medidor de talla solicitado</span> : null}
         {children}
       </div>
     </div>

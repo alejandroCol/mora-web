@@ -34,7 +34,7 @@ const TEMPLATES = [
     desk: "sales",
     category: "MARKETING",
     body:
-      "Hola, soy del equipo de Mora. Vi tu mensaje y quedé pendiente de responderte. ¿Sigues con ganas de que te cuente del anillo?",
+      "Hola, soy Lina del equipo de Mora Ring. Vi tu mensaje, ¿deseas que continuemos con el proceso de compra?",
   },
   {
     name: "talla_pendiente",
@@ -98,7 +98,10 @@ async function main() {
   const token = growth.whatsappAccessToken;
   if (!token) throw new Error("settings/growth no tiene whatsappAccessToken.");
 
-  const existing = await graph(token, `${wabaId}/message_templates?fields=name,status,category,language&limit=200`);
+  const existing = await graph(
+    token,
+    `${wabaId}/message_templates?fields=id,name,status,category,language,components&limit=200`,
+  );
   const byName = new Map((existing.data ?? []).map((item) => [`${item.name}/${item.language}`, item]));
 
   const registered = [];
@@ -106,7 +109,18 @@ async function main() {
     const key = `${template.name}/es`;
     let remote = byName.get(key);
     if (remote) {
-      console.log(`· ${template.name} ya existe (${remote.status}, ${remote.category})`);
+      const remoteBody = (remote.components ?? []).find((c) => c.type === "BODY")?.text ?? "";
+      if (remoteBody.trim() !== template.body.trim()) {
+        // Editar vuelve a mandar la plantilla a revisión (PENDING). Máx. 10 ediciones/30 días.
+        await graph(token, remote.id, {
+          method: "POST",
+          body: JSON.stringify({ components: [{ type: "BODY", text: template.body }] }),
+        });
+        remote = { ...remote, status: "PENDING" };
+        console.log(`✎ ${template.name} editada en Meta (PENDING, ${remote.category})`);
+      } else {
+        console.log(`· ${template.name} ya existe (${remote.status}, ${remote.category})`);
+      }
     } else {
       const created = await graph(token, `${wabaId}/message_templates`, {
         method: "POST",

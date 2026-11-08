@@ -10,6 +10,7 @@ import {
 import type { CommerceSettings, MoraOrder, OrderStatus } from "@/commerce/types";
 import { commerceLineLabel, orderHasSizer, orderNeedsSize } from "@/commerce/sizing";
 import { enCaminoTarget, guideKindFor } from "@/commerce/shipments";
+import { orderJourney } from "@/commerce/orderJourney";
 import { formatMoney } from "@/lib/catalog";
 import { useAdminAuth } from "./AdminAuth";
 import { ManualSaleForm } from "./ManualSaleForm";
@@ -46,6 +47,20 @@ function guideNumberFor(order: MoraOrder, kind: "sizer" | "rings", typed = "") {
     return shipping;
   }
   return "";
+}
+
+/** Guía que ya existe para el tramo que toca marcar; vacío si no hay (no arrastrar la del medidor). */
+function pendingGuideFor(order: MoraOrder) {
+  const target = enCaminoTarget(order);
+  return target ? guideNumberFor(order, target.kind) : "";
+}
+
+function CheckGlyph() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M5 12.5l4.5 4.5L19 7" />
+    </svg>
+  );
 }
 
 function formatWhen(at: number) {
@@ -325,7 +340,7 @@ export function VentasBoard() {
                         busy={busy}
                         onOpen={() => {
                           setSelected(order);
-                          setTracking(order.shipping.trackingNumber ?? "");
+                          setTracking(pendingGuideFor(order));
                           setHekaError("");
                         }}
                         onCreate={() => void runHeka(order, "create")}
@@ -357,7 +372,7 @@ export function VentasBoard() {
                 busy={busy}
                 onOpen={() => {
                   setSelected(order);
-                  setTracking(order.shipping.trackingNumber ?? "");
+                  setTracking(pendingGuideFor(order));
                   setHekaError("");
                 }}
                 onCreate={() => void runHeka(order, "create")}
@@ -557,6 +572,20 @@ function OrderDrawer({
     order.conversationId || phone
       ? `/superadmin/crm?c=${order.conversationId || (phone.startsWith("57") ? phone : `57${phone}`)}`
       : null;
+  const { steps, next } = orderJourney(order);
+  const camino = enCaminoTarget(order);
+  const sizerGuide = Boolean(order.shipments?.sizer?.hekaGuideId);
+  const ringsGuide = Boolean(
+    order.shipments?.rings?.hekaGuideId ||
+      (order.shipping.hekaGuideId && order.shipping.hekaGuideId !== order.shipments?.sizer?.hekaGuideId),
+  );
+  const canRefreshHeka =
+    (order.status === "sizer_transit" || order.status === "in_transit") &&
+    Boolean(
+      order.shipments?.rings?.trackingNumber ||
+        order.shipments?.sizer?.trackingNumber ||
+        order.shipping.trackingNumber,
+    );
 
   return (
     <div className="admin-drawer-backdrop" onClick={onClose}>
@@ -605,140 +634,143 @@ function OrderDrawer({
             : ""}
         </p>
 
-        {order.timeline.length > 0 ? (
-          <ul className="mt-6 space-y-2 border-t border-[var(--admin-line)] pt-4">
-            {order.timeline.slice(-4).map((event, index) => (
-              <li key={`${event.at}-${index}`} className="text-[12px] text-[var(--admin-muted)]">
-                {ORDER_STATUS_LABEL[event.status]} · {formatWhen(event.at)}
-                {event.note ? ` · ${event.note}` : ""}
-              </li>
-            ))}
-          </ul>
-        ) : null}
-
-        {order.shipping.hekaStatusLabel || order.shipping.trackingNumber ? (
-          <p className="mt-4 text-[13px] text-[var(--admin-muted)]">
-            Heka · {order.shipping.hekaStatusLabel || "Guía creada"}
-            {order.shipping.trackingNumber ? ` · guía ${order.shipping.trackingNumber}` : ""}
+        {/* Qué sigue: una tarjeta, una acción. */}
+        <section className={`order-next is-${next.tone}`}>
+          <p className="order-next-kicker">
+            {next.tone === "done" || next.tone === "cancelled"
+              ? "Estado"
+              : next.waiting
+                ? "En espera"
+                : "Siguiente paso"}
           </p>
-        ) : null}
-        {order.shipments?.sizer?.hekaGuideId ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => onView("sizer")}
-            className="mt-3 h-11 w-full rounded-full bg-[var(--admin-field)] text-[13px] disabled:opacity-40"
-          >
-            Ver medidor
-          </button>
-        ) : null}
-        {order.shipments?.rings?.hekaGuideId ||
-        (order.shipping.hekaGuideId && order.shipping.hekaGuideId !== order.shipments?.sizer?.hekaGuideId) ? (
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => onView("rings")}
-            className="mt-3 h-11 w-full rounded-full bg-[var(--admin-field)] text-[13px] disabled:opacity-40"
-          >
-            Ver guía
-          </button>
-        ) : null}
-        {hekaError ? (
-          <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-[13px] leading-5 text-red-900">
-            {hekaError}
-          </p>
-        ) : null}
+          <h3 className="order-next-title">{next.title}</h3>
+          <p className="order-next-body">{next.body}</p>
 
-        {(order.status === "paid" || order.status === "sizer_transit") ? (
-          <div className="mt-8">
-            {guideKindFor(order) ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => onHeka("create")}
-                className="admin-cta h-11 w-full disabled:opacity-40"
-              >
-                {guideKindFor(order) === "sizer"
-                  ? "Guía del medidor"
-                  : orderHasSizer(order.items)
-                    ? "Guía de los anillos"
-                    : "Crear guía"}
-              </button>
-            ) : null}
-            {enCaminoTarget(order) ? (
-              <>
-                <label className="mt-5 block text-[11px] uppercase tracking-[0.12em] text-[var(--admin-muted)]">
-                  Guía, si ya la tienes
-                </label>
+          {next.action === "confirm_paid" ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onStatus("paid")}
+              className="admin-cta mt-4 h-11 w-full disabled:opacity-40"
+            >
+              {next.actionLabel}
+            </button>
+          ) : null}
+
+          {next.action === "heka_create" ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onHeka("create")}
+              className="admin-cta mt-4 h-11 w-full disabled:opacity-40"
+            >
+              {next.actionLabel}
+            </button>
+          ) : null}
+
+          {next.manualGuide && camino ? (
+            <div className="order-manual">
+              <label className="order-manual-label" htmlFor="order-guide">
+                {next.action === "en_camino" ? "Número de guía" : "¿Ya tienes la guía? Escríbela y márcalo en camino"}
+              </label>
+              <div className="order-manual-row">
                 <input
+                  id="order-guide"
                   value={tracking}
                   onChange={(event) => setTracking(event.target.value)}
                   placeholder="Número de guía"
-                  className="mt-2 h-11 w-full rounded-2xl bg-[var(--admin-field)] px-3 text-sm outline-none"
+                  className="order-manual-input"
                 />
                 <button
                   type="button"
                   disabled={busy}
                   onClick={onEnCamino}
-                  className="admin-cta mt-3 h-11 w-full disabled:opacity-40"
+                  className={next.action === "en_camino" ? "admin-cta order-manual-btn" : "order-manual-btn is-soft"}
                 >
-                  {enCaminoTarget(order)?.label}
+                  {camino.label}
                 </button>
-              </>
-            ) : null}
-            {orderNeedsSize(order.items) ? (
-              <p className="mt-3 rounded-2xl bg-amber-50 px-4 py-3 text-[13px] leading-5 text-amber-950">
-                El medidor va primero. Cuando el cliente elija la talla, aquí aparece la guía de los anillos.
-              </p>
-            ) : null}
-          </div>
-        ) : null}
+              </div>
+            </div>
+          ) : null}
 
-        {order.status === "sizer_transit" || order.status === "in_transit" ? (
-          <div className="mt-8 space-y-2">
-            {order.shipments?.rings?.trackingNumber ||
-            order.shipments?.sizer?.trackingNumber ||
-            order.shipping.trackingNumber ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => onHeka("refresh")}
-                className="h-11 w-full rounded-full bg-[var(--admin-field)] text-[13px] disabled:opacity-40"
-              >
-                Actualizar estado en Heka
-              </button>
-            ) : null}
-            {order.status === "in_transit" ? (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => onStatus("delivered")}
-                className="admin-cta h-11 w-full"
-              >
-                Marcar entregado
-              </button>
-            ) : null}
-          </div>
-        ) : null}
+          {next.action === "deliver" ? (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onStatus("delivered")}
+              className="admin-cta mt-4 h-11 w-full disabled:opacity-40"
+            >
+              {next.actionLabel}
+            </button>
+          ) : null}
 
-        {order.status === "awaiting_payment" ? (
+          {next.action === "none" && next.waiting && crmHref ? (
+            <Link href={crmHref} className="order-soft-btn mt-4">
+              Recordarle por el chat
+            </Link>
+          ) : null}
+
+          {hekaError ? <p className="order-error">{hekaError}</p> : null}
+        </section>
+
+        {/* Ruta del pedido: dónde va. */}
+        <ol className="order-journey">
+          {steps.map((step) => (
+            <li key={step.id} className={`order-step is-${step.state}`}>
+              <span className="order-step-dot" aria-hidden>
+                {step.state === "done" ? <CheckGlyph /> : null}
+              </span>
+              <div className="order-step-body">
+                <p className="order-step-title">
+                  {step.title}
+                  {step.at ? <span className="order-step-when">{formatWhen(step.at)}</span> : null}
+                </p>
+                {step.detail ? <p className="order-step-detail">{step.detail}</p> : null}
+                {step.id === "sizer" && sizerGuide ? (
+                  <button type="button" disabled={busy} onClick={() => onView("sizer")} className="order-step-link">
+                    Ver guía del medidor
+                  </button>
+                ) : null}
+                {step.id === "rings" && ringsGuide ? (
+                  <button type="button" disabled={busy} onClick={() => onView("rings")} className="order-step-link">
+                    Ver guía de los anillos
+                  </button>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ol>
+
+        {canRefreshHeka ? (
           <button
             type="button"
             disabled={busy}
-            onClick={() => onStatus("paid")}
-            className="admin-cta mt-8 h-11 w-full"
+            onClick={() => onHeka("refresh")}
+            className="order-soft-btn mt-6"
           >
-            Confirmar pago recibido
+            Actualizar estado en Heka
           </button>
         ) : null}
 
         {crmHref ? (
-          <Link
-            href={crmHref}
-            className="mt-3 flex h-11 items-center justify-center rounded-full bg-[var(--admin-field)] text-[13px]"
-          >
+          <Link href={crmHref} className="order-soft-btn mt-3">
             Ver chat en CRM
           </Link>
+        ) : null}
+
+        {order.timeline.length > 0 ? (
+          <details className="order-history">
+            <summary>Historial</summary>
+            <ul>
+              {order.timeline.map((event, index) => (
+                <li key={`${event.at}-${index}`}>
+                  <span>{formatWhen(event.at)}</span>
+                  {ORDER_STATUS_LABEL[event.status]}
+                  {event.note ? ` · ${event.note}` : ""}
+                </li>
+              ))}
+            </ul>
+          </details>
         ) : null}
 
         {order.status !== "cancelled" && order.status !== "delivered" ? (

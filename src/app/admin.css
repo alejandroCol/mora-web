@@ -1846,6 +1846,337 @@
   box-shadow: -12px 0 40px rgba(0, 0, 0, 0.12);
 }
 
+/* Pedido · «Qué sigue»: una tarjeta, una acción. */
+.order-next {
+  margin-top: 1.75rem;
+  border-radius: 1.1rem;
+  padding: 1rem 1.05rem 1.1rem;
+  background: #1d1d1f;
+  color: #fff;
+}
+
+.order-next.is-waiting {
+  background: #fbf6e8;
+  color: #1d1d1f;
+}
+
+.order-next.is-done {
+  background: #eaf6ee;
+  color: #1d1d1f;
+}
+
+.order-next.is-cancelled {
+  background: var(--admin-field);
+  color: #1d1d1f;
+}
+
+.order-next-kicker {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.55;
+}
+
+.order-next-title {
+  margin-top: 0.35rem;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.order-next-body {
+  margin-top: 0.4rem;
+  font-size: 13px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  opacity: 0.78;
+}
+
+.order-next .admin-cta {
+  background: #fff;
+  color: #1d1d1f !important;
+  font-size: 15px;
+}
+
+.order-next .admin-cta:hover {
+  background: #ececf0;
+}
+
+.order-next.is-waiting .admin-cta,
+.order-next.is-done .admin-cta {
+  background: #1d1d1f;
+  color: #fff !important;
+}
+
+.order-next.is-waiting .admin-cta:hover,
+.order-next.is-done .admin-cta:hover {
+  background: #3a3a3c;
+}
+
+.order-manual {
+  margin-top: 0.9rem;
+}
+
+.order-manual-label {
+  display: block;
+  font-size: 11.5px;
+  letter-spacing: -0.01em;
+  opacity: 0.65;
+}
+
+.order-manual-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.45rem;
+}
+
+.order-manual-input {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: 0;
+  border-radius: 12px;
+  padding: 0 0.8rem;
+  background: rgba(255, 255, 255, 0.12);
+  color: inherit;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  outline: none;
+}
+
+.order-manual-input::placeholder {
+  color: inherit;
+  opacity: 0.4;
+  letter-spacing: -0.01em;
+}
+
+.order-next.is-waiting .order-manual-input,
+.order-next.is-done .order-manual-input {
+  background: rgba(22, 20, 31, 0.07);
+}
+
+.order-manual-btn {
+  flex-shrink: 0;
+  height: 40px;
+  width: auto;
+  border-radius: 999px;
+  padding: 0 1rem;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.order-manual-btn.is-soft {
+  background: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.order-manual-btn.is-soft:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.order-manual-btn:disabled {
+  opacity: 0.4;
+}
+
+.order-error {
+  margin-top: 0.8rem;
+  border-radius: 12px;
+  padding: 0.6rem 0.8rem;
+  background: rgba(180, 35, 24, 0.12);
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #ffd9d4;
+}
+
+.order-next.is-waiting .order-error,
+.order-next.is-done .order-error {
+  color: var(--admin-danger);
+}
+
+.order-soft-btn {
+  display: flex;
+  width: 100%;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--admin-field);
+  font-size: 13px;
+  color: #1d1d1f;
+}
+
+.order-soft-btn:disabled {
+  opacity: 0.4;
+}
+
+.order-next .order-soft-btn {
+  background: rgba(22, 20, 31, 0.08);
+}
+
+/* Ruta del pedido. */
+.order-journey {
+  margin-top: 1.5rem;
+  padding: 0.25rem 0.2rem 0;
+}
+
+.order-step {
+  position: relative;
+  display: flex;
+  gap: 0.85rem;
+  padding-bottom: 1.05rem;
+}
+
+.order-step:last-child {
+  padding-bottom: 0;
+}
+
+.order-step::before {
+  content: "";
+  position: absolute;
+  top: 1.25rem;
+  bottom: -0.05rem;
+  left: 0.56rem;
+  width: 2px;
+  background: var(--admin-line);
+}
+
+.order-step:last-child::before {
+  display: none;
+}
+
+.order-step.is-done::before {
+  background: #1d1d1f;
+}
+
+.order-step-dot {
+  display: grid;
+  width: 1.2rem;
+  height: 1.2rem;
+  flex-shrink: 0;
+  place-items: center;
+  margin-top: 0.1rem;
+  border-radius: 999px;
+  border: 2px solid var(--admin-line);
+  background: #fff;
+  color: #fff;
+}
+
+.order-step.is-done .order-step-dot {
+  border-color: #1d1d1f;
+  background: #1d1d1f;
+}
+
+.order-step.is-current .order-step-dot {
+  border-color: #1d1d1f;
+  box-shadow: 0 0 0 4px rgba(29, 29, 31, 0.1);
+}
+
+.order-step.is-current .order-step-dot::after {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: #1d1d1f;
+}
+
+.order-step-body {
+  min-width: 0;
+  flex: 1;
+  padding-top: 0.05rem;
+}
+
+.order-step-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  font-size: 13.5px;
+  letter-spacing: -0.015em;
+  color: #1d1d1f;
+}
+
+.order-step.is-todo .order-step-title {
+  color: var(--admin-muted);
+}
+
+.order-step.is-current .order-step-title {
+  font-weight: 600;
+}
+
+.order-step-when {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--admin-muted);
+  white-space: nowrap;
+}
+
+.order-step-detail {
+  margin-top: 0.15rem;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--admin-muted);
+}
+
+.order-step-link {
+  margin-top: 0.3rem;
+  font-size: 12px;
+  color: #1d1d1f;
+  text-decoration: underline;
+  text-decoration-color: rgba(22, 20, 31, 0.25);
+  text-underline-offset: 3px;
+}
+
+.order-step-link:disabled {
+  opacity: 0.4;
+}
+
+.order-history {
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--admin-line);
+  padding-top: 0.9rem;
+}
+
+.order-history summary {
+  cursor: pointer;
+  list-style: none;
+  font-size: 12px;
+  color: var(--admin-muted);
+}
+
+.order-history summary::-webkit-details-marker {
+  display: none;
+}
+
+.order-history summary::after {
+  content: " ›";
+  display: inline-block;
+  transform: rotate(90deg);
+  transition: transform 0.15s ease;
+}
+
+.order-history[open] summary::after {
+  transform: rotate(-90deg);
+}
+
+.order-history ul {
+  margin-top: 0.6rem;
+  display: grid;
+  gap: 0.35rem;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--admin-muted);
+}
+
+.order-history li span {
+  display: inline-block;
+  min-width: 7.5rem;
+  color: #1d1d1f;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (min-width: 1280px) {
   .crm-frame {
     grid-template-columns: 18.25rem minmax(0, 1fr) 20.25rem;

@@ -23,7 +23,7 @@ export function defaultCrmReplies(): CrmQuickReply[] {
     reply(
       "info",
       "Más info",
-      "Claro. Mi nombre es Lina de Mora Ring. Mora es un anillo inteligente: lo llevas puesto y la app te cuenta cómo estás. Mide tu sueño para saber qué tan bien descansas, tu pulso y oxígeno día y noche, tu estrés como una marea que sube y baja, qué tan recuperado amaneces, la temperatura de tu piel, tus pasos y entrenos, y lleva tu ciclo solo en tu teléfono. Además trae meditación guiada, Círculo para compartir tu día con alguien, meta de pasos y un aviso si tu pulso en reposo sube. Pro es cerámica y Ultra es titanio, ambos resistentes al agua. ¿Cuál es el color que más te gusta?",
+      "Claro. Mi nombre es Lina, de Mora Ring.\n\nMora es un anillo inteligente: lo llevas puesto y la app te cuenta cómo estás.\n\n🟣 Lo que mide:\n• Tu sueño, para saber qué tan bien descansas.\n• Pulso y oxígeno, día y noche.\n• Tu estrés, como una marea que sube y baja.\n• Qué tan recuperado amaneces.\n• La temperatura de tu piel.\n• Tus pasos y entrenos.\n• Tu ciclo, guardado solo en tu teléfono.\n\nY en la app: meditación guiada, Círculo para compartir tu día con alguien, meta de pasos y un aviso si tu pulso en reposo sube.\n\nPro es cerámica y Ultra es titanio, ambos resistentes al agua.\n\n¿Cuál es el color que más te gusta?",
       "sales",
     ),
     reply(

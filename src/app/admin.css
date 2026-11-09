@@ -940,7 +940,7 @@
 /* Origen del chat (anuncio / publicación de Meta). */
 .crm-ad-chip {
   display: inline-block;
-  max-width: 16rem;
+  max-width: min(22rem, 70vw);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

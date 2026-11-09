@@ -5,8 +5,25 @@ export function referralKindLabel(referral: WhatsAppReferral | undefined) {
   return referral?.sourceType === "post" ? "Publicación" : "Anuncio";
 }
 
-/** Título corto para chips y badges: headline, o el tipo si Meta no lo mandó. */
+const SNIPPET_LENGTH = 30;
+
+/** Primeros ~30 caracteres de un texto, cortando en palabra y con «…». */
+export function snippet(text: string | undefined, max = SNIPPET_LENGTH) {
+  const clean = (text ?? "").replace(/\s+/g, " ").trim();
+  if (clean.length <= max) return clean;
+  const cut = clean.slice(0, max + 1);
+  const space = cut.lastIndexOf(" ");
+  return `${(space > max * 0.6 ? cut.slice(0, space) : clean.slice(0, max)).trimEnd()}…`;
+}
+
+/**
+ * Título corto para chips y badges. Prefiere el inicio del `body`: es el texto
+ * del anuncio y distingue una promo de otra. El `headline` suele ser el CTA
+ * genérico («Chatea con nosotros») y queda como respaldo.
+ */
 export function referralTitle(referral: WhatsAppReferral | undefined) {
+  const body = snippet(referral?.body);
+  if (body) return body;
   const headline = referral?.headline?.trim();
   if (headline) return headline;
   return referralKindLabel(referral);

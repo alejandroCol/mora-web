@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { WhatsAppReferral } from "@/growth/types";
 import { formatWhen } from "@/crm/labels";
-import { referralImage, referralKindLabel, referralLink } from "@/crm/referral";
+import { referralImage, referralKindLabel, referralLink, referralTitle } from "@/crm/referral";
 
 /**
  * Tarjeta del anuncio o publicación por la que entró el cliente.
@@ -44,7 +44,7 @@ export function CrmAdCard({
         {thumb}
         <span className="min-w-0">
           <span className="crm-ad-kicker">{kind}</span>
-          <span className="crm-ad-title">{referral.headline || referral.body || "Click-to-WhatsApp"}</span>
+          <span className="crm-ad-title">{referralTitle(referral)}</span>
         </span>
         {link ? <span className="crm-ad-cta">Ver</span> : null}
       </>

@@ -2,6 +2,7 @@
 
 import type { WhatsAppConversation } from "@/growth/types";
 import { INTEREST_LABEL, PIPELINE_LABEL, SUPPORT_STATUS_LABEL, followUpLabel, formatWhen, isSnoozed, needsReply } from "@/crm/labels";
+import { cameFromAd, referralKindLabel } from "@/crm/referral";
 
 type Filter = "all" | "mine" | "unassigned" | "unread" | "today" | "waiting" | "resolved" | "reply" | "snoozed";
 
@@ -85,6 +86,11 @@ export function CrmInboxList({
                     ) : null}
                     {needsReply(item) ? <span className="crm-dot">Te toca</span> : null}
                     {isSnoozed(item.snoozedUntil) ? <span>Dormido</span> : null}
+                    {cameFromAd(item) ? (
+                      <span className="crm-ad-badge" title={item.referral?.headline || "Entró por anuncio"}>
+                        {referralKindLabel(item.referral)}
+                      </span>
+                    ) : null}
                     {item.interest && item.interest !== "unknown" ? (
                       <span>{INTEREST_LABEL[item.interest]}</span>
                     ) : null}

@@ -73,13 +73,31 @@ export type WhatsAppConversationStatus =
 
 export type CrmLostReason = "price" | "size" | "later" | "silent" | "other";
 
+/**
+ * Origen Click-to-WhatsApp que Meta adjunta al primer mensaje que llega desde
+ * un anuncio o una publicación con botón «Enviar mensaje».
+ * https://developers.facebook.com/docs/whatsapp/cloud-api/webhooks/components#referral-object
+ */
 export type WhatsAppReferral = {
+  /** Link al anuncio o publicación de Facebook/Instagram. */
   sourceUrl?: string;
+  /** Id del anuncio (o del post) en Meta. */
   sourceId?: string;
+  /** "ad" (anuncio pagado) o "post" (publicación con botón). */
   sourceType?: string;
+  /** Título del anuncio. */
   headline?: string;
+  /** Texto principal del anuncio. */
   body?: string;
+  /** "image" o "video". */
+  mediaType?: string;
+  /** Creativo del anuncio. URLs del CDN de Meta: pueden caducar. */
+  imageUrl?: string;
+  videoUrl?: string;
+  thumbnailUrl?: string;
   ctwaClid?: string;
+  /** Cuándo llegó el mensaje con este referral (ms). */
+  at?: number;
 };
 
 export type WhatsAppConversation = {
@@ -133,6 +151,8 @@ export type WhatsAppMessage = {
   reaction?: string;
   /** En mensajes `type: "reaction"`: id del mensaje al que reaccionó. */
   reactionTo?: string;
+  /** Solo en el mensaje que entró desde un anuncio o publicación. */
+  referral?: WhatsAppReferral;
 };
 
 export type WhatsAppUsageCategoryRow = {

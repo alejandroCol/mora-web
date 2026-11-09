@@ -14,6 +14,8 @@ import {
   formatDay,
   formatWhen,
 } from "@/crm/labels";
+import { hasReferral } from "@/crm/referral";
+import { CrmAdCard } from "./CrmAdCard";
 import type { CrmContactState } from "./CrmWorkspace";
 
 const INTERESTS = Object.keys(INTEREST_LABEL) as ProductInterest[];
@@ -78,6 +80,13 @@ export function CrmContactPanel({
             <p className="mt-1 text-[12px] text-white/35">Nadie lo tiene. Tómalo arriba.</p>
           )}
         </div>
+
+        {hasReferral(conversation.referral) ? (
+          <div>
+            <p className="text-[11px] text-white/35">Llegó por</p>
+            <CrmAdCard referral={conversation.referral} className="mt-2" />
+          </div>
+        ) : null}
 
         <label className="block">
           <span className="text-[11px] text-white/35">Nombre</span>
@@ -296,7 +305,7 @@ export function CrmContactPanel({
           </div>
         ) : null}
 
-        {conversation.attribution?.utmCampaign ? (
+        {!hasReferral(conversation.referral) && conversation.attribution?.utmCampaign ? (
           <p className="text-[12px] text-white/35">
             Campaña {conversation.attribution.utmCampaign}
           </p>

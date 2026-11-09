@@ -5,6 +5,8 @@ import type { CrmSeller, WhatsAppConversation, WhatsAppMessage } from "@/growth/
 import { LOST_REASON_LABEL, PIPELINE_LABEL, SUPPORT_STATUS_LABEL, followUpLabel, isSnoozed } from "@/crm/labels";
 import { formatClock } from "@/crm/labels";
 import type { CrmLostReason, WhatsAppConversationStatus } from "@/growth/types";
+import { hasReferral, referralKindLabel, referralLink, referralTitle } from "@/crm/referral";
+import { CrmAdCard } from "./CrmAdCard";
 import { CrmVoiceNote } from "./CrmVoiceNote";
 
 function initial(name: string, phone: string) {
@@ -120,9 +122,18 @@ export function CrmThread({
           </span>
           <div className="min-w-0">
             <p className="crm-chat-name">{conversation.name || conversation.phone}</p>
-            <a href={`tel:+${conversation.phone}`} className="crm-chat-phone">
-              +{conversation.phone}
-            </a>
+            <span className="crm-chat-sub">
+              <a href={`tel:+${conversation.phone}`} className="crm-chat-phone">
+                +{conversation.phone}
+              </a>
+              {hasReferral(conversation.referral) ? (
+                <AdChip
+                  label={referralTitle(conversation.referral)}
+                  kind={referralKindLabel(conversation.referral)}
+                  href={referralLink(conversation.referral)}
+                />
+              ) : null}
+            </span>
           </div>
         </div>
         <div className="crm-chat-tools">
@@ -221,7 +232,7 @@ export function CrmThread({
           // En archivos el texto es el nombre y ya va en la tarjeta.
           const text =
             media && (PLACEHOLDER_RE.test(message.text) || media === "document") ? "" : message.text;
-          return (
+          const bubble = (
             <div
               key={message.id}
               className={`crm-bubble max-w-[82%] rounded-2xl px-3 py-2 text-[13px] leading-6 ${
@@ -248,6 +259,15 @@ export function CrmThread({
                 {formatClock(message.at)}
                 {message.status && message.direction === "out" ? ` · ${message.status}` : ""}
               </p>
+            </div>
+          );
+          if (!hasReferral(message.referral)) return bubble;
+          // El mensaje entró desde un anuncio: la tarjeta va pegada encima
+          // para saber qué vio el cliente justo antes de escribir.
+          return (
+            <div key={message.id} className="crm-ad-entry">
+              <CrmAdCard referral={message.referral} compact />
+              {bubble}
             </div>
           );
         })}
@@ -394,6 +414,19 @@ function MediaBubble({
       </span>
     </a>
   );
+}
+
+/** Chip de cabecera: «Anuncio · Mora Ultra −20 %». Abre el post si hay link. */
+function AdChip({ label, kind, href }: { label: string; kind: string; href: string }) {
+  const text = label === kind ? kind : `${kind} · ${label}`;
+  if (href) {
+    return (
+      <a href={href} target="_blank" rel="noreferrer" className="crm-ad-chip" title={`Ver ${kind.toLowerCase()}`}>
+        {text}
+      </a>
+    );
+  }
+  return <span className="crm-ad-chip">{text}</span>;
 }
 
 function BackGlyph() {

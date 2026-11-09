@@ -439,15 +439,46 @@ type WebhookMessage = {
   sticker?: MediaBlob;
   reaction?: { message_id?: string; emoji?: string };
   voice?: MediaBlob;
-  referral?: {
-    source_url?: string;
-    source_id?: string;
-    source_type?: string;
-    headline?: string;
-    body?: string;
-    ctwa_clid?: string;
-  };
+  referral?: WebhookReferral;
 };
+
+/** Objeto `referral` de Meta (Click-to-WhatsApp). Todos los campos son opcionales. */
+type WebhookReferral = {
+  source_url?: string;
+  source_id?: string;
+  source_type?: string;
+  headline?: string;
+  body?: string;
+  media_type?: string;
+  image_url?: string;
+  video_url?: string;
+  thumbnail_url?: string;
+  ctwa_clid?: string;
+};
+
+function clean(value: unknown) {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+/** Normaliza el referral de Meta. Devuelve undefined si no trae nada útil. */
+export function normalizeReferral(raw: WebhookReferral | undefined, at: number): WhatsAppReferral | undefined {
+  if (!raw) return undefined;
+  const referral: WhatsAppReferral = {
+    sourceUrl: clean(raw.source_url),
+    sourceId: clean(raw.source_id),
+    sourceType: clean(raw.source_type),
+    headline: clean(raw.headline),
+    body: clean(raw.body),
+    mediaType: clean(raw.media_type),
+    imageUrl: clean(raw.image_url),
+    videoUrl: clean(raw.video_url),
+    thumbnailUrl: clean(raw.thumbnail_url),
+    ctwaClid: clean(raw.ctwa_clid),
+    at,
+  };
+  const hasContent = Object.entries(referral).some(([key, value]) => key !== "at" && value !== undefined);
+  return hasContent ? referral : undefined;
+}
 
 type WebhookContact = {
   profile?: { name?: string };
@@ -497,16 +528,7 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
         const text = inboundText(raw);
         const media = inboundMedia(raw);
         const at = raw.timestamp ? Number(raw.timestamp) * 1000 : Date.now();
-        const referral = raw.referral
-          ? {
-              sourceUrl: raw.referral.source_url,
-              sourceId: raw.referral.source_id,
-              sourceType: raw.referral.source_type,
-              headline: raw.referral.headline,
-              body: raw.referral.body,
-              ctwaClid: raw.referral.ctwa_clid,
-            }
-          : undefined;
+        const referral = normalizeReferral(raw.referral, at);
 
         const existing = await conversations().doc(phone).get();
         const isFirst = !existing.exists;
@@ -523,6 +545,9 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
           mediaId: media.mediaId,
           mimeType: media.mimeType,
           reactionTo: raw.type === "reaction" ? raw.reaction?.message_id : undefined,
+          // Va en el mensaje además de en la conversación: así el hilo muestra
+          // de qué anuncio entró cada vez, aunque luego llegue por otro.
+          referral: referral ? compact(referral) : undefined,
         };
         await messages(phone).doc(raw.id).set(compact(message), { merge: true });
         // La reacción también se cuelga del mensaje original para verla en su burbuja.
@@ -565,12 +590,16 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
             status: closed ? "interested" : (prev?.status ?? "new"),
             desk,
             source,
-            referral: referral ?? prev?.referral,
             attribution,
             ...supportReopen,
           }),
           { merge: true },
         );
+        // update() reemplaza el mapa completo; set({merge}) mezclaría campo a
+        // campo y un anuncio nuevo sin `body` heredaría el del anterior.
+        if (referral) {
+          await conversations().doc(phone).update({ referral: compact(referral) });
+        }
 
         const lead = await upsertLead({
           source: source === "ad" ? "ad" : "whatsapp",

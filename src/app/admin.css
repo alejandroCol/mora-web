@@ -929,6 +929,177 @@
   color: #7c3aed;
 }
 
+.crm-chat-sub {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
+}
+
+/* Origen del chat (anuncio / publicación de Meta). */
+.crm-ad-chip {
+  display: inline-block;
+  max-width: 16rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  background: rgba(124, 58, 237, 0.1);
+  color: #5b21b6;
+  font-size: 10.5px;
+  font-weight: 560;
+  line-height: 1.25rem;
+}
+
+a.crm-ad-chip:hover {
+  background: rgba(124, 58, 237, 0.18);
+}
+
+.crm-ad-badge {
+  border-radius: 999px;
+  padding: 0 0.4rem;
+  background: rgba(124, 58, 237, 0.1);
+  color: #5b21b6;
+  font-weight: 560;
+}
+
+.crm-ad-entry {
+  display: flex;
+  max-width: 82%;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.crm-ad-entry .crm-bubble {
+  max-width: 100%;
+}
+
+.crm-ad-card {
+  display: block;
+  color: var(--admin-ink);
+  border-radius: 1rem;
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.14), rgba(253, 244, 255, 0.9) 60%, #fff);
+  box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.14);
+  padding: 0.6rem 0.7rem;
+}
+
+.crm-ad-card.is-compact {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.4rem 0.6rem 0.4rem 0.4rem;
+}
+
+a.crm-ad-card.is-compact:hover {
+  box-shadow: inset 0 0 0 1px rgba(124, 58, 237, 0.32);
+}
+
+.crm-ad-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.crm-ad-thumb {
+  position: relative;
+  display: grid;
+  width: 2.6rem;
+  height: 2.6rem;
+  flex-shrink: 0;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 0.65rem;
+  background: rgba(124, 58, 237, 0.08);
+  color: #6d28d9;
+  font-size: 12px;
+}
+
+.crm-ad-card:not(.is-compact) .crm-ad-thumb {
+  width: 3.4rem;
+  height: 3.4rem;
+}
+
+.crm-ad-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.crm-ad-play {
+  position: absolute;
+  inset: auto 0.2rem 0.2rem auto;
+  display: grid;
+  width: 1rem;
+  height: 1rem;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.6);
+  color: #fff;
+  font-size: 7px;
+}
+
+.crm-ad-kicker {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6d28d9;
+}
+
+.crm-ad-title {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12.5px;
+  font-weight: 560;
+  line-height: 1.15rem;
+}
+
+.crm-ad-card:not(.is-compact) .crm-ad-title {
+  white-space: normal;
+}
+
+.crm-ad-body {
+  margin-top: 0.5rem;
+  font-size: 12px;
+  line-height: 1.15rem;
+  color: var(--admin-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.crm-ad-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.crm-ad-link {
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  background: #1d1d1f;
+  color: #fff;
+  font-size: 11px;
+}
+
+.crm-ad-id {
+  font-size: 10px;
+  color: var(--admin-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.crm-ad-cta {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #6d28d9;
+}
+
 .crm-chat-tools {
   display: flex;
   flex-wrap: wrap;

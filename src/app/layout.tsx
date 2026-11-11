@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Roboto } from "next/font/google";
+import localFont from "next/font/local";
 import { BRAND } from "@/brand";
 import { FALLBACK_SALES } from "@/commerce/sales";
 import { AppChrome } from "@/components/AppChrome";
@@ -11,9 +11,20 @@ import { ScreenFit } from "@/components/site/ScreenFit";
 import { siteOrigin } from "@/lib/site";
 import "./globals.css";
 
-const roboto = Roboto({
-  weight: ["100", "300", "400", "500", "700"],
-  subsets: ["latin"],
+// Roboto va en el repo (`./fonts`), no se pide a Google al compilar. `next/font/google` baja el CSS en
+// cada build, y si Google responde con URLs de fuente que traen query (`…/l/font?kit=…&skey=…`),
+// Turbopack 16.3.4 falla con «next/font/google queries have exactly one entry» (despliegue caído el
+// 2026-11-10). El archivo es el latín variable de Roboto v51; se declaran los mismos cinco pesos que
+// antes para que nada cambie a la vista.
+// (El cargador de fuentes solo acepta literales: por eso la lista va escrita entera.)
+const roboto = localFont({
+  src: [
+    { path: "./fonts/roboto-latin.woff2", weight: "100", style: "normal" },
+    { path: "./fonts/roboto-latin.woff2", weight: "300", style: "normal" },
+    { path: "./fonts/roboto-latin.woff2", weight: "400", style: "normal" },
+    { path: "./fonts/roboto-latin.woff2", weight: "500", style: "normal" },
+    { path: "./fonts/roboto-latin.woff2", weight: "700", style: "normal" },
+  ],
   display: "swap",
   variable: "--font-roboto",
 });

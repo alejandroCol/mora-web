@@ -220,6 +220,8 @@ function guideBox(label: string, guide: string, carrier?: string) {
 function shell(opts: {
   preheader: string;
   kicker: string;
+  /** `plain` = etiqueta en texto normal, sin píldora ni mayúsculas. */
+  kickerTone?: "pill" | "plain";
   title: string;
   intro: string;
   body: string;
@@ -227,6 +229,10 @@ function shell(opts: {
   after?: string;
   help?: boolean;
 }) {
+  const kicker =
+    opts.kickerTone === "plain"
+      ? `<div style="font-family:${FONT};font-size:14px;line-height:1.4;font-weight:500;color:${ACCENT}">${escapeHtml(opts.kicker)}</div>`
+      : `<span style="display:inline-block;background:${LILAC};color:${ACCENT};font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:500;padding:7px 13px;border-radius:999px">${escapeHtml(opts.kicker)}</span>`;
   const help =
     opts.help === false
       ? ""
@@ -269,8 +275,8 @@ function shell(opts: {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td class="mora-pad" style="padding:40px 40px 0;font-family:${FONT}">
-                    <span style="display:inline-block;background:${LILAC};color:${ACCENT};font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:500;padding:7px 13px;border-radius:999px">${escapeHtml(opts.kicker)}</span>
-                    <h1 class="mora-title" style="margin:18px 0 0;font-family:${FONT};font-size:30px;line-height:1.15;font-weight:400;letter-spacing:-0.02em;color:${INK}">${escapeHtml(opts.title)}</h1>
+                    ${kicker}
+                    <h1 class="mora-title" style="margin:${opts.kickerTone === "plain" ? "10px" : "18px"} 0 0;font-family:${FONT};font-size:30px;line-height:1.15;font-weight:400;letter-spacing:-0.02em;color:${INK}">${escapeHtml(opts.title)}</h1>
                     <p style="margin:14px 0 0;font-family:${FONT};font-size:16px;line-height:1.6;font-weight:300;color:${SOFT}">${opts.intro}</p>
                   </td>
                 </tr>
@@ -587,19 +593,28 @@ export async function sendAbandonedOfferEmail(cart: AbandonedCart) {
   const name = cart.customer.firstName?.trim();
   const photos = await linePhotos(cart.items);
   const discounted = Math.max(0, cart.subtotal - offer.discountCop);
+  const coupon = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:${PAPER};border:1px dashed #cfc8ea;border-radius:16px">
+      <tr><td align="center" style="padding:24px 20px;font-family:${FONT}">
+        <div style="font-size:13px;line-height:1.4;color:${SOFT}">Tu código de descuento</div>
+        <div style="margin-top:10px;font-size:28px;line-height:1.1;font-weight:500;letter-spacing:0.14em;color:${INK}">${escapeHtml(offer.code)}</div>
+        <div style="margin-top:10px;font-size:13px;line-height:1.5;color:${SOFT}"><span style="color:${ACCENT};font-weight:500">−${escapeHtml(formatMoney(offer.discountCop))}</span> en tu pedido · ya viene aplicado en el botón</div>
+      </td></tr>
+    </table>`;
   const html = shell({
     preheader: `Guardamos tu carrito con ${formatMoney(offer.discountCop)} de descuento.`,
     kicker: "Te lo guardamos",
+    kickerTone: "plain",
     title: "Tu anillo te está esperando.",
     intro: `${name ? `Hola, ${escapeHtml(name)}. ` : ""}Vimos que dejaste tu pedido a medio camino, así que lo guardamos para ti con ${escapeHtml(formatMoney(offer.discountCop))} de descuento. Termínalo cuando quieras.`,
-    body: `<table role="presentation" width="100%" cellspacing="0" cellpadding="0">${itemRows(cart.items, photos, false)}</table>
+    body: `${coupon}
+      <div style="margin:32px 0 4px;font-family:${FONT};font-size:15px;font-weight:500;color:${INK}">Tu pedido</div>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">${itemRows(cart.items, photos, false)}</table>
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:6px;border-top:1px solid ${LINE}">
         ${totalRow("Subtotal", formatMoney(cart.subtotal))}
-        ${totalRow(`Descuento · ${escapeHtml(offer.code)}`, `−${formatMoney(offer.discountCop)}`)}
+        ${totalRow("Descuento", `−${formatMoney(offer.discountCop)}`)}
         <tr><td colspan="2" style="height:10px;line-height:10px;font-size:0">&nbsp;</td></tr>
         ${totalRow("Con tu descuento", formatMoney(discounted), true)}
-      </table>
-      <p style="margin:18px 0 0;font-family:${FONT};font-size:13px;line-height:1.6;color:${SOFT}">El envío se calcula al volver al pago. Tu código es <strong style="color:${INK};font-weight:500">${escapeHtml(offer.code)}</strong>.</p>`,
+      </table>`,
     cta: button(abandonedCheckoutUrl(offer.code), "Terminar mi pedido"),
   });
   return sendResend(

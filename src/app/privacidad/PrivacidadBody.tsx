@@ -82,6 +82,14 @@ function english(): LegalCopy {
               and aggregated analytics to improve stability (e.g. Firebase), without selling your health
               history.
             </li>
+            <li>
+              <strong className={strong}>App usage and crashes (“Help improve Mora”):</strong> which
+              screens and features are used, crash reports, device model, system version, and approximate
+              country or region (derived from the connection, never from GPS), via Google Analytics for
+              Firebase and Firebase Crashlytics. It never includes your health readings, your cycle, your
+              name, or your email, and it uses no advertising identifier. It is on by default and you can
+              turn it off anytime in the app under Me › Privacy.
+            </li>
           </ul>
         </>
       ),
@@ -338,6 +346,14 @@ function spanish(): LegalCopy {
               <strong className={strong}>Uso técnico:</strong> registros mínimos de diagnóstico,
               identificadores de la app y analítica agregada para mejorar la estabilidad (por ejemplo
               Firebase), sin vender tu historial de salud.
+            </li>
+            <li>
+              <strong className={strong}>Uso de la app y fallos («Ayudar a mejorar Mora»):</strong> qué
+              pantallas y funciones se usan, informes de fallos, modelo del teléfono, versión del sistema y
+              país o región aproximados (por la conexión, nunca por GPS), con Google Analytics para Firebase
+              y Firebase Crashlytics. Nunca incluye tus lecturas de salud, tu ciclo, tu nombre ni tu correo,
+              y no usa identificador de publicidad. Viene encendido y puedes apagarlo cuando quieras en la
+              app, en Yo › Privacidad.
             </li>
           </ul>
         </>

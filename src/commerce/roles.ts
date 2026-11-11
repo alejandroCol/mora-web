@@ -15,7 +15,9 @@ export type StaffPermission =
   | "rings"
   | "insights"
   | "settings"
-  | "discounts";
+  | "discounts"
+  /** Feature flags de las apps y códigos de espíritu. Solo founder. */
+  | "developer";
 
 const SUPERADMIN_PERMISSIONS: StaffPermission[] = [
   "sales",
@@ -40,13 +42,13 @@ export const ROLE_LABEL: Record<StaffRole, string> = {
 };
 
 export const ROLE_BLURB: Record<StaffRole, string> = {
-  founder: "Operación completa más el presupuesto de la casa.",
+  founder: "Operación completa más el presupuesto de la casa y Developer (flags de las apps).",
   superadmin: "Equipo, inventario y precios, descuentos, anillos, galería, envíos, campañas, CRM y ventas.",
   vendedor: "CRM, ventas, analítica de la tienda y despacho de pedidos.",
 };
 
 const ROLE_PERMISSIONS: Record<StaffRole, StaffPermission[]> = {
-  founder: [...SUPERADMIN_PERMISSIONS, "budget"],
+  founder: [...SUPERADMIN_PERMISSIONS, "budget", "developer"],
   superadmin: SUPERADMIN_PERMISSIONS,
   vendedor: ["sales", "sales_manual", "whatsapp", "insights"],
 };

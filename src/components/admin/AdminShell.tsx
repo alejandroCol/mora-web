@@ -31,12 +31,14 @@ const NAV: NavItem[] = [
   { href: "/superadmin/envios", label: "Origen y envíos", permission: "shipping", icon: <TruckIcon /> },
   { href: "/superadmin/ajustes", label: "Ajustes", permission: "settings", icon: <GearIcon /> },
   { href: "/superadmin/equipo", label: "Equipo", permission: "team", icon: <PeopleIcon /> },
+  { href: "/superadmin/developer", label: "Developer", permission: "developer", icon: <CodeIcon /> },
 ];
 
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: "Casa", hrefs: ["/superadmin/ventas", "/superadmin/carritos", "/superadmin/presupuesto", "/superadmin/anillos"] },
   { label: "Alcance", hrefs: ["/superadmin/crm", "/superadmin/campanas", "/superadmin/creadores", "/superadmin/estadisticas", "/superadmin/analitica"] },
   { label: "Operación", hrefs: ["/superadmin/inventario", "/superadmin/descuentos", "/superadmin/galeria", "/superadmin/envios", "/superadmin/ajustes", "/superadmin/equipo"] },
+  { label: "Apps", hrefs: ["/superadmin/developer"] },
 ];
 
 function Shell({ children }: { children: ReactNode }) {
@@ -378,6 +380,15 @@ function BoxIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
       <path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5v-9Z" strokeLinejoin="round" />
       <path d="M12 12 3.5 7.5M12 12v9M12 12l8.5-4.5" />
+    </svg>
+  );
+}
+
+function CodeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+      <path d="m8.5 7.5-5 4.5 5 4.5M15.5 7.5l5 4.5-5 4.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m13.4 5-2.8 14" strokeLinecap="round" />
     </svg>
   );
 }

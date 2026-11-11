@@ -24,6 +24,10 @@ export const COLLECTIONS = {
   supportTickets: "supportTickets",
   /** Códigos de descuento del super admin. Solo Admin SDK. */
   discountCodes: "discountCodes",
+  /** Feature flags de las apps (`featureFlags/{key}`). Las edita Developer; las lee la Function `appConfig`. */
+  featureFlags: "featureFlags",
+  /** Códigos que regalan un espíritu en la app (`spiritCodes/{CODE}`). Solo Admin SDK. */
+  spiritCodes: "spiritCodes",
 } as const;
 
 export const DOCS = {

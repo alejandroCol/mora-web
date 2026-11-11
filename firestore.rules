@@ -187,6 +187,23 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Apps: feature flags (las edita el founder en Developer; las apps reciben el resultado por la
+    // Function `appConfig`, nunca leen la colección), códigos de espíritu y lo que cada quien canjeó.
+    match /featureFlags/{key} {
+      allow read, write: if false;
+    }
+
+    match /spiritCodes/{code} {
+      allow read, write: if false;
+      match /redemptions/{uid} {
+        allow read, write: if false;
+      }
+    }
+
+    match /spiritGrants/{uid} {
+      allow read, write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

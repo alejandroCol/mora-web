@@ -64,9 +64,13 @@ export function cleanTesters(raw: unknown): string[] {
   return out.slice(0, FLAG_TESTERS_MAX);
 }
 
-/** Espíritus que solo llegan por código. `lineage` es el id que entienden las apps y el backend. */
-export const GIFT_SPIRITS: { lineage: string; name: string; blurb: string }[] = [
-  { lineage: "cocker", name: "Mimi", blurb: "Cocker spaniel de orejas de seda. Legendaria." },
+/**
+ * Espíritus que solo llegan por código. `lineage` es el id que entienden las apps y el backend
+ * (`GIFT_LINEAGES` en `app-backend/src/spirits/codes.ts`). `code` es el código que se sugiere crear.
+ */
+export const GIFT_SPIRITS: { lineage: string; name: string; blurb: string; code: string }[] = [
+  { lineage: "cocker", name: "Mimi", blurb: "Cocker spaniel de orejas de seda. Legendaria.", code: "COCKER" },
+  { lineage: "maltes", name: "Haku", blurb: "Maltés blanco con moño de ronin. Legendario.", code: "MALTES" },
 ];
 
 export function giftSpiritName(lineage: string) {

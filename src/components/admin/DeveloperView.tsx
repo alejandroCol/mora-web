@@ -191,7 +191,8 @@ export function DeveloperView() {
   }, [flags, codes]);
 
   const loading = flags === null || codes === null;
-  const hasCocker = (codes ?? []).some((code) => code.code === "COCKER");
+  /** Códigos de casa que aún no existen: se ofrecen con un toque. */
+  const missingCodes = GIFT_SPIRITS.filter((spirit) => !(codes ?? []).some((code) => code.code === spirit.code));
 
   return (
     <div className="ventas-app">
@@ -257,7 +258,7 @@ export function DeveloperView() {
               title="Códigos de espíritu"
               blurb="La persona lo escribe en Vínculo › Cambiar mi espíritu y recibe ese espíritu. Conserva nivel, nombre y progreso, y puede volver al suyo cuando quiera."
             />
-            <NewSpiritCodeCard busy={busy === "code:create"} suggestCocker={!hasCocker} onCreate={createCode} />
+            <NewSpiritCodeCard busy={busy === "code:create"} suggest={missingCodes} onCreate={createCode} />
             {codes.length === 0 ? (
               <p className="rounded-[1.25rem] bg-white px-5 py-8 text-[14px] text-[var(--admin-muted)] shadow-[var(--admin-shadow)]">
                 Aún no hay códigos. Crea el primero arriba.
@@ -522,11 +523,12 @@ function NewFlagCard({
 
 function NewSpiritCodeCard({
   busy,
-  suggestCocker,
+  suggest,
   onCreate,
 }: {
   busy: boolean;
-  suggestCocker: boolean;
+  /** Códigos de casa que faltan por crear (uno por espíritu de código). */
+  suggest: { code: string; lineage: string }[];
   onCreate: (body: {
     code: string;
     lineage: string;
@@ -580,17 +582,22 @@ function NewSpiritCodeCard({
             {spirit ? `Regala a ${spirit.name}. ${spirit.blurb}` : "Elige el espíritu."}
           </p>
         </div>
-        {suggestCocker ? (
-          <button
-            type="button"
-            onClick={() => {
-              setCode("COCKER");
-              setLineage("cocker");
-            }}
-            className="h-8 rounded-full bg-[var(--admin-field)] px-3 text-[12px] text-[var(--admin-muted)]"
-          >
-            Usar COCKER
-          </button>
+        {suggest.length > 0 ? (
+          <div className="flex flex-wrap gap-2">
+            {suggest.map((item) => (
+              <button
+                key={item.code}
+                type="button"
+                onClick={() => {
+                  setCode(item.code);
+                  setLineage(item.lineage);
+                }}
+                className="h-8 rounded-full bg-[var(--admin-field)] px-3 text-[12px] text-[var(--admin-muted)]"
+              >
+                Usar {item.code}
+              </button>
+            ))}
+          </div>
         ) : null}
       </div>
 

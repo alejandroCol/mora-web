@@ -7,6 +7,8 @@ import { Faq } from "@/components/landing/Faq";
 import { Film } from "@/components/landing/Film";
 import { Hero } from "@/components/landing/Hero";
 import { PresaleModule } from "@/components/presale/PresaleModule";
+import { FaqJsonLd } from "@/components/seo/JsonLd";
+import { FALLBACK_SALES } from "@/commerce/sales";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
@@ -21,6 +23,7 @@ export default function Home() {
         as="fetch"
         crossOrigin="anonymous"
       />
+      <FaqJsonLd sales={FALLBACK_SALES} />
       <Hero />
       <Atelier />
       <Film />

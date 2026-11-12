@@ -21,7 +21,7 @@ export function SiteFooter() {
     <footer className="site-footer">
       <div className="site-foot">
         <div className="site-foot-brand">
-          <Link href="/" aria-label={BRAND.name} className="inline-flex">
+          <Link href="/" aria-label={BRAND.siteName} className="inline-flex">
             <BrandLogo
               variant="wordmark"
               className="h-6 w-auto max-w-[5.5rem] object-contain object-left sm:h-7 sm:max-w-[6.25rem]"
@@ -45,7 +45,7 @@ export function SiteFooter() {
           </a>
           <a href={`mailto:${BRAND.contact.email}`}>Correo</a>
         </nav>
-        <p className="site-foot-copy">© {new Date().getFullYear()} {BRAND.name}</p>
+        <p className="site-foot-copy">© {new Date().getFullYear()} {BRAND.siteName}</p>
       </div>
     </footer>
   );

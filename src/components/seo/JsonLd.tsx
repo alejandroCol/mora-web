@@ -1,5 +1,5 @@
 import { BRAND } from "@/brand";
-import type { SalesPresentation } from "@/commerce/sales";
+import { storeFaq, type SalesPresentation } from "@/commerce/sales";
 import { CASE_PRODUCT, casePath } from "@/lib/cases";
 import {
   PRODUCT_HOME,
@@ -147,6 +147,18 @@ export function CaseJsonLd({ sales }: { sales: SalesPresentation }) {
     material: CASE_PRODUCT.material,
     image: [`${origin}/cases/ice.jpg`],
     offers: offer(sales, siteUrl(path), CASE_PRODUCT.price),
+  });
+}
+
+export function FaqJsonLd({ sales }: { sales: SalesPresentation }) {
+  return jsonLd({
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: storeFaq(sales).map((item) => ({
+      "@type": "Question",
+      name: item.q,
+      acceptedAnswer: { "@type": "Answer", text: item.a },
+    })),
   });
 }
 

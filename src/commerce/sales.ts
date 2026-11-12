@@ -98,6 +98,10 @@ export function isValidSaleOn(value: string) {
 export function storeFaq(sales: SalesPresentation) {
   return [
     {
+      q: "¿Qué es Mora Ring?",
+      a: "Un anillo inteligente de lujo, hecho para Colombia. Lee pulso, sueño y movimiento, y lo ves en la app. Mora Pro es cerámica; Mora Ultra, titanio. Bienestar, no médico.",
+    },
+    {
       q: "¿Pro o Ultra?",
       a: "Pro es cerámica. Ultra es titanio, el más ligero. Los dos cuestan igual y miden lo mismo.",
     },

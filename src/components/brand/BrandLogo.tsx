@@ -22,7 +22,7 @@ export function BrandLogo({
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={BRAND.assets[VARIANT_ASSET[variant]]}
-      alt={alt ?? BRAND.name}
+      alt={alt ?? BRAND.siteName}
       className={`select-none ${className}`}
       draggable={false}
       fetchPriority={priority ? "high" : "auto"}

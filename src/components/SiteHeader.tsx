@@ -12,7 +12,7 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
       }`}
     >
       <div className="flex h-14 items-center justify-between px-5 sm:h-[4.25rem] sm:px-6 lg:px-8">
-        <Link href="/" aria-label={BRAND.name} className="flex items-center">
+        <Link href="/" aria-label={BRAND.siteName} className="flex items-center">
           <BrandLogo
             variant="wordmark"
             priority

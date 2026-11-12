@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { formatWhen } from "@/crm/labels";
-import type { InstagramConnectionStatus } from "@/instagram/types";
+import { INSTAGRAM_WEBHOOK_FIELDS, type InstagramConnectionStatus } from "@/instagram/types";
 
 /**
  * Estado de la conexión con Instagram. Sin conectar pide lo único que hace
@@ -12,15 +12,19 @@ import type { InstagramConnectionStatus } from "@/instagram/types";
 export function InstagramConnectionCard({
   status,
   busy,
+  registering,
   onConnect,
   onDisconnect,
   onHumanAgent,
+  onRegisterWebhook,
 }: {
   status: InstagramConnectionStatus;
   busy: boolean;
+  registering: boolean;
   onConnect: (token: string) => Promise<boolean>;
   onDisconnect: () => void;
   onHumanAgent: (enabled: boolean) => void;
+  onRegisterWebhook: () => void;
 }) {
   const [token, setToken] = useState("");
   const [copied, setCopied] = useState(false);
@@ -37,6 +41,10 @@ export function InstagramConnectionCard({
   }
 
   const missingKeys = !status.hasAppSecret || !status.hasVerifyToken;
+  const registered = status.ready && status.debug.registeredAt > 0;
+  const missingFields = INSTAGRAM_WEBHOOK_FIELDS.filter(
+    (field) => !status.debug.registeredFields.includes(field),
+  );
   const form = (
     <form
       className="mt-3 flex flex-wrap items-center gap-2"
@@ -126,18 +134,39 @@ export function InstagramConnectionCard({
       <div className="auto-webhook">
         <div className="min-w-0">
           <p className="text-[11px] text-[var(--admin-muted)]">
-            Webhook de Instagram en Meta (verify token: el mismo de Campañas)
+            {registered
+              ? `Webhook registrado en Meta ${formatWhen(status.debug.registeredAt)}`
+              : status.ready
+                ? "Webhook aún sin registrar en Meta"
+                : "Webhook de Instagram: se registra solo al conectar"}
           </p>
           <p className="mt-0.5 truncate font-mono text-[12px]">{status.webhook}</p>
         </div>
-        <button
-          type="button"
-          onClick={() => void copyWebhook()}
-          className="h-8 shrink-0 rounded-full bg-white px-3 text-[12px] shadow-[var(--admin-shadow)]"
-        >
-          {copied ? "Copiado" : "Copiar"}
-        </button>
+        <div className="flex shrink-0 gap-2">
+          {status.ready ? (
+            <button
+              type="button"
+              disabled={registering || missingKeys}
+              onClick={onRegisterWebhook}
+              className="h-8 rounded-full bg-white px-3 text-[12px] shadow-[var(--admin-shadow)] disabled:opacity-40"
+            >
+              {registering ? "Registrando…" : registered ? "Registrar de nuevo" : "Registrar en Meta"}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => void copyWebhook()}
+            className="h-8 rounded-full bg-white px-3 text-[12px] shadow-[var(--admin-shadow)]"
+          >
+            {copied ? "Copiado" : "Copiar"}
+          </button>
+        </div>
       </div>
+      {registered && missingFields.length > 0 ? (
+        <p className="auto-alert is-danger">
+          Meta no dejó suscribir {missingFields.join(", ")}. Lo que dependa de esos avisos no llega.
+        </p>
+      ) : null}
 
       {status.ready ? (
         <label className="mt-3 flex items-start gap-3 text-[13px]">
@@ -175,7 +204,7 @@ function Health({ status }: { status: InstagramConnectionStatus }) {
     return (
       <p className="auto-alert">
         Meta aún no ha mandado ningún aviso. Comenta en una publicación con una cuenta que tenga rol en la app de
-        Meta: si aquí no cambia nada, falta configurar el webhook de abajo.
+        Meta: si aquí no cambia nada, pulsa «Registrar en Meta» abajo.
       </p>
     );
   }

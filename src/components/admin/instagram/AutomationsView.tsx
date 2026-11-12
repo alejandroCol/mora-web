@@ -223,6 +223,12 @@ export function AutomationsView() {
       <InstagramConnectionCard
         status={status}
         busy={busy === "connection"}
+        registering={busy === "webhook"}
+        onRegisterWebhook={() =>
+          void mutate("webhook", "/api/admin/instagram/connection", { method: "PUT" }).then((data) => {
+            if (data) flash("Webhook registrado en Meta.");
+          })
+        }
         onConnect={async (token) => {
           const data = await mutate("connection", "/api/admin/instagram/connection", {
             method: "POST",

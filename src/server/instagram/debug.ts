@@ -9,6 +9,8 @@ const EMPTY: InstagramWebhookDebug = {
   lastError: "",
   lastRejectedAt: 0,
   lastRejectReason: "",
+  registeredAt: 0,
+  registeredFields: [],
 };
 
 function debugDoc() {

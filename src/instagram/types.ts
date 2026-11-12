@@ -115,7 +115,20 @@ export type InstagramWebhookDebug = {
   lastError: string;
   lastRejectedAt: number;
   lastRejectReason: string;
+  /** Última vez que Mora registró el webhook en la app de Meta, y los campos que Meta dejó suscritos. */
+  registeredAt: number;
+  registeredFields: string[];
 };
+
+/** Avisos de Instagram que usa Mora: comentarios para las reglas, mensajes para el CRM. */
+export const INSTAGRAM_WEBHOOK_FIELDS = [
+  "comments",
+  "live_comments",
+  "messages",
+  "messaging_postbacks",
+  "message_reactions",
+  "messaging_seen",
+] as const;
 
 export const AUTOMATION_LIMITS = {
   name: 60,

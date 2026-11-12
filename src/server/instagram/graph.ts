@@ -1,6 +1,6 @@
 import { BRAND } from "@/brand";
 import type { GrowthSettings } from "@/growth/types";
-import type { InstagramMediaItem } from "@/instagram/types";
+import { INSTAGRAM_WEBHOOK_FIELDS, type InstagramMediaItem } from "@/instagram/types";
 import { instagramReady } from "../growthSettings";
 
 /**
@@ -60,17 +60,20 @@ async function call<T>(
     method?: "GET" | "POST";
     query?: Record<string, string>;
     body?: unknown;
+    /** El token de app (`id|secreto`) va como parámetro, que es la forma que documenta Meta. */
+    tokenInQuery?: boolean;
   },
 ): Promise<T> {
   const url = new URL(`${GRAPH}/${path.replace(/^\//, "")}`);
   for (const [key, value] of Object.entries(options.query ?? {})) url.searchParams.set(key, value);
+  if (options.tokenInQuery) url.searchParams.set("access_token", options.token);
 
   let res: Response;
   try {
     res = await fetch(url, {
       method: options.method ?? "GET",
       headers: {
-        Authorization: `Bearer ${options.token}`,
+        ...(options.tokenInQuery ? {} : { Authorization: `Bearer ${options.token}` }),
         ...(options.body ? { "Content-Type": "application/json" } : {}),
       },
       body: options.body ? JSON.stringify(options.body) : undefined,
@@ -179,6 +182,77 @@ export async function subscribePageToApp(link: Pick<InstagramLink, "pageId" | "p
     }
   }
   return { ok: false as const, error: lastError };
+}
+
+/** La app de Meta a la que pertenece un token. */
+export async function fetchTokenAppId(token: string) {
+  const data = await call<{ id?: string }>("app", { token, query: { fields: "id" } });
+  if (!data.id) {
+    throw new InstagramApiError("Meta no dijo a qué app pertenece el token.", { httpStatus: 400 });
+  }
+  return data.id;
+}
+
+type AppSubscription = {
+  object?: string;
+  callback_url?: string;
+  fields?: { name?: string }[];
+};
+
+/**
+ * Registra en la app de Meta el webhook del objeto Instagram: lo mismo que
+ * hace el panel de desarrolladores, pero sin depender de dónde lo esconda.
+ * Meta llama a `callbackUrl` con `verifyToken` antes de aceptar.
+ * Devuelve los campos que quedaron suscritos.
+ */
+export async function registerInstagramAppWebhook(input: {
+  appId: string;
+  appSecret: string;
+  callbackUrl: string;
+  verifyToken: string;
+}): Promise<string[]> {
+  const path = `${input.appId}/subscriptions`;
+  const token = `${input.appId}|${input.appSecret}`;
+  const subscribe = (fields: readonly string[]) =>
+    call(path, {
+      token,
+      tokenInQuery: true,
+      method: "POST",
+      query: {
+        object: "instagram",
+        callback_url: input.callbackUrl,
+        verify_token: input.verifyToken,
+        fields: fields.join(","),
+        include_values: "true",
+      },
+    });
+
+  let sent: string[] = [...INSTAGRAM_WEBHOOK_FIELDS];
+  try {
+    await subscribe(sent);
+  } catch (error) {
+    // 100 = parámetro inválido. Si es por un campo que esta app no ofrece, se suscriben los demás.
+    if (!(error instanceof InstagramApiError) || error.code !== 100) throw error;
+    const accepted: string[] = [];
+    for (const field of INSTAGRAM_WEBHOOK_FIELDS) {
+      const ok = await subscribe([field]).then(
+        () => true,
+        () => false,
+      );
+      if (ok) accepted.push(field);
+    }
+    if (accepted.length === 0) throw error;
+    await subscribe(accepted);
+    sent = accepted;
+  }
+
+  // Lo que cuenta es lo que Meta dice que quedó, no lo que se le pidió.
+  const current = await call<{ data?: AppSubscription[] }>(path, { token, tokenInQuery: true }).catch(
+    () => null,
+  );
+  const node = current?.data?.find((item) => item.object === "instagram");
+  const names = (node?.fields ?? []).map((field) => field.name ?? "").filter(Boolean);
+  return names.length > 0 ? names : sent;
 }
 
 // ---------------------------------------------------------------------------

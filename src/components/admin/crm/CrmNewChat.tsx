@@ -35,10 +35,15 @@ export function CrmNewChat({
   initial: { phone: string; name: string };
   busy: boolean;
   error: string;
-  onSubmit: (input: { phone: string; name: string; templateId: string }) => void;
+  onSubmit: (input: { phone: string; name: string; templateId: string; desk: CrmDesk }) => void;
   onClose: () => void;
 }) {
-  const options = templates.filter((item) => item.desk === desk || item.desk === "both");
+  const forDesk = (value: CrmDesk) => templates.filter((item) => item.desk === value || item.desk === "both");
+  const desks = (Object.keys(DESK_LABEL) as CrmDesk[]).filter((value) => forDesk(value).length > 0);
+  const [chatDesk, setChatDesk] = useState<CrmDesk>(() =>
+    forDesk(desk).length > 0 ? desk : (desks[0] ?? desk),
+  );
+  const options = forDesk(chatDesk);
   const [phone, setPhone] = useState(initial.phone);
   const [name, setName] = useState(initial.name);
   const [templateId, setTemplateId] = useState(options[0]?.id ?? "");
@@ -55,7 +60,7 @@ export function CrmNewChat({
         onClick={(event) => event.stopPropagation()}
         onSubmit={(event) => {
           event.preventDefault();
-          if (ready && !busy) onSubmit({ phone, name, templateId });
+          if (ready && !busy) onSubmit({ phone, name, templateId, desk: chatDesk });
         }}
       >
         <div className="flex items-start justify-between gap-4">
@@ -95,11 +100,33 @@ export function CrmNewChat({
           </label>
         </div>
 
-        <p className="mt-5 text-[12px] text-[var(--admin-muted)]">Primer mensaje</p>
+        {desks.length > 1 ? (
+          <>
+            <p className="mt-5 text-[12px] text-[var(--admin-muted)]">Mesa</p>
+            <div className="crm-desks mt-2">
+              {desks.map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={`crm-desk ${value === chatDesk ? "is-on" : ""}`}
+                  onClick={() => {
+                    setChatDesk(value);
+                    setTemplateId(forDesk(value)[0]?.id ?? "");
+                  }}
+                >
+                  {DESK_LABEL[value]}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        <p className="mt-5 text-[12px] text-[var(--admin-muted)]">
+          Primer mensaje{desks.length === 1 ? ` · ${DESK_LABEL[chatDesk]}` : ""}
+        </p>
         {options.length === 0 ? (
           <p className="auto-alert">
-            Aún no hay plantillas aprobadas para {DESK_LABEL[desk]}. Se crean en WhatsApp
-            Manager y se registran en Ajustes.
+            Aún no hay plantillas aprobadas. Se crean en WhatsApp Manager y se registran en Ajustes.
           </p>
         ) : (
           <div className="mt-2 grid gap-2">

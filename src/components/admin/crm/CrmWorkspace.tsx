@@ -396,13 +396,13 @@ export function CrmWorkspace() {
     await loadWorkspace();
   }
 
-  async function startChat(input: { phone: string; name: string; templateId: string }) {
+  async function startChat(input: { phone: string; name: string; templateId: string; desk: CrmDesk }) {
     setNewChatBusy(true);
     setNewChatError("");
     try {
       const res = await authorizedFetch("/api/admin/whatsapp", {
         method: "POST",
-        body: JSON.stringify({ ...input, desk }),
+        body: JSON.stringify(input),
       });
       const data = (await res.json()) as { ok?: boolean; error?: string; id?: string };
       if (!data.ok || !data.id) {
@@ -411,10 +411,12 @@ export function CrmWorkspace() {
       }
       setNewChat(null);
       await loadWorkspace();
+      setDesk(input.desk);
+      setFilter("all");
       setActiveId(data.id);
       setPane("thread");
       setView("inbox");
-      router.replace(`/superadmin/crm?c=${data.id}&desk=${desk}`, { scroll: false });
+      router.replace(`/superadmin/crm?c=${data.id}&desk=${input.desk}`, { scroll: false });
     } finally {
       setNewChatBusy(false);
     }

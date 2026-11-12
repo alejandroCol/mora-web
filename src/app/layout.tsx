@@ -7,6 +7,7 @@ import { FirebaseAnalytics } from "@/components/FirebaseAnalytics";
 import { GrowthStack } from "@/components/growth/GrowthStack";
 import { SalesProvider } from "@/components/sales/SalesProvider";
 import { OrgJsonLd } from "@/components/seo/JsonLd";
+import { AnchorGlide } from "@/components/site/AnchorGlide";
 import { ScreenFit } from "@/components/site/ScreenFit";
 import { siteOrigin } from "@/lib/site";
 import "./globals.css";
@@ -90,6 +91,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           <AppChrome>{children}</AppChrome>
         </SalesProvider>
         <ScreenFit />
+        <AnchorGlide />
       </body>
     </html>
   );

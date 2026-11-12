@@ -6,10 +6,10 @@ import { useEffect, useRef, useState } from "react";
 import {
   catalog,
   finishLabel,
-  finishes,
   formatMoney,
   PRODUCT_HOME,
   productPath,
+  resolveFinish,
   type ModelId,
 } from "@/lib/catalog";
 import { AddiCuotasChip } from "@/components/payments/AddiCuotasChip";
@@ -66,62 +66,44 @@ export function Atelier() {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     if (window.matchMedia("(min-width: 1024px)").matches) return;
 
+    // Transform, no scrollLeft: iOS ignora o re-ajusta el scroll programático en un carrusel con snap.
     let played = false;
-    let cancelled = false;
-    let frame = 0;
-    const timers: number[] = [];
-
-    const ease = (t: number) => 0.5 - Math.cos(Math.PI * t) / 2;
+    let timer = 0;
 
     const stop = () => {
-      cancelled = true;
-      window.cancelAnimationFrame(frame);
-      timers.forEach((id) => window.clearTimeout(id));
-      root.style.scrollSnapType = "";
+      window.clearTimeout(timer);
+      root.classList.remove("worlds-peek");
     };
 
     const peek = () => {
-      if (played || cancelled || root.scrollLeft > 8) return;
+      if (played || root.scrollLeft > 8) return;
       played = true;
-      const reach = Math.min(Math.round(root.clientWidth * 0.055), 28);
-      const duration = 1680;
-      const started = performance.now();
-      root.style.scrollSnapType = "none";
-
-      const tick = (now: number) => {
-        if (cancelled) return;
-        const t = Math.min(1, (now - started) / duration);
-        const wave = Math.sin(ease(t) * Math.PI);
-        root.scrollLeft = reach * wave;
-        if (t < 1) {
-          frame = window.requestAnimationFrame(tick);
-          return;
-        }
-        root.scrollLeft = 0;
-        root.style.scrollSnapType = "";
-      };
-
-      frame = window.requestAnimationFrame(tick);
+      root.classList.add("worlds-peek");
     };
 
     const seen = new IntersectionObserver(
       ([entry]) => {
-        if (!entry.isIntersecting || entry.intersectionRatio < 0.58) return;
-        timers.push(window.setTimeout(peek, 700));
+        window.clearTimeout(timer);
+        if (!entry.isIntersecting || entry.intersectionRatio < 0.9) return;
+        timer = window.setTimeout(peek, 260);
       },
-      { threshold: [0.58] },
+      { threshold: [0.9] },
     );
     seen.observe(root);
 
-    const onTouch = () => stop();
-    root.addEventListener("pointerdown", onTouch, { passive: true });
-    root.addEventListener("wheel", onTouch, { passive: true });
+    const onEnd = (event: AnimationEvent) => {
+      if (event.animationName === "world-peek") root.classList.remove("worlds-peek");
+    };
+    root.addEventListener("animationend", onEnd);
+    root.addEventListener("pointerdown", stop, { passive: true });
+    root.addEventListener("wheel", stop, { passive: true });
 
     return () => {
       stop();
       seen.disconnect();
-      root.removeEventListener("pointerdown", onTouch);
-      root.removeEventListener("wheel", onTouch);
+      root.removeEventListener("animationend", onEnd);
+      root.removeEventListener("pointerdown", stop);
+      root.removeEventListener("wheel", stop);
     };
   }, []);
 
@@ -131,7 +113,7 @@ export function Atelier() {
   }
 
   return (
-    <section id="coleccion" className="worlds-stage">
+    <section id="coleccion" className="worlds-stage snap-page">
       <h2 className="sr-only">Elige tu Mora</h2>
       <div className="world-pager" role="tablist" aria-label="Pro o Ultra">
         {catalog.map((item, index) => (
@@ -165,7 +147,9 @@ export function Atelier() {
                 unoptimized
                 quality={100}
                 sizes="(min-width: 1024px) 50vw, 100vw"
-                priority={item.id === "aero"}
+                loading="eager"
+                draggable={false}
+                onLoad={(event) => void event.currentTarget.decode().catch(() => undefined)}
                 className="world-photo"
                 style={{ objectPosition: LOOK_FOCUS[item.id] }}
               />
@@ -180,7 +164,7 @@ export function Atelier() {
                       <span
                         key={id}
                         className="world-dot"
-                        style={{ background: finishes[id].swatch }}
+                        style={{ background: resolveFinish(item.id, id).swatch }}
                       />
                     ))}
                   </span>

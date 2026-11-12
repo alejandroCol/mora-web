@@ -38,6 +38,15 @@ html {
   scroll-behavior: smooth;
 }
 
+/* Páginas a pantalla completa: el scroll nativo se asienta cerca del borde, nunca se secuestra. */
+html:has(.snap-page) {
+  scroll-snap-type: y proximity;
+}
+
+.snap-page {
+  scroll-snap-align: start;
+}
+
 .hide-scroll {
   scrollbar-width: none;
 }
@@ -1482,7 +1491,22 @@ body {
   height: 100vh;
   height: 100dvh;
   height: var(--screen, 100dvh);
-  background: #0a090e;
+  background: var(--dawn);
+}
+
+.worlds-stage::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 4;
+  height: clamp(3.5rem, 9vh, 6rem);
+  background: linear-gradient(
+    to bottom,
+    var(--dawn) 0%,
+    color-mix(in srgb, var(--dawn) 55%, transparent) 38%,
+    transparent 100%
+  );
+  pointer-events: none;
 }
 
 .world-pager {
@@ -1497,6 +1521,14 @@ body {
   background: rgba(8, 7, 12, 0.42);
   backdrop-filter: blur(18px);
   transform: translateX(-50%);
+}
+
+/* En táctil el blur se recalcula cada frame del swipe sobre la foto que se mueve. */
+@media (hover: none) {
+  .world-pager {
+    background: rgba(20, 18, 26, 0.5);
+    backdrop-filter: none;
+  }
 }
 
 .world-pager button {
@@ -1519,7 +1551,10 @@ body {
   height: 100%;
   min-height: 100%;
   overflow-x: auto;
+  /* Sin esto overflow-y computa auto y el carrusel se traga el gesto vertical. */
+  overflow-y: hidden;
   overscroll-behavior-x: contain;
+  touch-action: pan-x pan-y;
   scroll-snap-type: x mandatory;
   scrollbar-width: none;
   scroll-padding-inline: 0;
@@ -1540,6 +1575,10 @@ body {
   color: #fff;
   scroll-snap-align: start;
   text-decoration: none;
+  /* El long-press de iOS sobre un enlace con foto abre la vista previa y corta el swipe. */
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
 }
 
 @media (max-width: 1023px) {
@@ -1553,10 +1592,40 @@ body {
     flex: 0 0 100%;
     scroll-snap-stop: always;
   }
+
+  .worlds-peek .world {
+    animation: world-peek 1.05s both;
+    will-change: transform;
+  }
+}
+
+/* Asoma el siguiente anillo: sale rápido, se sostiene un instante y vuelve suave. */
+@keyframes world-peek {
+  0% {
+    transform: translate3d(0, 0, 0);
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  40% {
+    transform: translate3d(calc(-1 * clamp(2rem, 9vw, 3rem)), 0, 0);
+  }
+  52% {
+    transform: translate3d(calc(-1 * clamp(2rem, 9vw, 3rem)), 0, 0);
+    animation-timing-function: cubic-bezier(0.45, 0, 0.2, 1);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .worlds-peek .world {
+    animation: none;
+  }
 }
 
 .world-photo {
   object-fit: cover;
+  -webkit-user-drag: none;
 }
 
 .world-veil {

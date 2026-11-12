@@ -15,6 +15,8 @@ export type Finish = {
   emissive: string;
   emissiveIntensity: number;
   swatch: string;
+  /** Espejo: el visor 3D usa normales de cilindro ideal para que el reflejo no delate la malla. */
+  polished?: boolean;
 };
 
 export type RingProduct = {
@@ -78,15 +80,16 @@ export const finishes: Record<FinishId, Finish> = {
     id: "gold",
     title: "Oro",
     whisper: "Oro que no grita.",
-    // 18k espejo de la foto: el color es el F0 del metal; el brillo lo da la rugosidad baja.
-    color: "#C9A227",
+    // Oro 18k de joya: el color es el F0 del metal (sRGB). Más oscuro o saturado se lee latón.
+    color: "#EECB88",
     metalness: 1,
-    roughness: 0.08,
-    clearcoat: 0.22,
-    envMapIntensity: 1.4,
+    roughness: 0.24,
+    clearcoat: 0.14,
+    envMapIntensity: 1.12,
     emissive: "#000000",
     emissiveIntensity: 0,
-    swatch: "linear-gradient(145deg, #fff3cd 0%, #e8c35a 40%, #c9a227 68%, #8a5a14 100%)",
+    swatch: "linear-gradient(145deg, #fbf3e1 0%, #f1dcab 32%, #e3c27f 64%, #c4a061 100%)",
+    polished: true,
   },
   silver: {
     id: "silver",
@@ -179,23 +182,26 @@ export function resolveFinish(modelId: ModelId, finishId: FinishId): Finish {
       ...base,
       title: "Negro",
       whisper: "Cerámica negra.",
-      color: "#141416",
-      metalness: 0.16,
-      roughness: 0.18,
-      clearcoat: 0.62,
-      envMapIntensity: 1.12,
+      // Cerámica pulida: dieléctrico (metal casi cero) con capa de esmalte; el reflejo es blanco, no tintado.
+      color: "#0e0e10",
+      metalness: 0.04,
+      roughness: 0.16,
+      clearcoat: 1,
+      envMapIntensity: 1.45,
       swatch: "linear-gradient(145deg, #4a4a4e 0%, #1a1a1c 48%, #0a0a0c 100%)",
+      polished: true,
     };
   }
   if (modelId === "titan" && finishId === "black") {
+    // Titanio negro microgranallado: algo de metal para que el canto lea, sin reflejo espejo.
     return {
       ...base,
-      color: "#09090b",
-      metalness: 0.2,
-      roughness: 0.07,
-      clearcoat: 0.94,
-      envMapIntensity: 1.22,
-      swatch: "linear-gradient(145deg, #3a3a3e 0%, #141416 42%, #050506 100%)",
+      color: "#111113",
+      metalness: 0.3,
+      roughness: 0.6,
+      clearcoat: 0,
+      envMapIntensity: 0.6,
+      swatch: "linear-gradient(145deg, #34343a 0%, #1f1f23 52%, #121214 100%)",
     };
   }
   return base;

@@ -28,29 +28,16 @@ export function ScreenFit() {
       if (Math.abs(delta) > 1) jump(window.scrollY + delta);
     };
 
-    const onClick = (event: MouseEvent) => {
-      const node = event.target instanceof Element ? event.target : null;
-      if (!node?.closest(`a[href="${ANCHOR}"]`)) return;
-      const stage = document.getElementById(ANCHOR.slice(1));
-      if (!stage) return;
-      event.preventDefault();
-      fit();
-      jump(window.scrollY + stage.getBoundingClientRect().top);
-      history.pushState(null, "", ANCHOR);
-    };
-
     fit();
     align();
     const viewport = window.visualViewport;
     window.addEventListener("resize", fit);
     window.addEventListener("hashchange", align);
     viewport?.addEventListener("resize", fit);
-    document.addEventListener("click", onClick);
     return () => {
       window.removeEventListener("resize", fit);
       window.removeEventListener("hashchange", align);
       viewport?.removeEventListener("resize", fit);
-      document.removeEventListener("click", onClick);
     };
   }, []);
 

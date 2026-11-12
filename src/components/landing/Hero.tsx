@@ -24,7 +24,7 @@ export function Hero() {
   }, []);
 
   return (
-    <section className="hero-wash relative flex min-h-dvh flex-col overflow-hidden">
+    <section className="hero-wash snap-page relative flex min-h-dvh flex-col overflow-hidden">
       <h1 className="sr-only">Mora — anillo inteligente de lujo en Colombia</h1>
       {mobile === null ? (
         <div className="flex-1" />

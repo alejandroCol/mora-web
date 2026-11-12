@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Atelier } from "@/components/landing/Atelier";
 import { CaseCollage } from "@/components/landing/CaseCollage";
 import { CreatorsStrip } from "@/components/landing/CreatorsStrip";
-import { HomePager } from "@/components/landing/HomePager";
 import { Close } from "@/components/landing/Close";
 import { Faq } from "@/components/landing/Faq";
 import { Film } from "@/components/landing/Film";
@@ -23,12 +22,11 @@ export default function Home() {
         crossOrigin="anonymous"
       />
       <Hero />
-      <PresaleModule />
-      <Film />
       <Atelier />
+      <Film />
+      <PresaleModule />
       <CaseCollage />
       <CreatorsStrip />
-      <HomePager />
       <Close />
       <Faq />
     </>

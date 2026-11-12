@@ -44,3 +44,38 @@ export function applyRingFinish(material: MeshPhysicalMaterial, next: Finish) {
   material.anisotropy = 0;
   material.vertexColors = false;
 }
+
+export type FinishLighting = {
+  ambient: number;
+  key: number;
+  keyColor: string;
+  fill: number;
+  under: number;
+  environment: number;
+};
+
+const BASE_LIGHTING: FinishLighting = {
+  ambient: 0.62,
+  key: 1.2,
+  keyColor: "#fff6ea",
+  fill: 0.42,
+  under: 0.28,
+  environment: 0.92,
+};
+
+/** Luces del visor 3D por acabado; los acabados nuevos heredan la base. */
+export function finishLighting(finish: Finish): FinishLighting {
+  if (finish.id === "silver") {
+    return { ambient: 0.7, key: 0.72, keyColor: "#f4f6f8", fill: 0.28, under: 0.1, environment: 0.58 };
+  }
+  if (finish.id === "gold") {
+    return { ambient: 0.58, key: 1.15, keyColor: "#fff5e6", fill: 0.34, under: 0.34, environment: 1.34 };
+  }
+  if (finish.id === "black" && finish.clearcoat > 0.4) {
+    return { ambient: 0.38, key: 1.55, keyColor: BASE_LIGHTING.keyColor, fill: 0.55, under: 0.22, environment: 1.35 };
+  }
+  if (finish.id === "black" && finish.roughness > 0.55) {
+    return { ...BASE_LIGHTING, ambient: 0.5, key: 1.3, fill: 0.48, environment: 0.85 };
+  }
+  return BASE_LIGHTING;
+}

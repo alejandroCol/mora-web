@@ -5,7 +5,8 @@ import { useFrame } from "@react-three/fiber";
 import { Center, ContactShadows, Environment, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import { resolveFinish, type Finish, type FinishId, type ModelId } from "@/lib/catalog";
-import { applyRingFinish } from "./finishMaterial";
+import { applyRingFinish, finishLighting } from "./finishMaterial";
+import { bandFrames, idealBandNormals } from "./polishedNormals";
 import { ParticleRing, sampleMesh } from "./ParticleRing";
 import { DETAIL_POSE, RING_POSE } from "./pose";
 
@@ -54,11 +55,31 @@ function collectSurfaceMeshes(root: THREE.Object3D) {
   );
 }
 
+type ShellNormals = {
+  geometry: THREE.BufferGeometry;
+  original: THREE.BufferAttribute;
+  polished: THREE.BufferAttribute;
+};
+
+function shellNormals(root: THREE.Object3D, meshes: THREE.Mesh[]): ShellNormals[] {
+  const frames = bandFrames(root, meshes);
+  return meshes.map((mesh, index) => ({
+    geometry: mesh.geometry,
+    original: mesh.geometry.attributes.normal as THREE.BufferAttribute,
+    polished: new THREE.BufferAttribute(idealBandNormals(mesh.geometry, frames[index]), 3),
+  }));
+}
+
 function applyFinish(
   materials: THREE.MeshPhysicalMaterial[],
+  shells: ShellNormals[],
   next: Finish,
 ) {
   for (const material of materials) applyRingFinish(material, next);
+  for (const shell of shells) {
+    const wanted = next.polished ? shell.polished : shell.original;
+    if (shell.geometry.attributes.normal !== wanted) shell.geometry.setAttribute("normal", wanted);
+  }
 }
 
 type ConfigureSceneProps = {
@@ -78,6 +99,7 @@ export function ConfigureScene({
   const { scene } = useGLTF(MODEL_PATH);
   const group = useRef<THREE.Group>(null);
   const surface = useRef<THREE.MeshPhysicalMaterial[]>([]);
+  const normals = useRef<ShellNormals[]>([]);
   const lastFinish = useRef(finishId);
   const burstTimer = useRef<number>(0);
   const cloned = useMemo(() => scene.clone(true), [scene]);
@@ -88,6 +110,7 @@ export function ConfigureScene({
   const [appliedId, setAppliedId] = useState(finishId);
   const applied = resolveFinish(modelId, appliedId);
   const pending = resolveFinish(modelId, finishId);
+  const light = finishLighting(pending);
   const pendingRef = useRef(pending);
   const finishIdRef = useRef(finishId);
   const revealed = useRef(false);
@@ -106,12 +129,15 @@ export function ConfigureScene({
 
     const shells = collectSurfaceMeshes(cloned);
     surface.current = shells.map((mesh) => {
+      // Copia propia: la geometría del clon es la misma que guarda la caché de useGLTF.
+      mesh.geometry = mesh.geometry.clone();
       mesh.geometry.deleteAttribute("color");
       const material = new THREE.MeshPhysicalMaterial({ opacity: 1 });
-      applyRingFinish(material, applied);
       mesh.material = material;
       return material;
     });
+    normals.current = shellNormals(cloned, shells);
+    applyFinish(surface.current, normals.current, applied);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- cloned scene only
   }, [cloned]);
 
@@ -128,7 +154,7 @@ export function ConfigureScene({
   useLayoutEffect(() => {
     if (!bursting || fading) return;
     /* eslint-disable react-hooks/immutability -- Three.js materials */
-    applyFinish(surface.current, applied);
+    applyFinish(surface.current, normals.current, applied);
     for (const material of surface.current) {
       material.opacity = 0.08;
       material.transparent = true;
@@ -139,7 +165,7 @@ export function ConfigureScene({
   const revealPending = (ease: number) => {
     const t = THREE.MathUtils.smoothstep(0.62, 0.88, ease);
     if (t <= 0 || revealed.current) return;
-    applyFinish(surface.current, pendingRef.current);
+    applyFinish(surface.current, normals.current, pendingRef.current);
     for (const material of surface.current) {
       material.opacity = 0.08 + t * 0.92;
       material.transparent = t < 1;
@@ -155,22 +181,10 @@ export function ConfigureScene({
 
   return (
     <>
-      <ambientLight intensity={finishId === "silver" ? 0.7 : finishId === "gold" ? 0.46 : pending.clearcoat > 0.4 && finishId === "black" ? 0.38 : 0.62} />
-      <directionalLight
-        position={[2.6, 3.4, 2.2]}
-        intensity={finishId === "silver" ? 0.72 : finishId === "gold" ? 1.45 : pending.clearcoat > 0.4 && finishId === "black" ? 1.55 : 1.2}
-        color={finishId === "silver" ? "#f4f6f8" : finishId === "gold" ? "#fff4dc" : "#fff6ea"}
-      />
-      <directionalLight
-        position={[-2.4, 1.1, -1.6]}
-        intensity={finishId === "silver" ? 0.28 : finishId === "gold" ? 0.22 : pending.clearcoat > 0.4 && finishId === "black" ? 0.55 : 0.42}
-        color="#dce6f6"
-      />
-      <directionalLight
-        position={[0.2, -1.6, 1.4]}
-        intensity={finishId === "silver" ? 0.1 : finishId === "gold" ? 0.38 : pending.clearcoat > 0.4 && finishId === "black" ? 0.22 : 0.28}
-        color="#f0d7a4"
-      />
+      <ambientLight intensity={light.ambient} />
+      <directionalLight position={[2.6, 3.4, 2.2]} intensity={light.key} color={light.keyColor} />
+      <directionalLight position={[-2.4, 1.1, -1.6]} intensity={light.fill} color="#dce6f6" />
+      <directionalLight position={[0.2, -1.6, 1.4]} intensity={light.under} color="#f0d7a4" />
       <group ref={group}>
         <Center>
           <group rotation={pose.rotation} scale={scale}>
@@ -183,7 +197,7 @@ export function ConfigureScene({
                 onProgress={revealPending}
                 onAssembled={() => {
                   revealed.current = true;
-                  applyFinish(surface.current, pendingRef.current);
+                  applyFinish(surface.current, normals.current, pendingRef.current);
                   for (const material of surface.current) {
                     material.opacity = 1;
                     material.transparent = false;
@@ -210,12 +224,7 @@ export function ConfigureScene({
         far={2.2}
         color="#1c1830"
       />
-      <Environment
-        preset="studio"
-        environmentIntensity={
-          finishId === "silver" ? 0.58 : finishId === "gold" ? 1.28 : pending.clearcoat > 0.4 && finishId === "black" ? 1.35 : 0.92
-        }
-      />
+      <Environment preset="studio" environmentIntensity={light.environment} />
     </>
   );
 }

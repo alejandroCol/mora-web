@@ -32,7 +32,7 @@ export function CaseCollage() {
   }, []);
 
   return (
-    <section id="case" className="case-collage">
+    <section id="case" className="case-collage snap-page">
       <Link href={casePath()} className="case-collage-link">
         <div className="case-collage-copy">
           <p className="case-collage-kicker">{CASE_PRODUCT.line}</p>

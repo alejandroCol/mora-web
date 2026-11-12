@@ -1,9 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { CrmSeller, WhatsAppConversation, WhatsAppMessage } from "@/growth/types";
+import type { CrmDesk, CrmSeller, WhatsAppConversation, WhatsAppMessage } from "@/growth/types";
 import { channelOf, conversationHandle, conversationTitle, instagramProfileUrl } from "@/crm/channel";
-import { LOST_REASON_LABEL, PIPELINE_LABEL, SUPPORT_STATUS_LABEL, followUpLabel, isSnoozed } from "@/crm/labels";
+import {
+  DESK_LABEL,
+  LOST_REASON_LABEL,
+  PIPELINE_LABEL,
+  SUPPORT_STATUS_LABEL,
+  followUpLabel,
+  isSnoozed,
+} from "@/crm/labels";
 import { formatClock } from "@/crm/labels";
 import type { CrmLostReason, WhatsAppConversationStatus } from "@/growth/types";
 import { hasReferral, referralKindLabel, referralLink, referralTitle } from "@/crm/referral";
@@ -56,6 +63,7 @@ export function CrmThread({
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const support = (conversation.desk ?? "sales") === "support";
+  const creators = conversation.desk === "creators";
   const instagram = channelOf(conversation) === "instagram";
   const title = conversationTitle(conversation);
   const handle = conversationHandle(conversation);
@@ -113,9 +121,18 @@ export function CrmThread({
           </button>
         </>
       )}
-      <button type="button" onClick={() => onPatch({ desk: support ? "sales" : "support" })} className="crm-chat-chip">
-        {support ? "A ventas" : "A soporte"}
-      </button>
+      <select
+        value={conversation.desk ?? "sales"}
+        onChange={(event) => onPatch({ desk: event.target.value as CrmDesk })}
+        className="crm-chat-select"
+        aria-label="Mesa"
+      >
+        {(Object.keys(DESK_LABEL) as CrmDesk[]).map((item) => (
+          <option key={item} value={item}>
+            {DESK_LABEL[item]}
+          </option>
+        ))}
+      </select>
     </>
   );
 
@@ -186,7 +203,8 @@ export function CrmThread({
           </button>
         </div>
         {more ? <div className="crm-chat-sheet lg:hidden">{tools}</div> : null}
-        <div className="crm-chat-pipe">
+        {/* Con creadoras no hay embudo de venta. */}
+        {creators ? null : <div className="crm-chat-pipe">
           {support
             ? (["open", "waiting", "resolved"] as const).map((status) => (
                 <button
@@ -208,7 +226,7 @@ export function CrmThread({
                   {PIPELINE_LABEL[status]}
                 </button>
               ))}
-        </div>
+        </div>}
         {isSnoozed(conversation.snoozedUntil) ? (
           <p className="crm-chat-sleep">Vuelve {followUpLabel(conversation.snoozedUntil!)}</p>
         ) : null}

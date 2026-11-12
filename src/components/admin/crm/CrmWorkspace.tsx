@@ -20,7 +20,7 @@ import type {
 } from "@/growth/types";
 import { CHANNEL_LABEL, channelOf } from "@/crm/channel";
 import { playMoraChime, unlockMoraChime } from "@/crm/chime";
-import { DESK_LABEL, isSnoozed, needsReply } from "@/crm/labels";
+import { DESK_LABEL, isCrmDesk, isSnoozed, needsReply } from "@/crm/labels";
 import { referralKindLabel } from "@/crm/referral";
 import { useAdminAuth } from "../AdminAuth";
 import { ManualSaleForm } from "../ManualSaleForm";
@@ -28,6 +28,7 @@ import { CrmBoard } from "./CrmBoard";
 import { CrmComposer } from "./CrmComposer";
 import { CrmContactPanel } from "./CrmContactPanel";
 import { CrmInboxList, type ChannelFilter } from "./CrmInboxList";
+import { CrmNewChat } from "./CrmNewChat";
 import { CrmSettingsPanel } from "./CrmSettings";
 import { CrmThread } from "./CrmThread";
 import { CrmUsagePanel } from "./CrmUsagePanel";
@@ -93,9 +94,10 @@ export function CrmWorkspace() {
   const { authorizedFetch, me } = useAdminAuth();
   const router = useRouter();
   const search = useSearchParams();
-  const [desk, setDesk] = useState<CrmDesk>(
-    search.get("desk") === "support" ? "support" : "sales",
-  );
+  const [desk, setDesk] = useState<CrmDesk>(() => {
+    const wanted = search.get("desk");
+    return isCrmDesk(wanted) ? wanted : "sales";
+  });
   const [view, setView] = useState<View>("inbox");
   const [filter, setFilter] = useState<Filter>("all");
   const [channel, setChannel] = useState<ChannelFilter>("all");
@@ -103,6 +105,12 @@ export function CrmWorkspace() {
   const [pane, setPane] = useState<Pane>(search.get("c") ? "thread" : "list");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sale, setSale] = useState(false);
+  // `?nuevo=<celular>&nombre=<nombre>` (p. ej. desde Creadores) abre «Nuevo chat» ya lleno.
+  const [newChat, setNewChat] = useState<{ phone: string; name: string } | null>(() =>
+    search.get("nuevo") !== null ? { phone: search.get("nuevo") ?? "", name: search.get("nombre") ?? "" } : null,
+  );
+  const [newChatBusy, setNewChatBusy] = useState(false);
+  const [newChatError, setNewChatError] = useState("");
   const [conversations, setConversations] = useState<WhatsAppConversation[]>([]);
   const [sellers, setSellers] = useState<CrmSeller[]>([]);
   const [settings, setSettings] = useState<CrmSettings | null>(null);
@@ -245,7 +253,7 @@ export function CrmWorkspace() {
         if (filter === "waiting" && support !== "waiting") return false;
         if (filter === "resolved" && support !== "resolved") return false;
       }
-      if (desk === "sales" && filter !== "snoozed" && asleep) return false;
+      if (desk !== "support" && filter !== "snoozed" && asleep) return false;
       if (filter === "snoozed" && !asleep) return false;
       if (filter === "reply" && !needsReply(item)) return false;
       if (filter === "mine" && item.assignedTo !== me?.uid) return false;
@@ -269,6 +277,11 @@ export function CrmWorkspace() {
         return (b.lastAt ?? 0) - (a.lastAt ?? 0);
       });
   }, [channel, conversations, desk, filter, me?.uid, query]);
+
+  const creatorsWaiting = useMemo(
+    () => conversations.filter((item) => item.desk === "creators" && needsReply(item)).length,
+    [conversations],
+  );
 
   const active = conversations.find((item) => item.id === activeId) ?? contact?.conversation ?? null;
   const activeChannel: CrmChannel = active ? channelOf(active) : "whatsapp";
@@ -383,6 +396,30 @@ export function CrmWorkspace() {
     await loadWorkspace();
   }
 
+  async function startChat(input: { phone: string; name: string; templateId: string }) {
+    setNewChatBusy(true);
+    setNewChatError("");
+    try {
+      const res = await authorizedFetch("/api/admin/whatsapp", {
+        method: "POST",
+        body: JSON.stringify({ ...input, desk }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string; id?: string };
+      if (!data.ok || !data.id) {
+        setNewChatError(data.error ?? "WhatsApp no aceptó la plantilla.");
+        return;
+      }
+      setNewChat(null);
+      await loadWorkspace();
+      setActiveId(data.id);
+      setPane("thread");
+      setView("inbox");
+      router.replace(`/superadmin/crm?c=${data.id}&desk=${desk}`, { scroll: false });
+    } finally {
+      setNewChatBusy(false);
+    }
+  }
+
   async function addNote(text: string) {
     if (!activeId) return;
     const res = await authorizedFetch("/api/admin/crm/notes", {
@@ -423,10 +460,23 @@ export function CrmWorkspace() {
                 {DESK_LABEL[item]}
                 {item === "support" && counts.supportOpen > 0 ? ` ${counts.supportOpen}` : ""}
                 {item === "sales" && counts.waitingOnUs > 0 ? ` ${counts.waitingOnUs}` : ""}
+                {item === "creators" && creatorsWaiting > 0 ? ` ${creatorsWaiting}` : ""}
               </button>
             ))}
           </div>
           <div className="crm-toolbar-extra">
+            {connection?.ready ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setNewChatError("");
+                  setNewChat({ phone: "", name: "" });
+                }}
+                className="crm-ghost crm-new"
+              >
+                Nuevo chat
+              </button>
+            ) : null}
             <button type="button" onClick={() => setView(view === "inbox" ? "board" : "inbox")} className="crm-ghost">
               {view === "inbox" ? "Tablero" : "Inbox"}
             </button>
@@ -526,7 +576,9 @@ export function CrmWorkspace() {
                   ? "Conecta la Cloud API en Ajustes. Los chats de anuncio llegan aquí."
                   : desk === "support"
                     ? "Elige un caso. Foto, pedido y guía viven en la ficha."
-                    : "Elige un chat. Tómalo, escribe y registra la venta sin salir."}
+                    : desk === "creators"
+                      ? "Chats con creadoras. Escríbele a una nueva con «Nuevo chat»."
+                      : "Elige un chat. Tómalo, escribe y registra la venta sin salir."}
               </div>
             )}
           </section>
@@ -581,6 +633,21 @@ export function CrmWorkspace() {
                 ? { ...current, twoStep: Boolean(data.twoStep), twoStepSetAt: data.twoStepSetAt }
                 : current,
             );
+          }}
+        />
+      ) : null}
+
+      {newChat ? (
+        <CrmNewChat
+          templates={settings?.templates ?? []}
+          desk={desk}
+          initial={newChat}
+          busy={newChatBusy}
+          error={newChatError}
+          onSubmit={(input) => void startChat(input)}
+          onClose={() => {
+            setNewChat(null);
+            if (search.get("nuevo") !== null) router.replace(`/superadmin/crm?desk=${desk}`, { scroll: false });
           }}
         />
       ) : null}

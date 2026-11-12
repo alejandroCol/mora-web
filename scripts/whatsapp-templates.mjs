@@ -5,6 +5,7 @@
  *
  * Uso (desde web/):
  *   WABA_ID=1234567890 node scripts/whatsapp-templates.mjs
+ *   ONLY=contacto_creadora WABA_ID=… node scripts/whatsapp-templates.mjs   # solo esas
  *
  * El WABA_ID es el «Identificador de la cuenta de WhatsApp Business» que
  * muestra Meta Business Suite → WhatsApp Manager (o developers.facebook.com →
@@ -52,7 +53,23 @@ const TEMPLATES = [
     body:
       "Hola, te escribo de Mora por tu pedido. Tengo una novedad y necesito confirmar un dato contigo. ¿Me respondes por aquí cuando puedas?",
   },
+  {
+    name: "contacto_creadora",
+    label: "Creadora",
+    desk: "creators",
+    category: "MARKETING",
+    body:
+      "Hola {{1}}, soy Lina del equipo de Mora Ring 💜 Siguiendo nuestra conversación por Instagram, me gustaría coordinar contigo el envío de tu anillo y los demás detalles del contenido. ¿Te parece si lo hablamos por aquí?",
+    examples: ["Ana"],
+  },
 ];
+
+/** Meta rechaza plantillas con variables si no trae un ejemplo por cada una. */
+function bodyComponent(template) {
+  return template.examples?.length
+    ? { type: "BODY", text: template.body, example: { body_text: [template.examples] } }
+    : { type: "BODY", text: template.body };
+}
 
 function loadServiceAccount() {
   if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim()) {
@@ -105,7 +122,8 @@ async function main() {
   const byName = new Map((existing.data ?? []).map((item) => [`${item.name}/${item.language}`, item]));
 
   const registered = [];
-  for (const template of TEMPLATES) {
+  const only = (process.env.ONLY ?? "").split(",").map((name) => name.trim()).filter(Boolean);
+  for (const template of TEMPLATES.filter((item) => !only.length || only.includes(item.name))) {
     const key = `${template.name}/es`;
     let remote = byName.get(key);
     if (remote) {
@@ -114,7 +132,7 @@ async function main() {
         // Editar vuelve a mandar la plantilla a revisión (PENDING). Máx. 10 ediciones/30 días.
         await graph(token, remote.id, {
           method: "POST",
-          body: JSON.stringify({ components: [{ type: "BODY", text: template.body }] }),
+          body: JSON.stringify({ components: [bodyComponent(template)] }),
         });
         remote = { ...remote, status: "PENDING" };
         console.log(`✎ ${template.name} editada en Meta (PENDING, ${remote.category})`);
@@ -129,7 +147,7 @@ async function main() {
           language: "es",
           category: template.category,
           allow_category_change: true,
-          components: [{ type: "BODY", text: template.body }],
+          components: [bodyComponent(template)],
         }),
       });
       remote = { status: created.status, category: created.category ?? template.category };

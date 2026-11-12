@@ -34,7 +34,8 @@ export type GrowthEventPayload = {
 
 export type LeadSource = "whatsapp" | "checkout" | "site" | "ad" | "instagram";
 export type LeadStatus = "new" | "interested" | "sold" | "closed";
-export type CrmDesk = "sales" | "support";
+/** `creators`: creadoras de contenido. No es venta: no crea leads ni avisa a Meta. */
+export type CrmDesk = "sales" | "support" | "creators";
 /** Por dónde se habla con la persona. Sin dato = WhatsApp (conversaciones anteriores a Instagram). */
 export type CrmChannel = "whatsapp" | "instagram";
 export type ProductInterest = "pro" | "ultra" | "both" | "unknown";

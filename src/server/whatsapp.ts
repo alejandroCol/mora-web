@@ -601,31 +601,34 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
           await conversations().doc(phone).update({ referral: compact(referral) });
         }
 
-        const lead = await upsertLead({
-          source: source === "ad" ? "ad" : "whatsapp",
-          name: name || prev?.name,
-          phone,
-          attribution,
-          lastEvent: referral ? "Lead" : "Contact",
-          conversationId: phone,
-          status: "interested",
-        });
-        if (lead) {
-          await conversations().doc(phone).set({ leadId: lead.id }, { merge: true });
-        }
+        // Una creadora respondiendo no es un cliente: ni lead ni evento para los anuncios.
+        if (desk !== "creators") {
+          const lead = await upsertLead({
+            source: source === "ad" ? "ad" : "whatsapp",
+            name: name || prev?.name,
+            phone,
+            attribution,
+            lastEvent: referral ? "Lead" : "Contact",
+            conversationId: phone,
+            status: "interested",
+          });
+          if (lead) {
+            await conversations().doc(phone).set({ leadId: lead.id }, { merge: true });
+          }
 
-        await sendMetaEvent({
-          name: referral || isFirst ? "Lead" : "Contact",
-          eventId: raw.id,
-          actionSource: "business_messaging",
-          sourceUrl: referral?.sourceUrl,
-          user: { phone, firstName: name },
-          attribution,
-          data: {
-            content_name: referral?.headline || "WhatsApp",
-            content_category: "whatsapp",
-          },
-        }).catch(() => undefined);
+          await sendMetaEvent({
+            name: referral || isFirst ? "Lead" : "Contact",
+            eventId: raw.id,
+            actionSource: "business_messaging",
+            sourceUrl: referral?.sourceUrl,
+            user: { phone, firstName: name },
+            attribution,
+            data: {
+              content_name: referral?.headline || "WhatsApp",
+              content_category: "whatsapp",
+            },
+          }).catch(() => undefined);
+        }
 
         if (isFirst && settings.whatsappWelcome.trim()) {
           await sendWhatsAppText({

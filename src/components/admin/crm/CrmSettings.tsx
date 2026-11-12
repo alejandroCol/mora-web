@@ -249,9 +249,10 @@ export function CrmSettingsPanel({
                   }
                   className="h-10 rounded-xl bg-white/8 px-3 text-[13px] outline-none"
                 >
-                  <option value="both">Ambas</option>
+                  <option value="both">Todas</option>
                   <option value="sales">Ventas</option>
                   <option value="support">Soporte</option>
+                  <option value="creators">Creadores</option>
                 </select>
                 <textarea
                   value={reply.body}
@@ -369,9 +370,10 @@ export function CrmSettingsPanel({
                   }
                   className="h-10 rounded-xl bg-white/8 px-2 text-[12px] outline-none"
                 >
-                  <option value="both">Ambas</option>
+                  <option value="both">Todas</option>
                   <option value="sales">Ventas</option>
                   <option value="support">Soporte</option>
+                  <option value="creators">Creadores</option>
                 </select>
                 <button
                   type="button"

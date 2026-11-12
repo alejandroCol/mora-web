@@ -10,7 +10,12 @@ import type {
 export const DESK_LABEL: Record<CrmDesk, string> = {
   sales: "Ventas",
   support: "Soporte",
+  creators: "Creadores",
 };
+
+export function isCrmDesk(value: unknown): value is CrmDesk {
+  return typeof value === "string" && value in DESK_LABEL;
+}
 
 export const PIPELINE_LABEL: Record<WhatsAppConversationStatus, string> = {
   new: "Nuevo",

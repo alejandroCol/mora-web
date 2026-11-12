@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { formatFollowers, type CreatorRecordView } from "@/lib/creatorApplication";
 import { BrandLoader } from "@/components/brand/BrandLoader";
 import { useAdminAuth } from "./AdminAuth";
@@ -104,6 +105,13 @@ export function CreadoresView() {
               <a href={`mailto:${item.email}`}>{item.email}</a>
               {" · "}
               <a href={`https://wa.me/${item.phone.replace(/\D/g, "")}`}>{item.phone}</a>
+              {" · "}
+              <Link
+                href={`/superadmin/crm?desk=creators&nuevo=${encodeURIComponent(item.phone)}&nombre=${encodeURIComponent(item.name)}`}
+                className="text-[#1d1d1f] underline"
+              >
+                Escribir desde el CRM
+              </Link>
             </p>
             <p className="mt-3 text-[15px]">
               {item.network}

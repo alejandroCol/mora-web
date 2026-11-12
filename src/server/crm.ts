@@ -1,6 +1,13 @@
 import { COLLECTIONS, DOCS } from "@/commerce/paths";
 import { channelOf, isInstagramConversationId } from "@/crm/channel";
-import { HUMAN_AGENT_WINDOW_MS, WINDOW_MS, conversationWindow, endOfDay } from "@/crm/labels";
+import {
+  DESK_LABEL,
+  HUMAN_AGENT_WINDOW_MS,
+  WINDOW_MS,
+  conversationWindow,
+  endOfDay,
+  isCrmDesk,
+} from "@/crm/labels";
 import { LEGACY_PAYMENT_REPLY_BODIES, PAYMENT_REPLY_BODY, emptyCrmSettings } from "@/crm/replies";
 import type {
   CrmCounts,
@@ -28,6 +35,7 @@ import {
   conversationIdFromPhone,
   getConversation,
   listConversations,
+  sendWhatsAppTemplate,
   updateConversation,
 } from "./whatsapp";
 
@@ -41,6 +49,67 @@ export function crmConversationId(raw: string) {
 
 function settingsDoc() {
   return adminDb().doc(DOCS.crm);
+}
+
+/**
+ * Abre un chat de WhatsApp que empieza Mora (creadoras, alguien que pidió que
+ * le escribieran). WhatsApp solo deja abrir con una plantilla aprobada; si la
+ * persona responde, el chat sigue como cualquier otro.
+ * Si ya existía un chat con ese número se reutiliza: no se pisa nombre ni mesa.
+ */
+export async function startCrmChat(
+  input: { phone: string; name: string; templateId: string; desk: CrmDesk },
+  staff: { uid: string; name: string },
+) {
+  const digits = input.phone.replace(/\D/g, "");
+  const phone = conversationIdFromPhone(digits);
+  if (digits.length < 10 || phone.length < 11 || phone.length > 15) {
+    throw Object.assign(new Error("Revisa el número: celular de 10 dígitos o con indicativo de país."), {
+      status: 400,
+    });
+  }
+  const name = input.name.trim().replace(/\s+/g, " ").slice(0, 80);
+  if (!name) throw Object.assign(new Error("Escribe el nombre."), { status: 400 });
+
+  const settings = await loadCrmSettings();
+  const template = settings.templates.find((item) => item.id === input.templateId);
+  if (!template) throw Object.assign(new Error("Elige una plantilla."), { status: 400 });
+
+  const existing = await getConversation(phone);
+  const first = name.split(" ")[0];
+  // Las plantillas de Mora solo usan el nombre: toda variable se llena con él.
+  const params = Array.from({ length: template.variables ?? 0 }, () => first);
+  await sendWhatsAppTemplate({
+    phone,
+    name: template.name,
+    language: template.language,
+    params,
+    preview: template.body,
+    billingCategory: template.billingCategory ?? "marketing",
+    by: staff.uid,
+    byName: staff.name,
+    claim: true,
+  });
+
+  if (!existing) {
+    await updateConversation(phone, {
+      name,
+      desk: input.desk,
+      status: "new",
+      source: "organic",
+    });
+  } else if (!existing.name || existing.name === existing.phone) {
+    await updateConversation(phone, { name });
+  }
+  await addCrmNote({
+    phone,
+    text: `${staff.name} abrió el chat con la plantilla «${template.label}».`,
+    by: staff.uid,
+    byName: staff.name,
+    kind: "system",
+  }).catch(() => undefined);
+
+  return { id: phone, reused: Boolean(existing) };
 }
 
 /** `phone` es el id de la conversación: en WhatsApp coincide con el teléfono, en Instagram es `ig_…`. */
@@ -130,7 +199,7 @@ function sanitizeReplies(replies: CrmQuickReply[]): CrmQuickReply[] {
       id: String(item.id || crypto.randomUUID()),
       title: String(item.title ?? "").trim(),
       body: String(item.body ?? "").trim(),
-      desk: (item.desk === "sales" || item.desk === "support" ? item.desk : "both") as CrmQuickReply["desk"],
+      desk: (isCrmDesk(item.desk) ? item.desk : "both") as CrmQuickReply["desk"],
     }))
     .filter((item) => item.title && item.body)
     .slice(0, 40);
@@ -146,7 +215,7 @@ function sanitizeTemplates(templates: CrmTemplate[]): CrmTemplate[] {
         .replace(/\s+/g, "_"),
       language: String(item.language ?? "es").trim() || "es",
       label: String(item.label ?? "").trim(),
-      desk: (item.desk === "sales" || item.desk === "support" ? item.desk : "both") as CrmTemplate["desk"],
+      desk: (isCrmDesk(item.desk) ? item.desk : "both") as CrmTemplate["desk"],
       billingCategory: (
         item.billingCategory === "utility" || item.billingCategory === "authentication"
           ? item.billingCategory
@@ -222,6 +291,7 @@ export async function patchConversation(
   if (patch.status) next.status = patch.status;
   if (typeof patch.unread === "number") next.unread = Math.max(0, patch.unread);
   if (patch.desk) {
+    if (!isCrmDesk(patch.desk)) throw Object.assign(new Error("Esa mesa no existe."), { status: 400 });
     next.desk = patch.desk;
     if (patch.desk === "support" && !current.supportStatus && !patch.supportStatus) {
       next.supportStatus = "open";
@@ -271,31 +341,33 @@ export async function patchConversation(
   const conversation = await updateConversation(id, compact(next));
   if (!conversation) return null;
 
-  await upsertLead({
-    source:
-      conversation.source === "ad" ? "ad" : channelOf(conversation) === "instagram" ? "instagram" : "whatsapp",
-    name: conversation.name,
-    phone: conversation.phone,
-    email: conversation.email,
-    igUserId: conversation.igUserId,
-    igUsername: conversation.igUsername,
-    conversationId: conversation.id,
-    lastEvent: "Contact",
-    status:
-      conversation.status === "sold"
-        ? "sold"
-        : conversation.status === "closed"
-          ? "closed"
-          : "interested",
-    orderId: conversation.orderId,
-    orderNumber: conversation.orderNumber,
-    assignedTo: conversation.assignedTo,
-    assignedName: conversation.assignedName,
-  }).catch(() => undefined);
+  if (conversation.desk !== "creators") {
+    await upsertLead({
+      source:
+        conversation.source === "ad" ? "ad" : channelOf(conversation) === "instagram" ? "instagram" : "whatsapp",
+      name: conversation.name,
+      phone: conversation.phone,
+      email: conversation.email,
+      igUserId: conversation.igUserId,
+      igUsername: conversation.igUsername,
+      conversationId: conversation.id,
+      lastEvent: "Contact",
+      status:
+        conversation.status === "sold"
+          ? "sold"
+          : conversation.status === "closed"
+            ? "closed"
+            : "interested",
+      orderId: conversation.orderId,
+      orderNumber: conversation.orderNumber,
+      assignedTo: conversation.assignedTo,
+      assignedName: conversation.assignedName,
+    }).catch(() => undefined);
+  }
 
   if (actor && (patch.assignedTo || patch.desk || patch.status || patch.supportStatus)) {
     const bits = [
-      patch.desk ? `Mesa ${patch.desk === "support" ? "soporte" : "ventas"}` : "",
+      patch.desk ? `Mesa ${DESK_LABEL[patch.desk].toLowerCase()}` : "",
       patch.status ? `Estado ${patch.status}` : "",
       patch.supportStatus ? `Soporte ${patch.supportStatus}` : "",
       patch.assignedTo === "" || patch.assignedTo === null

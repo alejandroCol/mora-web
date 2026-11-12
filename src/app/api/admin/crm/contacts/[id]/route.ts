@@ -1,6 +1,5 @@
 import { jsonError, requirePermission } from "@/server/adminAuth";
-import { getCrmContact, patchConversation } from "@/server/crm";
-import { conversationIdFromPhone } from "@/server/whatsapp";
+import { crmConversationId, getCrmContact, patchConversation } from "@/server/crm";
 
 export async function GET(
   request: Request,
@@ -9,7 +8,7 @@ export async function GET(
   try {
     await requirePermission(request, "whatsapp");
     const { id } = await context.params;
-    const contact = await getCrmContact(conversationIdFromPhone(id) || id);
+    const contact = await getCrmContact(crmConversationId(id));
     return Response.json({ ok: true, ...contact });
   } catch (error) {
     return jsonError(error);
@@ -25,7 +24,7 @@ export async function PATCH(
     const { id } = await context.params;
     const body = (await request.json()) as Parameters<typeof patchConversation>[1];
     const conversation = await patchConversation(
-      conversationIdFromPhone(id) || id,
+      crmConversationId(id),
       body,
       { uid: staff.uid, name: staff.name || staff.email },
     );

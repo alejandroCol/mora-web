@@ -28,6 +28,10 @@ export const COLLECTIONS = {
   featureFlags: "featureFlags",
   /** Códigos que regalan un espíritu en la app (`spiritCodes/{CODE}`). Solo Admin SDK. */
   spiritCodes: "spiritCodes",
+  /** Reglas «comentan X en Instagram → DM». Solo Admin SDK. */
+  instagramAutomations: "instagramAutomations",
+  /** Comentarios que dispararon una regla (`{id del comentario}`): historial y antirrepetición. Solo Admin SDK. */
+  instagramCommentEvents: "instagramCommentEvents",
 } as const;
 
 export const DOCS = {

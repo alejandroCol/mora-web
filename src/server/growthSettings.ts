@@ -24,6 +24,14 @@ function fromEnv(): GrowthSettings {
     whatsappPrefill:
       process.env.WHATSAPP_PREFILL?.trim() ??
       "Hola Mora, quiero un anillo. ¿Me orientan?",
+    // Instagram no se configura por variables: lo llena «Conectar» en Automatizaciones.
+    instagramAccessToken: "",
+    instagramPageId: "",
+    instagramPageName: "",
+    instagramAccountId: "",
+    instagramUsername: "",
+    instagramConnectedAt: 0,
+    instagramHumanAgent: false,
     updatedAt: 0,
   };
 }
@@ -81,6 +89,7 @@ function cleanPatch(
     "whatsappAccessToken",
     "whatsappVerifyToken",
     "whatsappAppSecret",
+    "instagramAccessToken",
   ] as const;
   for (const key of secrets) {
     const value = next[key];
@@ -114,6 +123,7 @@ export function publicAdminGrowth(settings: GrowthSettings) {
     whatsappAccessToken: maskSecret(settings.whatsappAccessToken),
     whatsappVerifyToken: maskSecret(settings.whatsappVerifyToken),
     whatsappAppSecret: maskSecret(settings.whatsappAppSecret),
+    instagramAccessToken: maskSecret(settings.instagramAccessToken),
     configured: {
       pixel: Boolean(settings.metaPixelId),
       capi: Boolean(settings.metaCapiToken && settings.metaPixelId),
@@ -122,6 +132,11 @@ export function publicAdminGrowth(settings: GrowthSettings) {
           settings.whatsappAccessToken &&
           settings.whatsappDisplayNumber,
       ),
+      instagram: instagramReady(settings),
     },
   };
+}
+
+export function instagramReady(settings: GrowthSettings) {
+  return Boolean(settings.instagramAccessToken && settings.instagramPageId && settings.instagramAccountId);
 }

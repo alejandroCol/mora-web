@@ -12,7 +12,7 @@ export default function GlobalError({
   return (
     <html lang="es-CO">
       <body className="flex min-h-full flex-col bg-paper text-ink">
-        <title>Algo no cargó bien — Mora</title>
+        <title>Algo no cargó bien · Mora Ring</title>
         <main className="hero-wash flex min-h-dvh flex-col items-center justify-center px-6 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={BRAND.assets.wordmark} alt={BRAND.name} className="h-7 w-auto" />

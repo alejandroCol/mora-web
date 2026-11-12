@@ -60,6 +60,8 @@ export const SUPPORT_TOPIC_LABEL: Record<SupportTopic, string> = {
 };
 
 export const WINDOW_MS = 24 * 60 * 60 * 1000;
+/** Instagram con el permiso «Human Agent»: una persona del equipo puede responder hasta 7 días después. */
+export const HUMAN_AGENT_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function endOfDay(at = Date.now()) {
   const date = new Date(at);
@@ -73,9 +75,9 @@ export function startOfDay(at = Date.now()) {
   return date.getTime();
 }
 
-export function conversationWindow(lastInboundAt?: number) {
+export function conversationWindow(lastInboundAt?: number, windowMs = WINDOW_MS) {
   if (!lastInboundAt) return { open: false, closesAt: null as number | null };
-  const closesAt = lastInboundAt + WINDOW_MS;
+  const closesAt = lastInboundAt + windowMs;
   return { open: Date.now() < closesAt, closesAt };
 }
 

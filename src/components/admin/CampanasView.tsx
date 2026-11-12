@@ -23,7 +23,7 @@ const FIELDS: {
   { key: "whatsappPhoneNumberId", label: "Phone number ID", hint: "WhatsApp → Configuración de la API" },
   { key: "whatsappAccessToken", label: "Token WhatsApp", hint: "Token permanente del sistema", secret: true },
   { key: "whatsappVerifyToken", label: "Verify token", hint: "Lo inventas tú para el webhook", secret: true },
-  { key: "whatsappAppSecret", label: "App secret", hint: "Opcional, firma del webhook", secret: true },
+  { key: "whatsappAppSecret", label: "App secret", hint: "Firma de los webhooks. Obligatorio para Instagram", secret: true },
   { key: "whatsappDisplayNumber", label: "Número público", hint: "57 + celular, para el botón wa.me" },
   { key: "whatsappPrefill", label: "Texto del botón", hint: "Mensaje que abre el visitante", area: true },
   { key: "whatsappWelcome", label: "Auto-respuesta", hint: "Primer mensaje automático", area: true },
@@ -211,7 +211,7 @@ export function CampanasView() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-white/60">
-                      {lead.phone || lead.email || "—"}
+                      {lead.phone || lead.email || (lead.igUsername ? `@${lead.igUsername}` : "—")}
                     </td>
                     <td className="px-4 py-3 text-white/60">
                       {lead.source}

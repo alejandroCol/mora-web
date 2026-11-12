@@ -41,7 +41,7 @@ export function ManualSaleForm({
     email?: string;
     notes?: string;
     conversationId?: string;
-    channel?: "manual" | "whatsapp";
+    channel?: "manual" | "whatsapp" | "instagram";
   };
 }) {
   const [kind, setKind] = useState<"ring" | "case">("ring");

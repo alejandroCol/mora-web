@@ -1,10 +1,18 @@
 "use client";
 
-import type { WhatsAppConversation } from "@/growth/types";
+import type { CrmChannel, WhatsAppConversation } from "@/growth/types";
+import { CHANNEL_LABEL, channelOf, conversationTitle } from "@/crm/channel";
 import { INTEREST_LABEL, PIPELINE_LABEL, SUPPORT_STATUS_LABEL, followUpLabel, formatWhen, isSnoozed, needsReply } from "@/crm/labels";
 import { cameFromAd, referralKindLabel, referralTitle } from "@/crm/referral";
 
 type Filter = "all" | "mine" | "unassigned" | "unread" | "today" | "waiting" | "resolved" | "reply" | "snoozed";
+export type ChannelFilter = "all" | CrmChannel;
+
+const CHANNEL_FILTERS: { id: ChannelFilter; label: string }[] = [
+  { id: "all", label: "Todo" },
+  { id: "whatsapp", label: CHANNEL_LABEL.whatsapp },
+  { id: "instagram", label: CHANNEL_LABEL.instagram },
+];
 
 export function CrmInboxList({
   conversations,
@@ -12,9 +20,12 @@ export function CrmInboxList({
   query,
   filter,
   filters,
+  channel,
+  showChannels,
   hidden,
   onQuery,
   onFilter,
+  onChannel,
   onOpen,
   onClaim,
 }: {
@@ -23,9 +34,13 @@ export function CrmInboxList({
   query: string;
   filter: Filter;
   filters: { id: Filter; label: string }[];
+  channel: ChannelFilter;
+  /** Solo cuando ya hay chats de los dos canales: con uno solo el selector sobra. */
+  showChannels: boolean;
   hidden?: boolean;
   onQuery: (value: string) => void;
   onFilter: (value: Filter) => void;
+  onChannel: (value: ChannelFilter) => void;
   onOpen: (id: string) => void;
   onClaim: (id: string) => void;
 }) {
@@ -35,7 +50,7 @@ export function CrmInboxList({
         <input
           value={query}
           onChange={(event) => onQuery(event.target.value)}
-          placeholder="Nombre, teléfono o mensaje"
+          placeholder={showChannels ? "Nombre, teléfono, @usuario o mensaje" : "Nombre, teléfono o mensaje"}
           className="crm-search"
         />
         <div className="crm-filters">
@@ -50,6 +65,20 @@ export function CrmInboxList({
             </button>
           ))}
         </div>
+        {showChannels ? (
+          <div className="crm-channels" role="group" aria-label="Canal">
+            {CHANNEL_FILTERS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => onChannel(item.id)}
+                className={`crm-channel-tab ${channel === item.id ? "is-on" : ""}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
       <ul className="min-h-0 flex-1 overflow-y-auto">
         {conversations.length === 0 ? (
@@ -73,7 +102,12 @@ export function CrmInboxList({
                   <span className="flex w-full items-center justify-between gap-2">
                     <span className="flex min-w-0 items-center gap-1.5">
                       {item.pinned ? <span className="crm-pin">✦</span> : null}
-                      <span className="truncate text-[14px]">{item.name || item.phone}</span>
+                      <span className="truncate text-[14px]">{conversationTitle(item)}</span>
+                      {channelOf(item) === "instagram" ? (
+                        <span className="crm-channel-badge" title="Chat de Instagram">
+                          IG
+                        </span>
+                      ) : null}
                     </span>
                     <span className="shrink-0 text-[10px] text-white/30">
                       {formatWhen(item.lastAt)}

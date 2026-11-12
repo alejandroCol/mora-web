@@ -1,5 +1,5 @@
 import { loadGrowthSettings } from "@/server/growthSettings";
-import { recordWhatsAppWebhookPost } from "@/server/whatsappWebhookDebug";
+import { checkWhatsAppSignature, recordWhatsAppWebhookPost } from "@/server/whatsappWebhookDebug";
 import { ingestWhatsAppWebhook } from "@/server/whatsapp";
 
 export async function GET(request: Request) {
@@ -16,7 +16,21 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const payload = await request.json();
+  const raw = await request.text();
+  const settings = await loadGrowthSettings();
+  const verdict = await checkWhatsAppSignature(
+    raw,
+    request.headers.get("x-hub-signature-256"),
+    settings.whatsappAppSecret,
+  );
+  if (verdict === "rejected") return new Response("invalid signature", { status: 401 });
+
+  let payload: unknown;
+  try {
+    payload = JSON.parse(raw);
+  } catch {
+    return new Response("invalid json", { status: 400 });
+  }
   await recordWhatsAppWebhookPost(payload, () => ingestWhatsAppWebhook(payload)).catch((error) => {
     console.error("[whatsapp webhook]", error);
   });

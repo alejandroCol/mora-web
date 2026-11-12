@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     "Descarga Mora Ring para iPhone o Android. La app de tu anillo: noche, pulso y cuerpo.",
   alternates: { canonical: "/descargas" },
   openGraph: {
-    title: `Descarga la app — ${BRAND.name}`,
+    title: `Descarga la app · ${BRAND.siteName}`,
     description: "La app de tu anillo Mora, para iPhone y Android.",
     url: siteUrl("/descargas"),
     locale: "es_CO",

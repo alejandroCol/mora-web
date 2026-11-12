@@ -1,5 +1,7 @@
+import { channelOf } from "@/crm/channel";
 import { jsonError, requirePermission } from "@/server/adminAuth";
 import { loadCrmSettings, patchConversation } from "@/server/crm";
+import { sendInstagramText } from "@/server/instagram/inbox";
 import {
   getConversation,
   listMessages,
@@ -46,6 +48,14 @@ export async function POST(
 
     const settings = await loadCrmSettings();
     const actor = { by: staff.uid, byName: staff.name || staff.email, claim: settings.autoClaimOnReply };
+
+    if (channelOf(conversation) === "instagram") {
+      if (body.templateId || body.templateName) {
+        return Response.json({ ok: false, error: "Instagram no tiene plantillas." }, { status: 400 });
+      }
+      const message = await sendInstagramText({ conversation, text: body.text ?? "", ...actor });
+      return Response.json({ ok: true, message });
+    }
 
     if (body.templateId || body.templateName) {
       const template = settings.templates.find((item) => item.id === body.templateId);

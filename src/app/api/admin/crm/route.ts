@@ -1,6 +1,6 @@
 import { jsonError, requirePermission } from "@/server/adminAuth";
 import { loadCrmWorkspace } from "@/server/crm";
-import { loadGrowthSettings } from "@/server/growthSettings";
+import { instagramReady, loadGrowthSettings } from "@/server/growthSettings";
 import { loadWhatsAppSecurity, webhookUrl } from "@/server/whatsapp";
 import { loadWhatsAppUsage } from "@/server/whatsappUsage";
 import { loadWhatsAppWebhookDebug } from "@/server/whatsappWebhookDebug";
@@ -33,6 +33,11 @@ export async function GET(request: Request) {
         webhookDebug,
         twoStep: security.twoStep,
         twoStepSetAt: security.twoStepSetAt,
+      },
+      instagram: {
+        ready: instagramReady(growth),
+        username: growth.instagramUsername,
+        humanAgent: growth.instagramHumanAgent,
       },
     });
   } catch (error) {

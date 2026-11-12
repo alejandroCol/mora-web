@@ -42,26 +42,26 @@ export function generateMetadata(): Metadata {
   return {
     metadataBase: new URL(origin),
     title: {
-      default: `${BRAND.name} — ${BRAND.tagline}`,
-      template: `%s — ${BRAND.name}`,
+      default: BRAND.searchTitle,
+      template: `%s · ${BRAND.siteName}`,
     },
     description: FALLBACK_SALES.brandDescription,
-    applicationName: BRAND.name,
+    applicationName: BRAND.siteName,
     keywords: FALLBACK_SALES.keywords,
-    authors: [{ name: BRAND.name }],
-    creator: BRAND.name,
-    publisher: BRAND.name,
+    authors: [{ name: BRAND.siteName }],
+    creator: BRAND.siteName,
+    publisher: BRAND.siteName,
     openGraph: {
       type: "website",
       locale: "es_CO",
       url: origin,
-      siteName: BRAND.name,
-      title: `${BRAND.name} — ${BRAND.tagline}`,
+      siteName: BRAND.siteName,
+      title: BRAND.searchTitle,
       description: FALLBACK_SALES.brandDescription,
     },
     twitter: {
       card: "summary_large_image",
-      title: `${BRAND.name} — ${BRAND.tagline}`,
+      title: BRAND.searchTitle,
       description: FALLBACK_SALES.brandDescription,
     },
     robots: {
@@ -71,7 +71,10 @@ export function generateMetadata(): Metadata {
     },
     verification: google ? { google } : undefined,
     icons: {
-      icon: [{ url: BRAND.assets.favicon, type: "image/png", sizes: "32x32" }],
+      icon: [
+        { url: BRAND.assets.favicon, type: "image/png", sizes: "32x32" },
+        { url: BRAND.assets.icon512, type: "image/png", sizes: "512x512" },
+      ],
       apple: [{ url: BRAND.assets.apple, sizes: "180x180" }],
     },
   };

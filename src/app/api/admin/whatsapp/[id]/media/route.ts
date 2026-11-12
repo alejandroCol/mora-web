@@ -1,4 +1,6 @@
+import { channelOf } from "@/crm/channel";
 import { jsonError, requirePermission } from "@/server/adminAuth";
+import { sendInstagramImage } from "@/server/instagram/inbox";
 import { loadCrmSettings } from "@/server/crm";
 import {
   getConversation,
@@ -36,6 +38,18 @@ export async function POST(
     const caption = String(form.get("caption") ?? "").trim().slice(0, 1024);
 
     const settings = await loadCrmSettings();
+    if (channelOf(conversation) === "instagram") {
+      const message = await sendInstagramImage({
+        conversation,
+        bytes: Buffer.from(await file.arrayBuffer()),
+        mimeType: file.type,
+        caption,
+        by: staff.uid,
+        byName: staff.name || staff.email,
+        claim: settings.autoClaimOnReply,
+      });
+      return Response.json({ ok: true, message });
+    }
     const message = await sendWhatsAppImage({
       phone: conversation.phone,
       bytes: Buffer.from(await file.arrayBuffer()),

@@ -1,7 +1,11 @@
 import type { WhatsAppConversation, WhatsAppReferral } from "@/growth/types";
 
-/** «Anuncio» para CTWA pagado, «Publicación» para post con botón «Enviar mensaje». */
+/**
+ * «Anuncio» para CTWA pagado, «Publicación» para post con botón «Enviar mensaje»,
+ * «Comentario» para quien comentó en Instagram y recibió el DM automático.
+ */
 export function referralKindLabel(referral: WhatsAppReferral | undefined) {
+  if (referral?.sourceType === "comment") return "Comentario";
   return referral?.sourceType === "post" ? "Publicación" : "Anuncio";
 }
 

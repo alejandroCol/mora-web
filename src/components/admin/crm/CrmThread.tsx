@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { CrmSeller, WhatsAppConversation, WhatsAppMessage } from "@/growth/types";
+import { channelOf, conversationHandle, conversationTitle, instagramProfileUrl } from "@/crm/channel";
 import { LOST_REASON_LABEL, PIPELINE_LABEL, SUPPORT_STATUS_LABEL, followUpLabel, isSnoozed } from "@/crm/labels";
 import { formatClock } from "@/crm/labels";
 import type { CrmLostReason, WhatsAppConversationStatus } from "@/growth/types";
@@ -9,10 +10,15 @@ import { hasReferral, referralKindLabel, referralLink, referralTitle } from "@/c
 import { CrmAdCard } from "./CrmAdCard";
 import { CrmVoiceNote } from "./CrmVoiceNote";
 
-function initial(name: string, phone: string) {
-  const source = name.trim() || phone;
-  return source.slice(0, 1).toUpperCase();
+function initial(title: string) {
+  return title.replace(/^[@+]/, "").slice(0, 1).toUpperCase();
 }
+
+/** Quién escribió cuando no fue una persona del equipo desde el CRM. */
+const OUTBOUND_ORIGIN: Record<string, string> = {
+  auto: "automático",
+  instagram: "desde Instagram",
+};
 
 function snoozeAt(kind: "1h" | "manana" | "sem") {
   const date = new Date();
@@ -50,6 +56,9 @@ export function CrmThread({
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const support = (conversation.desk ?? "sales") === "support";
+  const instagram = channelOf(conversation) === "instagram";
+  const title = conversationTitle(conversation);
+  const handle = conversationHandle(conversation);
   const [more, setMore] = useState(false);
   const [lightbox, setLightbox] = useState<{ src: string; caption: string } | null>(null);
 
@@ -118,14 +127,36 @@ export function CrmThread({
             <BackGlyph />
           </button>
           <span className="crm-chat-mark" aria-hidden>
-            {initial(conversation.name, conversation.phone)}
+            {initial(title)}
           </span>
           <div className="min-w-0">
-            <p className="crm-chat-name">{conversation.name || conversation.phone}</p>
+            <p className="crm-chat-name">{title}</p>
             <span className="crm-chat-sub">
-              <a href={`tel:+${conversation.phone}`} className="crm-chat-phone">
-                +{conversation.phone}
-              </a>
+              {instagram ? (
+                <>
+                  <span className="crm-channel-badge">Instagram</span>
+                  {conversation.igUsername ? (
+                    <a
+                      href={instagramProfileUrl(conversation.igUsername)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="crm-chat-phone"
+                      title="Ver su perfil"
+                    >
+                      {handle}
+                    </a>
+                  ) : null}
+                  {conversation.phone ? (
+                    <a href={`tel:+${conversation.phone}`} className="crm-chat-phone">
+                      +{conversation.phone}
+                    </a>
+                  ) : null}
+                </>
+              ) : (
+                <a href={`tel:+${conversation.phone}`} className="crm-chat-phone">
+                  +{conversation.phone}
+                </a>
+              )}
               {hasReferral(conversation.referral) ? (
                 <AdChip
                   label={referralTitle(conversation.referral)}
@@ -227,7 +258,17 @@ export function CrmThread({
               </p>
             );
           }
+          if (message.type === "deleted") {
+            return (
+              <p key={message.id} className={`crm-reaction-line ${message.direction === "out" ? "ml-auto text-right" : ""}`}>
+                {message.text || "Eliminó este mensaje"}
+                <span className="crm-reaction-time">{formatClock(message.at)}</span>
+              </p>
+            );
+          }
           const media = mediaKind(message);
+          const link = safeLink(message.linkUrl);
+          const origin = message.direction === "out" && message.by ? OUTBOUND_ORIGIN[message.by] : "";
           // «[foto]», «[audio]»… son relleno del webhook; con el archivo a la vista sobran.
           // En archivos el texto es el nombre y ya va en la tarjeta.
           const text =
@@ -244,20 +285,30 @@ export function CrmThread({
                   {message.reaction}
                 </span>
               ) : null}
-              {media && message.mediaId ? (
+              {media ? (
                 <MediaBubble
                   kind={media}
-                  mediaId={message.mediaId}
+                  source={mediaSource(message)}
+                  stored={Boolean(message.mediaPath)}
                   mimeType={message.mimeType}
                   fileName={message.type === "document" ? message.text : ""}
                   authorizedFetch={authorizedFetch}
                   onOpen={(src) => setLightbox({ src, caption: text })}
                 />
               ) : null}
+              {link ? (
+                <a href={link} target="_blank" rel="noreferrer" className="crm-bubble-link">
+                  {message.linkLabel || "Abrir enlace"} ↗
+                </a>
+              ) : !text && !media && message.linkLabel ? (
+                // El enlace caducó o Meta no lo mandó: al menos se sabe qué fue.
+                <p className="crm-media-note">{message.linkLabel}</p>
+              ) : null}
               {text ? <p className="whitespace-pre-wrap break-words">{text}</p> : null}
               <p className={`mt-1 text-[10px] ${message.direction === "out" ? "text-white/50" : "text-white/35"}`}>
                 {formatClock(message.at)}
                 {message.status && message.direction === "out" ? ` · ${message.status}` : ""}
+                {origin ? ` · ${origin}` : ""}
               </p>
             </div>
           );
@@ -313,8 +364,24 @@ function reactionQuote(message: WhatsAppMessage) {
   return text.length > 40 ? `${text.slice(0, 40).trimEnd()}…` : text;
 }
 
+/** Archivo del mensaje: WhatsApp lo sirve Meta por id; Instagram se copia a nuestro Storage. */
+function mediaSource(message: WhatsAppMessage) {
+  if (message.mediaPath) return `/api/admin/crm/media?path=${encodeURIComponent(message.mediaPath)}`;
+  return `/api/admin/whatsapp/media/${message.mediaId}`;
+}
+
+/** Enlaces que llegan en un mensaje: solo https. */
+function safeLink(url: string | undefined) {
+  if (!url) return "";
+  try {
+    return new URL(url).protocol === "https:" ? url : "";
+  } catch {
+    return "";
+  }
+}
+
 function mediaKind(message: WhatsAppMessage): MediaKind | null {
-  if (!message.mediaId) return null;
+  if (!message.mediaId && !message.mediaPath) return null;
   const type = message.type;
   const mime = message.mimeType ?? "";
   if (type === "image" || mime.startsWith("image/")) return type === "sticker" ? "sticker" : "image";
@@ -327,14 +394,18 @@ function mediaKind(message: WhatsAppMessage): MediaKind | null {
 
 function MediaBubble({
   kind,
-  mediaId,
+  source,
+  stored,
   mimeType,
   fileName,
   authorizedFetch,
   onOpen,
 }: {
   kind: MediaKind;
-  mediaId: string;
+  /** Ruta del API que entrega el archivo. */
+  source: string;
+  /** Está en nuestro Storage (Instagram) y no en Meta (WhatsApp, 30 días). */
+  stored: boolean;
   mimeType?: string;
   fileName?: string;
   authorizedFetch: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
@@ -347,7 +418,7 @@ function MediaBubble({
   useEffect(() => {
     let url = "";
     let cancelled = false;
-    void authorizedFetch(`/api/admin/whatsapp/media/${mediaId}`)
+    void authorizedFetch(source)
       .then((res) => (res.ok ? res.blob() : null))
       .then((data) => {
         if (cancelled) return;
@@ -366,13 +437,17 @@ function MediaBubble({
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [authorizedFetch, mediaId]);
+  }, [authorizedFetch, source]);
 
   const label =
     kind === "image" ? "Foto" : kind === "sticker" ? "Sticker" : kind === "video" ? "Video" : kind === "audio" ? "Audio" : "Archivo";
 
   if (failed) {
-    return <p className="crm-media-note">{label} no disponible (WhatsApp guarda los archivos 30 días).</p>;
+    return (
+      <p className="crm-media-note">
+        {label} no disponible{stored ? "." : " (WhatsApp guarda los archivos 30 días)."}
+      </p>
+    );
   }
   if (!src) {
     return <div className={`crm-media-skeleton ${kind === "image" || kind === "sticker" ? "is-image" : ""}`}>{label}…</div>;

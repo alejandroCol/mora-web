@@ -18,7 +18,7 @@ export function generateMetadata(): Metadata {
       "Envíos a todo Colombia, medidor de talla, retracto y garantía de un mes de Mora Ring.",
     alternates: { canonical: "/envios-y-garantia" },
     openGraph: {
-      title: `Envíos, cambios y garantía — ${BRAND.name}`,
+      title: `Envíos, cambios y garantía · ${BRAND.siteName}`,
       description: "A todo Colombia. Medidor de talla si lo necesitas. Garantía de un mes.",
       url: siteUrl("/envios-y-garantia"),
       locale: "es_CO",

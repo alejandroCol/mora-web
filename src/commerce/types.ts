@@ -20,7 +20,7 @@ export type OrderStatus =
   | "in_transit"
   | "delivered"
   | "cancelled";
-export type OrderChannel = "online" | "manual" | "whatsapp";
+export type OrderChannel = "online" | "manual" | "whatsapp" | "instagram";
 export type ShippingFuente = "heka" | "envia" | "estatico";
 export type EnviaCarrier = "coordinadora" | "servientrega" | "deprisa";
 

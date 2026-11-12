@@ -32,9 +32,11 @@ export type GrowthEventPayload = {
   order_id?: string;
 };
 
-export type LeadSource = "whatsapp" | "checkout" | "site" | "ad";
+export type LeadSource = "whatsapp" | "checkout" | "site" | "ad" | "instagram";
 export type LeadStatus = "new" | "interested" | "sold" | "closed";
 export type CrmDesk = "sales" | "support";
+/** Por dónde se habla con la persona. Sin dato = WhatsApp (conversaciones anteriores a Instagram). */
+export type CrmChannel = "whatsapp" | "instagram";
 export type ProductInterest = "pro" | "ultra" | "both" | "unknown";
 export type SupportTopic =
   | "size"
@@ -52,6 +54,9 @@ export type MoraLead = {
   name: string;
   email: string;
   phone: string;
+  /** Id de la persona en Instagram (leads que llegan por DM, aún sin teléfono). */
+  igUserId?: string;
+  igUsername?: string;
   attribution?: AttributionSnapshot;
   lastEvent: string;
   status: LeadStatus;
@@ -83,7 +88,10 @@ export type WhatsAppReferral = {
   sourceUrl?: string;
   /** Id del anuncio (o del post) en Meta. */
   sourceId?: string;
-  /** "ad" (anuncio pagado) o "post" (publicación con botón). */
+  /**
+   * "ad" (anuncio pagado), "post" (publicación con botón) o "comment"
+   * (comentó en Instagram y una automatización le escribió por DM).
+   */
   sourceType?: string;
   /** Título del anuncio. */
   headline?: string;
@@ -100,9 +108,18 @@ export type WhatsAppReferral = {
   at?: number;
 };
 
+/**
+ * Conversación del CRM. El nombre viene de cuando solo había WhatsApp; hoy
+ * también guarda las de Instagram (`channel: "instagram"`, id `ig_…`).
+ */
 export type WhatsAppConversation = {
   id: string;
+  channel?: CrmChannel;
+  /** WhatsApp: siempre. Instagram: vacío hasta que el vendedor lo vincula. */
   phone: string;
+  /** Solo Instagram: id de la persona para esta cuenta y su usuario público. */
+  igUserId?: string;
+  igUsername?: string;
   name: string;
   email?: string;
   lastMessage: string;
@@ -142,8 +159,14 @@ export type WhatsAppMessage = {
   text: string;
   at: number;
   status?: string;
+  /** WhatsApp: id del archivo en Meta (se pide a la Cloud API al abrirlo). */
   mediaId?: string;
+  /** Instagram: ruta del archivo en nuestro Storage (Meta solo da enlaces que caducan). */
+  mediaPath?: string;
   mimeType?: string;
+  /** Instagram: enlace a lo que compartió (publicación, reel, historia). */
+  linkUrl?: string;
+  linkLabel?: string;
   billingCategory?: WhatsAppBillingCategory;
   templateName?: string;
   by?: string;
@@ -260,6 +283,15 @@ export type GrowthSettings = {
   whatsappDisplayNumber: string;
   whatsappWelcome: string;
   whatsappPrefill: string;
+  /** Instagram: lo llena «Conectar» en Automatizaciones, no se escribe a mano. */
+  instagramAccessToken: string;
+  instagramPageId: string;
+  instagramPageName: string;
+  instagramAccountId: string;
+  instagramUsername: string;
+  instagramConnectedAt: number;
+  /** Permiso «Human Agent» de Meta aprobado: deja responder hasta 7 días después. */
+  instagramHumanAgent: boolean;
   updatedAt: number;
 };
 

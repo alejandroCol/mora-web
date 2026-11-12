@@ -1,5 +1,6 @@
-import { DOCS } from "@/commerce/paths";
-import { conversationWindow, endOfDay } from "@/crm/labels";
+import { COLLECTIONS, DOCS } from "@/commerce/paths";
+import { channelOf, isInstagramConversationId } from "@/crm/channel";
+import { HUMAN_AGENT_WINDOW_MS, WINDOW_MS, conversationWindow, endOfDay } from "@/crm/labels";
 import { LEGACY_PAYMENT_REPLY_BODIES, PAYMENT_REPLY_BODY, emptyCrmSettings } from "@/crm/replies";
 import type {
   CrmCounts,
@@ -19,20 +20,32 @@ import type {
 import { listStaff } from "./adminAuth";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { listAbandonedCarts } from "./abandonedCarts";
-import { findLeadByPhone, upsertLead } from "./leads";
+import { loadGrowthSettings } from "./growthSettings";
+import { findLeadByInstagram, findLeadByPhone, upsertLead } from "./leads";
+import { normalizePhone } from "./metaCapi";
 import { listOrdersByPhone } from "./orders";
 import {
+  conversationIdFromPhone,
   getConversation,
   listConversations,
   updateConversation,
 } from "./whatsapp";
 
+/**
+ * Id de conversación a partir de lo que llega en la URL. WhatsApp usa el
+ * teléfono (se normaliza); Instagram usa `ig_{persona}` y va tal cual.
+ */
+export function crmConversationId(raw: string) {
+  return isInstagramConversationId(raw) ? raw : conversationIdFromPhone(raw) || raw;
+}
+
 function settingsDoc() {
   return adminDb().doc(DOCS.crm);
 }
 
+/** `phone` es el id de la conversación: en WhatsApp coincide con el teléfono, en Instagram es `ig_…`. */
 function notesCol(phone: string) {
-  return adminDb().collection("whatsappConversations").doc(phone).collection("notes");
+  return adminDb().collection(COLLECTIONS.whatsappConversations).doc(phone).collection("notes");
 }
 
 function compact<T extends Record<string, unknown>>(value: T) {
@@ -185,6 +198,8 @@ export type ConversationPatch = {
   city?: string;
   email?: string;
   name?: string;
+  /** Solo Instagram: el celular que dio la persona. Une el chat con sus pedidos y carritos. */
+  phone?: string;
   nextFollowUpAt?: number | null;
   supportStatus?: SupportStatus;
   supportTopic?: SupportTopic;
@@ -216,6 +231,13 @@ export async function patchConversation(
   if (typeof patch.city === "string") next.city = patch.city.trim();
   if (typeof patch.email === "string") next.email = patch.email.trim().toLowerCase();
   if (typeof patch.name === "string" && patch.name.trim()) next.name = patch.name.trim();
+  if (typeof patch.phone === "string" && channelOf(current) === "instagram") {
+    const digits = patch.phone.replace(/\D/g, "");
+    if (digits && digits.length < 10) {
+      throw Object.assign(new Error("Ese celular está incompleto."), { status: 400 });
+    }
+    next.phone = digits ? normalizePhone(digits) : "";
+  }
   if (patch.supportStatus) next.supportStatus = patch.supportStatus;
   if (patch.supportTopic) next.supportTopic = patch.supportTopic;
   if (typeof patch.pinned === "boolean") next.pinned = patch.pinned;
@@ -250,10 +272,13 @@ export async function patchConversation(
   if (!conversation) return null;
 
   await upsertLead({
-    source: conversation.source === "ad" ? "ad" : "whatsapp",
+    source:
+      conversation.source === "ad" ? "ad" : channelOf(conversation) === "instagram" ? "instagram" : "whatsapp",
     name: conversation.name,
     phone: conversation.phone,
     email: conversation.email,
+    igUserId: conversation.igUserId,
+    igUsername: conversation.igUsername,
     conversationId: conversation.id,
     lastEvent: "Contact",
     status:
@@ -281,7 +306,7 @@ export async function patchConversation(
     ].filter(Boolean);
     if (bits.length) {
       await addCrmNote({
-        phone: conversation.phone,
+        phone: conversation.id,
         text: bits.join(" · "),
         by: actor.uid,
         byName: actor.name,
@@ -293,20 +318,33 @@ export async function patchConversation(
   return conversation;
 }
 
-export async function getCrmContact(phone: string) {
-  const conversation = await getConversation(phone);
-  const [lead, orders, carts, notes] = await Promise.all([
-    findLeadByPhone(phone),
-    listOrdersByPhone(phone),
-    listAbandonedCartsByPhone(phone),
-    conversation ? listCrmNotes(phone) : Promise.resolve([]),
+/**
+ * Ficha del contacto. `id` es el id de la conversación. En Instagram la persona
+ * no tiene teléfono hasta que lo da: mientras tanto no hay pedidos ni carritos que cruzar.
+ */
+export async function getCrmContact(id: string) {
+  const conversation = await getConversation(id);
+  const instagram = conversation ? channelOf(conversation) === "instagram" : isInstagramConversationId(id);
+  const phone = instagram ? (conversation?.phone ?? "") : id;
+  const [lead, orders, carts, notes, otherChat, settings] = await Promise.all([
+    instagram
+      ? findLeadByInstagram(conversation?.igUserId ?? "").then((found) => found ?? (phone ? findLeadByPhone(phone) : null))
+      : findLeadByPhone(phone),
+    phone ? listOrdersByPhone(phone) : Promise.resolve([]),
+    phone ? listAbandonedCartsByPhone(phone) : Promise.resolve([]),
+    conversation ? listCrmNotes(id) : Promise.resolve([]),
+    phone ? findOtherChat(id, phone).catch(() => null) : Promise.resolve(null),
+    instagram ? loadGrowthSettings() : Promise.resolve(null),
   ]);
   const lastInboundAt =
     conversation?.lastInboundAt ??
     (conversation?.lastDirection === "in" || !conversation?.lastOutboundAt
       ? conversation?.lastAt
       : undefined);
-  const window = conversationWindow(lastInboundAt);
+  const window = conversationWindow(
+    lastInboundAt,
+    settings?.instagramHumanAgent ? HUMAN_AGENT_WINDOW_MS : WINDOW_MS,
+  );
   return {
     phone,
     conversation,
@@ -314,9 +352,23 @@ export async function getCrmContact(phone: string) {
     orders,
     carts,
     notes,
+    /** La misma persona en el otro canal (mismo celular), para saltar de un chat al otro. */
+    otherChat,
     windowOpen: window.open,
     windowClosesAt: window.closesAt,
   };
+}
+
+async function findOtherChat(id: string, phone: string) {
+  const snap = await adminDb()
+    .collection(COLLECTIONS.whatsappConversations)
+    .where("phone", "==", phone)
+    .limit(3)
+    .get();
+  const other = snap.docs.find((doc) => doc.id !== id);
+  if (!other) return null;
+  const data = other.data() as WhatsAppConversation;
+  return { id: other.id, channel: channelOf({ id: other.id, channel: data.channel }) };
 }
 
 async function listAbandonedCartsByPhone(phone: string) {

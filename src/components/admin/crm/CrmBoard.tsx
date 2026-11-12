@@ -1,6 +1,7 @@
 "use client";
 
 import type { CrmDesk, SupportStatus, WhatsAppConversation, WhatsAppConversationStatus } from "@/growth/types";
+import { conversationTitle } from "@/crm/channel";
 import { PIPELINE_LABEL, SUPPORT_STATUS_LABEL, formatWhen } from "@/crm/labels";
 
 const SALES: WhatsAppConversationStatus[] = ["new", "interested", "quoted", "sold", "closed"];
@@ -47,7 +48,7 @@ export function CrmBoard({
                     onClick={() => onOpen(item.id)}
                     className="w-full rounded-2xl bg-white px-3 py-3 text-left shadow-[var(--admin-shadow)]"
                   >
-                    <p className="truncate text-[13px]">{item.name || item.phone}</p>
+                    <p className="truncate text-[13px]">{conversationTitle(item)}</p>
                     <p className="mt-1 truncate text-[12px] text-white/40">{item.lastMessage}</p>
                     <p className="mt-2 text-[10px] text-white/30">
                       {item.assignedName || "Sin dueño"} · {formatWhen(item.lastAt)}

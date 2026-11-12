@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   description: "Preguntas frecuentes y una nota para Mora. Pedido, app o anillo.",
   alternates: { canonical: "/soporte" },
   openGraph: {
-    title: `Soporte — ${BRAND.name}`,
+    title: `Soporte · ${BRAND.siteName}`,
     description: "Lo que suelen preguntar. Si hace falta, nos escribes.",
     url: siteUrl("/soporte"),
     locale: "es_CO",

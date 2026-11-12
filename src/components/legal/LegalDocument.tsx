@@ -46,7 +46,7 @@ export function LegalDocument({
 
   useEffect(() => {
     document.documentElement.lang = lang === "es" ? "es-CO" : "en";
-    document.title = `${page.title} — ${BRAND.name}`;
+    document.title = `${page.title} · ${BRAND.siteName}`;
   }, [lang, page.title]);
 
   function choose(next: LegalLang) {

@@ -17,6 +17,9 @@ export async function upsertLead(input: {
   name?: string;
   email?: string;
   phone?: string;
+  /** Instagram: la persona se reconoce por su id aunque aún no haya dado teléfono ni correo. */
+  igUserId?: string;
+  igUsername?: string;
   attribution?: AttributionSnapshot;
   lastEvent: string;
   conversationId?: string;
@@ -28,16 +31,21 @@ export async function upsertLead(input: {
 }): Promise<MoraLead | null> {
   const email = input.email?.trim().toLowerCase() ?? "";
   const phone = input.phone ? normalizePhone(input.phone) : "";
-  if (!email && !phone) return null;
+  const igUserId = input.igUserId?.trim() ?? "";
+  if (!email && !phone && !igUserId) return null;
 
   const now = Date.now();
-  const existing = await findLead({ email, phone });
+  const existing = await findLead({ email, phone, igUserId });
+  const knownIgUserId = igUserId || existing?.igUserId;
+  const knownIgUsername = input.igUsername?.trim() || existing?.igUsername;
   const next: MoraLead = {
     id: existing?.id ?? leads().doc().id,
     source: existing?.source ?? input.source,
     name: input.name?.trim() || existing?.name || "",
     email: email || existing?.email || "",
     phone: phone || existing?.phone || "",
+    ...(knownIgUserId ? { igUserId: knownIgUserId } : {}),
+    ...(knownIgUsername ? { igUsername: knownIgUsername } : {}),
     attribution: { ...(existing?.attribution ?? {}), ...(input.attribution ?? {}) },
     lastEvent: input.lastEvent,
     status: input.status ?? existing?.status ?? "new",
@@ -67,7 +75,17 @@ export async function findLeadByPhone(phone: string) {
   return findLead({ email: "", phone: normalized });
 }
 
-async function findLead(input: { email: string; phone: string }) {
+export async function findLeadByInstagram(igUserId: string) {
+  return igUserId ? findLead({ email: "", phone: "", igUserId }) : null;
+}
+
+async function findLead(input: { email: string; phone: string; igUserId?: string }) {
+  if (input.igUserId) {
+    const snap = await leads().where("igUserId", "==", input.igUserId).limit(1).get();
+    if (!snap.empty) {
+      return { id: snap.docs[0].id, ...(snap.docs[0].data() as Omit<MoraLead, "id">) };
+    }
+  }
   if (input.phone) {
     const snap = await leads().where("phone", "==", input.phone).limit(1).get();
     if (!snap.empty) {

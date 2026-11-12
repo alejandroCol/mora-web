@@ -27,7 +27,7 @@ export async function generateMetadata({
       },
     },
     openGraph: {
-      title: `${es ? "Condiciones del servicio" : "Terms of service"} — ${BRAND.name}`,
+      title: `${es ? "Condiciones del servicio" : "Terms of service"} · ${BRAND.siteName}`,
       description: es
         ? sales.termsLead
         : "Purchases, payments, shipping, and commercial contact in Colombia.",

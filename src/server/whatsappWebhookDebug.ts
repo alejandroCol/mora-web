@@ -1,4 +1,5 @@
 import { adminDb } from "@/lib/firebaseAdmin";
+import { secretFingerprint, verifyMetaSignature } from "./metaSignature";
 
 export type WhatsAppWebhookDebug = {
   lastPostAt: number;
@@ -9,6 +10,12 @@ export type WhatsAppWebhookDebug = {
   lastError: string;
   lastObject: string;
   updatedAt: number;
+  /** Huella del App secret con el que ya llegó un aviso bien firmado. Desde ahí la firma es obligatoria. */
+  signatureProvenFor?: string;
+  /** Último aviso aceptado sin firma comprobada (App secret ausente o distinto al de Meta). */
+  lastUnsignedAt?: number;
+  /** Último aviso rechazado por firma inválida. */
+  lastRejectedAt?: number;
 };
 
 const EMPTY: WhatsAppWebhookDebug = {
@@ -89,4 +96,53 @@ export async function recordWhatsAppWebhookPost(
     );
     throw error;
   }
+}
+
+export type WebhookSignatureVerdict = "signed" | "unverified" | "rejected";
+
+let provenFingerprint: string | null = null;
+let provenLoadedAt = 0;
+let lastSignatureNoteAt = 0;
+
+async function loadProvenFingerprint() {
+  if (provenFingerprint !== null && Date.now() - provenLoadedAt < 5 * 60_000) return provenFingerprint;
+  const snap = await debugDoc().get();
+  provenFingerprint = String(snap.get("signatureProvenFor") ?? "");
+  provenLoadedAt = Date.now();
+  return provenFingerprint;
+}
+
+async function noteSignature(patch: Partial<WhatsAppWebhookDebug>) {
+  if (Date.now() - lastSignatureNoteAt < 60_000) return;
+  lastSignatureNoteAt = Date.now();
+  await debugDoc().set(patch, { merge: true }).catch(() => undefined);
+}
+
+/**
+ * Firma del webhook de WhatsApp sin tumbar la bandeja que ya está en producción.
+ * Mientras ningún aviso haya llegado bien firmado con el App secret guardado, se
+ * acepta sin comprobar (el secreto puede faltar o estar mal copiado). En cuanto
+ * uno lo demuestra, la firma pasa a ser obligatoria y lo falso se rechaza.
+ */
+export async function checkWhatsAppSignature(
+  rawBody: string,
+  header: string | null,
+  appSecret: string,
+): Promise<WebhookSignatureVerdict> {
+  const fingerprint = appSecret ? secretFingerprint(appSecret) : "";
+  if (fingerprint && verifyMetaSignature(rawBody, header, appSecret)) {
+    if (provenFingerprint !== fingerprint) {
+      await debugDoc().set({ signatureProvenFor: fingerprint }, { merge: true });
+      provenFingerprint = fingerprint;
+      provenLoadedAt = Date.now();
+    }
+    return "signed";
+  }
+  const proven = await loadProvenFingerprint().catch(() => "");
+  if (fingerprint && proven === fingerprint) {
+    await noteSignature({ lastRejectedAt: Date.now() });
+    return "rejected";
+  }
+  await noteSignature({ lastUnsignedAt: Date.now() });
+  return "unverified";
 }

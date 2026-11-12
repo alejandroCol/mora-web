@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { CrmQuickReply, CrmSettings, CrmTemplate } from "@/growth/types";
 import { defaultCrmReplies } from "@/crm/replies";
 
@@ -12,17 +13,20 @@ type Connection = {
   welcomeText?: string;
   twoStep?: boolean;
   twoStepSetAt?: number;
+  webhookDebug?: { signatureProvenFor?: string };
 };
 
 export function CrmSettingsPanel({
   settings,
   connection,
+  instagram,
   onClose,
   onSave,
   onSetPin,
 }: {
   settings: CrmSettings | null;
   connection: Connection | null;
+  instagram: { ready: boolean; username: string; humanAgent: boolean } | null;
   onClose: () => void;
   onSave: (next: CrmSettings, welcome: string) => Promise<void>;
   onSetPin: (pin: string) => Promise<void>;
@@ -93,6 +97,13 @@ export function CrmSettingsPanel({
           {connection?.webhook ? (
             <p className="mt-2 break-all text-[12px] text-white/40">{connection.webhook}</p>
           ) : null}
+          {connection?.ready ? (
+            <p className="mt-2 text-[12px] text-white/40">
+              {connection.webhookDebug?.signatureProvenFor
+                ? "Firma de Meta comprobada: solo entran avisos firmados."
+                : "Aún no se comprueba la firma de Meta en los avisos. Pega el App secret en Campañas y se activa sola con el siguiente mensaje."}
+            </p>
+          ) : null}
 
           <div className="mt-5 rounded-2xl bg-white/6 p-3">
             <p className="text-[13px]">
@@ -140,6 +151,27 @@ export function CrmSettingsPanel({
             </li>
             <li>Equipo → crea vendedores. Cada chat se toma. Nadie responde desde el celular.</li>
           </ol>
+        </section>
+
+        <section className="mt-8">
+          <h3 className="text-[14px]">Instagram</h3>
+          <p className="mt-1 text-[13px] leading-6 text-white/45">
+            Los mensajes directos llegan a este mismo inbox, con la marca IG. Se responde igual, sin plantillas:
+            Instagram deja escribir {instagram?.humanAgent ? "7 días" : "24 h"} después del último mensaje de la persona.
+          </p>
+          <p className="mt-3 text-[13px]">
+            {instagram?.ready ? (
+              `Conectado · @${instagram.username}`
+            ) : (
+              <>
+                Falta conectar. Se hace una vez en{" "}
+                <Link href="/superadmin/automatizaciones" className="underline">
+                  Automatizaciones
+                </Link>
+                .
+              </>
+            )}
+          </p>
         </section>
 
         <label className="mt-8 flex items-center gap-3 text-[13px]">

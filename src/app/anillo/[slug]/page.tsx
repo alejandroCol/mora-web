@@ -34,8 +34,8 @@ export async function generateMetadata({
     ? `Preventa: entrega el ${sales.deliveryFull}.`
     : sales.promise;
   return {
-    title: `Mora ${model.name}`,
-    description: `${model.promise} ${model.material}. ${delivery} ${formatMoney(model.price)}.`,
+    title: `Mora ${model.name}, anillo inteligente`,
+    description: `Mora ${model.name}, anillo inteligente de Mora Ring. ${model.promise} ${model.material}. ${delivery} ${formatMoney(model.price)}.`,
     alternates: { canonical: path },
     openGraph: {
       type: "website",

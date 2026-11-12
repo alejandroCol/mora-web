@@ -14,6 +14,7 @@ import {
   formatDay,
   formatWhen,
 } from "@/crm/labels";
+import { CHANNEL_LABEL, channelOf, conversationHandle, instagramProfileUrl } from "@/crm/channel";
 import { hasReferral } from "@/crm/referral";
 import { CrmAdCard } from "./CrmAdCard";
 import type { CrmContactState } from "./CrmWorkspace";
@@ -42,6 +43,7 @@ export function CrmContactPanel({
   onPatch,
   onNote,
   onSale,
+  onOpenChat,
 }: {
   open: boolean;
   conversation: WhatsAppConversation | null;
@@ -52,6 +54,7 @@ export function CrmContactPanel({
   onPatch: (body: Record<string, unknown>) => void;
   onNote: (text: string) => void;
   onSale: () => void;
+  onOpenChat: (id: string) => void;
 }) {
   const [note, setNote] = useState("");
   const [customDay, setCustomDay] = useState("");
@@ -60,6 +63,10 @@ export function CrmContactPanel({
 
   const support = (conversation.desk ?? "sales") === "support";
   const lastOrder = contact?.orders[0];
+  const instagram = channelOf(conversation) === "instagram";
+  const handle = conversationHandle(conversation);
+  // La ficha llega un instante después que el chat: no ofrecer el salto de la persona anterior.
+  const otherChat = contact?.conversation?.id === conversation.id ? contact.otherChat : null;
 
   return (
     <aside className={`crm-panel ${open ? "is-open" : ""}`}>
@@ -73,7 +80,31 @@ export function CrmContactPanel({
       <div key={conversation.id} className="space-y-5 overflow-y-auto px-5 py-4">
         <div>
           <p className="text-[16px]">{conversation.name || "Sin nombre"}</p>
-          <p className="text-[12px] text-white/40">+{conversation.phone}</p>
+          {instagram ? (
+            <p className="text-[12px] text-white/40">
+              Instagram
+              {conversation.igUsername ? (
+                <>
+                  {" · "}
+                  <a
+                    href={instagramProfileUrl(conversation.igUsername)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="crm-chat-phone"
+                  >
+                    {handle}
+                  </a>
+                </>
+              ) : null}
+            </p>
+          ) : (
+            <p className="text-[12px] text-white/40">{handle}</p>
+          )}
+          {otherChat ? (
+            <button type="button" onClick={() => onOpenChat(otherChat.id)} className="crm-other-chat">
+              También escribe por {CHANNEL_LABEL[otherChat.channel]} →
+            </button>
+          ) : null}
           {conversation.assignedName ? (
             <p className="mt-1 text-[12px] text-white/45">Dueño: {conversation.assignedName}</p>
           ) : (
@@ -99,6 +130,27 @@ export function CrmContactPanel({
             className="mt-1 h-10 w-full rounded-2xl bg-white/8 px-3 text-[13px] outline-none"
           />
         </label>
+        {instagram ? (
+          <label className="block">
+            <span className="text-[11px] text-white/35">Celular</span>
+            <input
+              defaultValue={conversation.phone ? `+${conversation.phone}` : ""}
+              key={conversation.phone}
+              inputMode="tel"
+              placeholder="Cuando te lo dé, pégalo aquí"
+              onBlur={(event) => {
+                const digits = event.target.value.replace(/\D/g, "");
+                if (digits !== (conversation.phone ?? "") && `57${digits}` !== conversation.phone) {
+                  onPatch({ phone: digits });
+                }
+              }}
+              className="mt-1 h-10 w-full rounded-2xl bg-white/8 px-3 text-[13px] outline-none"
+            />
+            <span className="mt-1 block text-[11px] text-white/30">
+              Une este chat con sus pedidos, su carrito y su WhatsApp.
+            </span>
+          </label>
+        ) : null}
         <div className="grid grid-cols-2 gap-2">
           <label className="block">
             <span className="text-[11px] text-white/35">Ciudad</span>

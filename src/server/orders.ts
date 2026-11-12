@@ -16,6 +16,7 @@ import type {
   PaymentStatus,
   ShippingSnapshot,
 } from "@/commerce/types";
+import { isInstagramConversationId } from "@/crm/channel";
 import { isModelId, products, type FinishId } from "@/lib/catalog";
 import { adminDb } from "@/lib/firebaseAdmin";
 import {
@@ -34,6 +35,7 @@ import {
   sendPaidCustomerEmail,
   sendPaidStaffEmail,
 } from "./email";
+import { normalizePhone } from "./metaCapi";
 import { bumpDailyStats } from "./stats";
 import { recordInsightsPurchase } from "./insights";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
@@ -184,6 +186,12 @@ export async function createPendingOrder(input: {
   return order;
 }
 
+const MANUAL_SALE_NOTE: Record<Exclude<OrderChannel, "online">, string> = {
+  manual: "Venta manual",
+  whatsapp: "Venta WhatsApp",
+  instagram: "Venta Instagram",
+};
+
 export async function createManualOrder(input: {
   items: CartLine[];
   customer: CustomerSnapshot;
@@ -225,7 +233,7 @@ export async function createManualOrder(input: {
     conversationId: input.conversationId,
     timeline: [
       { status: "awaiting_payment", at: now, by: input.createdBy },
-      { status: "paid", at: now, by: input.createdBy, note: input.channel === "whatsapp" ? "Venta WhatsApp" : "Venta manual" },
+      { status: "paid", at: now, by: input.createdBy, note: MANUAL_SALE_NOTE[input.channel ?? "manual"] },
     ],
     createdAt: now,
     updatedAt: now,
@@ -246,6 +254,10 @@ export async function createManualOrder(input: {
       status: "sold",
       orderId: order.id,
       orderNumber: order.orderNumber,
+      // Chat de Instagram: el celular del pedido lo une con sus compras y con su WhatsApp.
+      ...(isInstagramConversationId(input.conversationId) && normalizePhone(input.customer.phone ?? "").length >= 12
+        ? { phone: normalizePhone(input.customer.phone ?? "") }
+        : {}),
     }).catch(() => undefined);
     const { addCrmNote } = await import("./crm");
     await addCrmNote({

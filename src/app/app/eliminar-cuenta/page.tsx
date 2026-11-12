@@ -13,7 +13,7 @@ export const metadata: Metadata = {
     "How to request deletion of your Mora Ring account and Círculo cloud data. What we remove, what stays on your phone, and how long it takes.",
   alternates: { canonical: "/app/eliminar-cuenta" },
   openGraph: {
-    title: `Delete your account — ${BRAND.name}`,
+    title: `Delete your account · ${BRAND.siteName}`,
     description: "Steps to delete your Mora Ring account and associated cloud data.",
     url: siteUrl("/app/eliminar-cuenta"),
     locale: "en_US",

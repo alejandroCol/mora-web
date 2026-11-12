@@ -7,6 +7,7 @@ import type {
   MoraOrder,
 } from "@/commerce/types";
 import type {
+  CrmChannel,
   CrmCounts,
   CrmDesk,
   CrmNote,
@@ -17,14 +18,16 @@ import type {
   WhatsAppMessage,
   WhatsAppUsageReport,
 } from "@/growth/types";
+import { CHANNEL_LABEL, channelOf } from "@/crm/channel";
 import { playMoraChime, unlockMoraChime } from "@/crm/chime";
 import { DESK_LABEL, isSnoozed, needsReply } from "@/crm/labels";
+import { referralKindLabel } from "@/crm/referral";
 import { useAdminAuth } from "../AdminAuth";
 import { ManualSaleForm } from "../ManualSaleForm";
 import { CrmBoard } from "./CrmBoard";
 import { CrmComposer } from "./CrmComposer";
 import { CrmContactPanel } from "./CrmContactPanel";
-import { CrmInboxList } from "./CrmInboxList";
+import { CrmInboxList, type ChannelFilter } from "./CrmInboxList";
 import { CrmSettingsPanel } from "./CrmSettings";
 import { CrmThread } from "./CrmThread";
 import { CrmUsagePanel } from "./CrmUsagePanel";
@@ -43,7 +46,14 @@ type Connection = {
     lastMessageCount: number;
     lastFrom: string;
     lastError: string;
+    signatureProvenFor?: string;
   };
+};
+
+type InstagramConnection = {
+  ready: boolean;
+  username: string;
+  humanAgent: boolean;
 };
 
 type Filter = "all" | "mine" | "unassigned" | "unread" | "today" | "waiting" | "resolved" | "reply" | "snoozed";
@@ -56,6 +66,8 @@ export type CrmContactState = {
   orders: MoraOrder[];
   carts: AbandonedCart[];
   notes: CrmNote[];
+  /** La misma persona en el otro canal (mismo celular). */
+  otherChat: { id: string; channel: CrmChannel } | null;
   windowOpen: boolean;
   windowClosesAt: number | null;
 };
@@ -86,6 +98,7 @@ export function CrmWorkspace() {
   );
   const [view, setView] = useState<View>("inbox");
   const [filter, setFilter] = useState<Filter>("all");
+  const [channel, setChannel] = useState<ChannelFilter>("all");
   const [query, setQuery] = useState("");
   const [pane, setPane] = useState<Pane>(search.get("c") ? "thread" : "list");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -102,6 +115,7 @@ export function CrmWorkspace() {
     waitingOnUs: 0,
   });
   const [connection, setConnection] = useState<Connection | null>(null);
+  const [instagram, setInstagram] = useState<InstagramConnection | null>(null);
   const [usage, setUsage] = useState<WhatsAppUsageReport | null>(null);
   const [activeId, setActiveId] = useState<string | null>(search.get("c"));
   const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
@@ -118,6 +132,7 @@ export function CrmWorkspace() {
       settings?: CrmSettings;
       counts?: CrmCounts;
       connection?: Connection;
+      instagram?: InstagramConnection;
       usage?: WhatsAppUsageReport;
     };
     if (!data.ok) return;
@@ -138,6 +153,7 @@ export function CrmWorkspace() {
     setSettings(data.settings ?? null);
     if (data.counts) setCounts(data.counts);
     if (data.connection) setConnection(data.connection);
+    if (data.instagram) setInstagram(data.instagram);
     if (data.usage) setUsage(data.usage);
   }, [authorizedFetch]);
 
@@ -168,6 +184,7 @@ export function CrmWorkspace() {
           orders: dossier.orders ?? [],
           carts: dossier.carts ?? [],
           notes: dossier.notes ?? [],
+          otherChat: dossier.otherChat ?? null,
           windowOpen: Boolean(dossier.windowOpen),
           windowClosesAt: dossier.windowClosesAt ?? null,
         });
@@ -212,6 +229,7 @@ export function CrmWorkspace() {
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const handle = q.replace(/^@/, "");
     const due = new Date();
     due.setHours(23, 59, 59, 999);
     const now = Date.now();
@@ -219,6 +237,7 @@ export function CrmWorkspace() {
       .filter((item) => {
       const itemDesk = item.desk ?? "sales";
       if (itemDesk !== desk) return false;
+      if (channel !== "all" && channelOf(item) !== channel) return false;
       const asleep = isSnoozed(item.snoozedUntil, now);
       if (desk === "support") {
         const support = item.supportStatus ?? "open";
@@ -237,8 +256,9 @@ export function CrmWorkspace() {
       }
       if (!q) return true;
       return (
-        item.name.toLowerCase().includes(q) ||
-        item.phone.includes(q) ||
+        (item.name ?? "").toLowerCase().includes(q) ||
+        (item.phone ?? "").includes(q) ||
+        (handle !== "" && (item.igUsername ?? "").toLowerCase().includes(handle)) ||
         item.lastMessage.toLowerCase().includes(q) ||
         (item.assignedName ?? "").toLowerCase().includes(q)
       );
@@ -248,15 +268,29 @@ export function CrmWorkspace() {
         if (needsReply(a) !== needsReply(b)) return needsReply(a) ? -1 : 1;
         return (b.lastAt ?? 0) - (a.lastAt ?? 0);
       });
-  }, [conversations, desk, filter, me?.uid, query]);
+  }, [channel, conversations, desk, filter, me?.uid, query]);
 
   const active = conversations.find((item) => item.id === activeId) ?? contact?.conversation ?? null;
+  const activeChannel: CrmChannel = active ? channelOf(active) : "whatsapp";
+  // El selector de canal solo aparece cuando de verdad hay dos canales con chats.
+  const hasInstagramChats = useMemo(
+    () => conversations.some((item) => channelOf(item) === "instagram"),
+    [conversations],
+  );
 
   function openChat(id: string) {
+    // Al saltar al chat de la misma persona en el otro canal puede estar en la otra mesa.
+    const target = conversations.find((item) => item.id === id);
+    const nextDesk = target ? (target.desk ?? "sales") : desk;
+    if (nextDesk !== desk) {
+      setDesk(nextDesk);
+      setFilter("all");
+    }
+    if (target && channel !== "all" && channelOf(target) !== channel) setChannel("all");
     setActiveId(id);
     setPane("thread");
     setView("inbox");
-    router.replace(`/superadmin/crm?c=${id}&desk=${desk}`, { scroll: false });
+    router.replace(`/superadmin/crm?c=${id}&desk=${nextDesk}`, { scroll: false });
   }
 
   function switchDesk(next: CrmDesk) {
@@ -445,9 +479,12 @@ export function CrmWorkspace() {
             query={query}
             filter={filter}
             filters={filters}
+            channel={hasInstagramChats ? channel : "all"}
+            showChannels={hasInstagramChats}
             hidden={pane !== "list"}
             onQuery={setQuery}
             onFilter={(value) => setFilter(value)}
+            onChannel={setChannel}
             onOpen={openChat}
             onClaim={(id) => void patch(id, { assignedTo: me?.uid })}
           />
@@ -471,6 +508,9 @@ export function CrmWorkspace() {
                 />
                 <CrmComposer
                   desk={desk}
+                  channel={activeChannel}
+                  whatsappNumber={connection?.ready ? connection.displayNumber : ""}
+                  longWindow={Boolean(instagram?.humanAgent)}
                   settings={settings}
                   windowOpen={contact?.windowOpen ?? false}
                   windowClosesAt={contact?.windowClosesAt ?? null}
@@ -482,7 +522,7 @@ export function CrmWorkspace() {
               </>
             ) : (
               <div className="grid flex-1 place-items-center px-8 text-center text-[14px] text-white/35">
-                {connection && !connection.ready
+                {connection && !connection.ready && !instagram?.ready
                   ? "Conecta la Cloud API en Ajustes. Los chats de anuncio llegan aquí."
                   : desk === "support"
                     ? "Elige un caso. Foto, pedido y guía viven en la ficha."
@@ -500,6 +540,7 @@ export function CrmWorkspace() {
             onPatch={(body) => (active ? void patch(active.id, body) : undefined)}
             onNote={(text) => void addNote(text)}
             onSale={() => setSale(true)}
+            onOpenChat={openChat}
           />
         </div>
       )}
@@ -508,6 +549,7 @@ export function CrmWorkspace() {
         <CrmSettingsPanel
           settings={settings}
           connection={connection}
+          instagram={instagram}
           onClose={() => setSettingsOpen(false)}
           onSave={async (next, welcome) => {
             const res = await authorizedFetch("/api/admin/crm/settings", {
@@ -557,12 +599,12 @@ export function CrmWorkspace() {
             phone: active.phone,
             email: active.email || contact?.lead?.email,
             notes: active.referral?.headline
-              ? `WhatsApp / anuncio: ${active.referral.headline}`
+              ? `${CHANNEL_LABEL[activeChannel]} / ${referralKindLabel(active.referral).toLowerCase()}: ${active.referral.headline}`
               : desk === "support"
                 ? "Pedido desde soporte"
-                : "Venta WhatsApp",
+                : `Venta ${CHANNEL_LABEL[activeChannel]}`,
             conversationId: active.id,
-            channel: "whatsapp",
+            channel: activeChannel,
           }}
         />
       ) : null}

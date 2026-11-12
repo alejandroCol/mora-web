@@ -1,3 +1,4 @@
+import { channelOf } from "@/crm/channel";
 import { WINDOW_MS } from "@/crm/labels";
 import {
   CTWA_FREE_WINDOW_MS,
@@ -68,7 +69,8 @@ function classifyOutbound(
 
 export async function loadWhatsAppUsage(templates: CrmTemplate[] = []): Promise<WhatsAppUsageReport> {
   const month = monthRangeBogota();
-  const conversations = await listConversations(400);
+  // Instagram comparte la colección pero Meta no cobra sus mensajes: fuera de la cuenta.
+  const conversations = (await listConversations(400)).filter((item) => channelOf(item) === "whatsapp");
 
   type Billable = { at: number; category: WhatsAppBillCategory };
   const billable: Billable[] = [];

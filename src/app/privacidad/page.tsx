@@ -25,7 +25,7 @@ export async function generateMetadata({
       },
     },
     openGraph: {
-      title: `${es ? "Política de privacidad" : "Privacy Policy"} — ${BRAND.name}`,
+      title: `${es ? "Política de privacidad" : "Privacy Policy"} · ${BRAND.siteName}`,
       description: es
         ? "El anillo vive en tu teléfono. Círculo solo sube resúmenes si tú lo activas."
         : "Transparency about ring data, the app, Círculo, and the store. Optional cloud summaries; local cycle tracking.",

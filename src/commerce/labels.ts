@@ -4,6 +4,7 @@ export const ORDER_CHANNEL_LABEL: Record<OrderChannel, string> = {
   online: "Web",
   manual: "Manual",
   whatsapp: "WhatsApp",
+  instagram: "Instagram",
 };
 
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {

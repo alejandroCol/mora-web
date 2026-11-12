@@ -1,20 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CrmDesk, CrmSettings } from "@/growth/types";
-import { formatClock } from "@/crm/labels";
-import { PAYMENT_CHIP_TEXT } from "@/crm/replies";
-import { formatMoney, products } from "@/lib/catalog";
-
-/** Se arma al pintar: el precio vivo puede cambiar desde Inventario. */
-function sells() {
-  return [
-    { id: "pro", label: "Pro", text: `Mora Pro ${formatMoney(products.aero.price)} → https://moraring.com/anillo/pro` },
-    { id: "ultra", label: "Ultra", text: `Mora Ultra ${formatMoney(products.titan.price)} → https://moraring.com/anillo/ultra` },
-    { id: "talla", label: "Talla", text: "Te mandamos el medidor o te mides aquí: https://moraring.com/talla" },
-    { id: "pago", label: "Pagar", text: PAYMENT_CHIP_TEXT },
-  ];
-}
+import type { CrmChannel, CrmDesk, CrmSettings } from "@/growth/types";
+import { formatClock, formatDay } from "@/crm/labels";
+import { quickSells } from "@/crm/sells";
 
 const IMAGE_TYPES = ["image/jpeg", "image/png"];
 const IMAGE_MAX = 5 * 1024 * 1024;
@@ -38,6 +27,9 @@ type Attachment = { file: File; url: string };
 
 export function CrmComposer({
   desk,
+  channel = "whatsapp",
+  whatsappNumber = "",
+  longWindow = false,
   settings,
   windowOpen,
   windowClosesAt,
@@ -47,6 +39,12 @@ export function CrmComposer({
   onTemplate,
 }: {
   desk: CrmDesk;
+  /** Instagram no tiene plantillas: con la ventana cerrada solo queda esperar a que escriba. */
+  channel?: CrmChannel;
+  /** Número de WhatsApp de Mora, para invitar a seguir por ahí desde un chat de Instagram. */
+  whatsappNumber?: string;
+  /** Instagram con «Human Agent»: la ventana es de 7 días y se muestra con fecha, no solo hora. */
+  longWindow?: boolean;
   settings: CrmSettings | null;
   windowOpen: boolean;
   windowClosesAt: number | null;
@@ -140,6 +138,25 @@ export function CrmComposer({
     });
   }
 
+  const instagram = channel === "instagram";
+  const closedNote = instagram
+    ? `Instagram solo deja responder ${longWindow ? "7 días" : "24 h"} después de su último mensaje. Vuelve a abrirse cuando escriba.`
+    : `Ventana cerrada. Solo plantilla Meta.${templates.length === 0 ? " Añádelas en Ajustes." : ""}`;
+  const openNote = windowClosesAt
+    ? instagram && longWindow
+      ? `Libre hasta el ${formatDay(windowClosesAt)}, ${formatClock(windowClosesAt)}`
+      : `Libre hasta las ${formatClock(windowClosesAt)}`
+    : "";
+  // Se arma al pintar: el precio vivo puede cambiar desde Inventario.
+  const chips = quickSells();
+  if (instagram && whatsappNumber) {
+    chips.push({
+      id: "whatsapp",
+      label: "A WhatsApp",
+      text: `Si prefieres, seguimos por WhatsApp: https://wa.me/${whatsappNumber.replace(/\D/g, "")}`,
+    });
+  }
+
   const canSend = windowOpen && !busy && (Boolean(attachment) || Boolean(draft.trim()));
 
   async function submit() {
@@ -176,16 +193,13 @@ export function CrmComposer({
       }}
     >
       {!windowOpen ? (
-        <p className="crm-composer-note">
-          Ventana cerrada. Solo plantilla Meta.
-          {templates.length === 0 ? " Añádelas en Ajustes." : ""}
-        </p>
-      ) : windowClosesAt ? (
-        <p className="crm-composer-note">Libre hasta las {formatClock(windowClosesAt)}</p>
+        <p className="crm-composer-note">{closedNote}</p>
+      ) : openNote ? (
+        <p className="crm-composer-note">{openNote}</p>
       ) : null}
 
       <div className="crm-composer-chips">
-        {sells().map((item) => (
+        {chips.map((item) => (
           <button
             key={item.id}
             type="button"
@@ -207,7 +221,7 @@ export function CrmComposer({
         ))}
       </div>
 
-      {!windowOpen && templates.length > 0 ? (
+      {!windowOpen && !instagram && templates.length > 0 ? (
         <div className="mb-3 flex flex-wrap gap-1.5">
           {templates.map((template) => (
             <button
@@ -231,7 +245,8 @@ export function CrmComposer({
           <div className="min-w-0 flex-1">
             <p className="truncate text-[12px] text-[#1d1d1f]">{attachment.file.name}</p>
             <p className="text-[11px] text-[#86868b]">
-              {(attachment.file.size / 1024 / 1024).toFixed(1)} MB · el texto va como pie de foto
+              {(attachment.file.size / 1024 / 1024).toFixed(1)} MB ·{" "}
+              {instagram ? "el texto sale como mensaje aparte" : "el texto va como pie de foto"}
             </p>
           </div>
           <button
@@ -299,7 +314,15 @@ export function CrmComposer({
               }
             }}
             placeholder={
-              !windowOpen ? "Ventana cerrada. Usa una plantilla." : attachment ? "Pie de foto (opcional)" : "Mensaje"
+              !windowOpen
+                ? instagram
+                  ? "Espera a que te escriba."
+                  : "Ventana cerrada. Usa una plantilla."
+                : attachment
+                  ? instagram
+                    ? "Texto (opcional)"
+                    : "Pie de foto (opcional)"
+                  : "Mensaje"
             }
             disabled={!windowOpen}
             className="crm-composer-input"

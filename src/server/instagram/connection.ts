@@ -54,18 +54,15 @@ export async function connectInstagram(token: string) {
     (error: unknown) => (error instanceof Error ? error.message : "Meta no registró el webhook."),
   );
   // Conectó, pero sin estas dos cosas Meta no manda avisos: se le dice a quien conecta.
-  const warnings = [
-    subscription.ok
-      ? ""
-      : `Meta no dejó suscribir la Página (${subscription.error}). Revisa el permiso pages_manage_metadata del token.`,
-    webhookError,
-  ].filter(Boolean);
+  const pageWarning = !subscription.ok
+    ? `Meta no dejó suscribir la Página (${subscription.error}). Revisa el permiso pages_manage_metadata del token.`
+    : !subscription.fields.includes("messages")
+      ? "Los comentarios llegan, pero los mensajes directos no: al token le falta el permiso pages_messaging."
+      : "";
+  const warnings = [pageWarning, webhookError].filter(Boolean);
   return {
     username: link.username,
-    warning:
-      warnings.length > 0
-        ? `Conectado, pero aún no llegan comentarios ni mensajes. ${warnings.join(" ")}`
-        : "",
+    warning: warnings.length > 0 ? `Conectado, pero falta algo. ${warnings.join(" ")}` : "",
   };
 }
 

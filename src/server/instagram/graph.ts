@@ -164,24 +164,38 @@ export async function discoverInstagramAccount(token: string): Promise<Instagram
 }
 
 /**
+ * Suscripciones de la Página, de la más completa a la mínima. Los nombres son
+ * los de Página (aquí «visto» es `message_reads`, no `messaging_seen`).
+ * Con solo `feed` llegan los comentarios pero NO los mensajes directos:
+ * para esos la Página tiene que estar suscrita a `messages`.
+ */
+const PAGE_SUBSCRIPTIONS = [
+  ["feed", "messages", "messaging_postbacks", "message_reactions", "message_reads", "message_echoes"],
+  ["feed", "messages", "messaging_postbacks"],
+  ["feed", "messages"],
+  ["messages"],
+  ["feed"],
+] as const;
+
+/**
  * Meta solo manda avisos de Instagram si la app está suscrita a la Página.
- * Basta cualquier campo de Página; se prueba con los dos habituales.
+ * Devuelve los campos que quedaron; cada intento reemplaza al anterior.
  */
 export async function subscribePageToApp(link: Pick<InstagramLink, "pageId" | "pageToken">) {
   let lastError = "";
-  for (const field of ["feed", "messages"]) {
+  for (const fields of PAGE_SUBSCRIPTIONS) {
     try {
       await call(`${link.pageId}/subscribed_apps`, {
         token: link.pageToken,
         method: "POST",
-        query: { subscribed_fields: field },
+        query: { subscribed_fields: fields.join(",") },
       });
-      return { ok: true as const, error: "" };
+      return { ok: true as const, error: "", fields: [...fields] as string[] };
     } catch (error) {
       lastError = error instanceof Error ? error.message : "Meta no aceptó la suscripción.";
     }
   }
-  return { ok: false as const, error: lastError };
+  return { ok: false as const, error: lastError, fields: [] as string[] };
 }
 
 /** La app de Meta a la que pertenece un token. */

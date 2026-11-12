@@ -13,6 +13,7 @@ import {
   InstagramApiError,
   buttonMessage,
   fetchInstagramPermalink,
+  listRecentCommentIds,
   replyToInstagramComment,
   sendInstagramMessage,
   type InstagramConnection,
@@ -260,7 +261,15 @@ export async function handleInstagramComment(
   const mediaIds = [comment.media?.id, comment.media?.original_media_id].filter(
     (id): id is string => Boolean(id),
   );
-  const rule = pickAutomation(await activeAutomations(), { text, mediaIds });
+  const rules = await activeAutomations();
+  let rule = pickAutomation(rules, { text, mediaIds });
+  if (!rule) {
+    const original = await findAdOriginal(rules, comment.id, text, connection);
+    if (original) {
+      mediaIds.push(original);
+      rule = pickAutomation(rules, { text, mediaIds });
+    }
+  }
   if (!rule) return "ignored";
 
   const now = Date.now();
@@ -287,6 +296,37 @@ export async function handleInstagramComment(
     throw error;
   }
   return deliver(ref, event, rule, connection);
+}
+
+/** Publicaciones que se revisan como mucho por comentario sin regla (cada una es una llamada a Meta). */
+const AD_LOOKUP_MEDIA = 5;
+
+/**
+ * Un comentario en el anuncio de un reel llega con el id del anuncio y a veces
+ * sin `original_media_id`, aunque Instagram lo muestra en el reel. Si la palabra
+ * coincide con una regla de publicaciones concretas, se busca el comentario
+ * entre los recientes de esas publicaciones para saber a cuál pertenece.
+ */
+async function findAdOriginal(
+  rules: InstagramAutomation[],
+  commentId: string,
+  text: string,
+  connection: InstagramConnection,
+) {
+  const mediaIds = [
+    ...new Set(
+      rules
+        .filter((rule) => rule.scope === "media")
+        .filter((rule) => pickAutomation([rule], { text, mediaIds: rule.media.map((item) => item.id) }))
+        .flatMap((rule) => rule.media.map((item) => item.id)),
+    ),
+  ].slice(0, AD_LOOKUP_MEDIA);
+
+  for (const mediaId of mediaIds) {
+    const ids = await listRecentCommentIds(connection, mediaId).catch(() => [] as string[]);
+    if (ids.includes(commentId)) return mediaId;
+  }
+  return "";
 }
 
 /** Reserva a la persona para esta regla. `false` si ya había recibido el DM. */

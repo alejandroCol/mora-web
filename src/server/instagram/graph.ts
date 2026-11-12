@@ -387,6 +387,15 @@ export async function listInstagramMedia(
     }));
 }
 
+/** Ids de los comentarios más recientes de una publicación (Meta los da del más nuevo al más viejo). */
+export async function listRecentCommentIds(connection: InstagramConnection, mediaId: string, limit = 50) {
+  const data = await call<{ data?: { id?: string }[] }>(`${mediaId}/comments`, {
+    token: connection.token,
+    query: { fields: "id", limit: String(limit) },
+  });
+  return (data.data ?? []).map((item) => item.id ?? "").filter(Boolean);
+}
+
 export async function fetchInstagramPermalink(connection: InstagramConnection, mediaId: string) {
   const data = await call<{ permalink?: string }>(mediaId, {
     token: connection.token,

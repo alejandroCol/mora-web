@@ -2439,6 +2439,16 @@ a.crm-ad-card.is-compact:hover {
     overflow: hidden;
   }
 
+  /* Chat abierto: pegado a la parte visible. Con el teclado iOS desplaza la página
+     (`--admin-vv-off`) y sin esto el compositor sube arriba con un hueco abajo.
+     Solo en chat: ahí el dock está oculto y un `fixed` no lo tapa. */
+  .admin-main:has(.crm-app.is-chat) {
+    position: fixed;
+    top: var(--admin-vv-off, 0px);
+    right: 0;
+    left: 0;
+  }
+
   .crm-app {
     height: 100%;
     gap: 0;

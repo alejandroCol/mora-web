@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import type { CrmQuickReply, CrmSettings, CrmTemplate } from "@/growth/types";
 import { defaultCrmReplies } from "@/crm/replies";
@@ -31,9 +31,20 @@ export function CrmSettingsPanel({
   onSave: (next: CrmSettings, welcome: string) => Promise<void>;
   onSetPin: (pin: string) => Promise<void>;
 }) {
-  const [replies, setReplies] = useState<CrmQuickReply[]>(settings?.replies ?? defaultCrmReplies());
-  const [templates, setTemplates] = useState<CrmTemplate[]>(settings?.templates ?? []);
-  const [autoClaim, setAutoClaim] = useState(settings?.autoClaimOnReply !== false);
+  const [replies, setRepliesState] = useState<CrmQuickReply[]>(settings?.replies ?? defaultCrmReplies());
+  const [templates, setTemplatesState] = useState<CrmTemplate[]>(settings?.templates ?? []);
+  const [autoClaim, setAutoClaimState] = useState(settings?.autoClaimOnReply !== false);
+  // El workspace recarga `settings` cada 8 s: con cambios sin guardar, no se pisan.
+  const dirty = useRef(false);
+  function edited<T>(set: Dispatch<SetStateAction<T>>) {
+    return (next: SetStateAction<T>) => {
+      dirty.current = true;
+      set(next);
+    };
+  }
+  const setReplies = edited(setRepliesState);
+  const setTemplates = edited(setTemplatesState);
+  const setAutoClaim = edited(setAutoClaimState);
   const [welcome, setWelcome] = useState(connection?.welcomeText ?? "");
   const [pin, setPin] = useState("");
   const [pinBusy, setPinBusy] = useState(false);
@@ -42,10 +53,10 @@ export function CrmSettingsPanel({
   const [saved, setSaved] = useState("");
 
   useEffect(() => {
-    if (!settings) return;
-    setReplies(settings.replies);
-    setTemplates(settings.templates);
-    setAutoClaim(settings.autoClaimOnReply);
+    if (!settings || dirty.current) return;
+    setRepliesState(settings.replies);
+    setTemplatesState(settings.templates);
+    setAutoClaimState(settings.autoClaimOnReply);
   }, [settings]);
 
   useEffect(() => {
@@ -65,6 +76,7 @@ export function CrmSettingsPanel({
         },
         welcome,
       );
+      dirty.current = false;
       setSaved("Guardado");
     } finally {
       setBusy(false);

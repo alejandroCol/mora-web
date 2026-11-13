@@ -16,6 +16,14 @@ type Connection = {
   webhookDebug?: { signatureProvenFor?: string };
 };
 
+function moveItem<T>(list: T[], from: number, to: number) {
+  if (to < 0 || to >= list.length) return list;
+  const next = [...list];
+  const [item] = next.splice(from, 1);
+  next.splice(to, 0, item);
+  return next;
+}
+
 export function CrmSettingsPanel({
   settings,
   connection,
@@ -211,7 +219,10 @@ export function CrmSettingsPanel({
 
         <section className="mt-8">
           <div className="flex items-center justify-between">
-            <h3 className="text-[14px]">Respuestas rápidas</h3>
+            <div>
+              <h3 className="text-[14px]">Respuestas rápidas</h3>
+              <p className="mt-1 text-[12px] text-white/40">Salen en el chat en este orden.</p>
+            </div>
             <button
               type="button"
               onClick={() =>
@@ -227,7 +238,27 @@ export function CrmSettingsPanel({
           </div>
           <div className="mt-3 space-y-3">
             {replies.map((reply, index) => (
-              <div key={reply.id} className="grid gap-2 rounded-2xl bg-white/6 p-3 sm:grid-cols-[7rem_7rem_1fr_auto]">
+              <div key={reply.id} className="grid gap-2 rounded-2xl bg-white/6 p-3 sm:grid-cols-[auto_7rem_7rem_1fr_auto]">
+                <div className="flex gap-1 sm:flex-col">
+                  <button
+                    type="button"
+                    disabled={index === 0}
+                    aria-label="Subir"
+                    onClick={() => setReplies((current) => moveItem(current, index, index - 1))}
+                    className="h-8 w-8 rounded-lg bg-white/8 text-[12px] text-white/55 disabled:opacity-25"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    type="button"
+                    disabled={index === replies.length - 1}
+                    aria-label="Bajar"
+                    onClick={() => setReplies((current) => moveItem(current, index, index + 1))}
+                    className="h-8 w-8 rounded-lg bg-white/8 text-[12px] text-white/55 disabled:opacity-25"
+                  >
+                    ↓
+                  </button>
+                </div>
                 <input
                   value={reply.title}
                   placeholder="Título"

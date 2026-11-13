@@ -1173,6 +1173,13 @@ a.crm-ad-card.is-compact:hover {
   display: none;
 }
 
+@media (hover: hover) and (pointer: fine) {
+  .crm-composer-chips {
+    cursor: grab;
+    user-select: none;
+  }
+}
+
 .crm-sell,
 .crm-quick {
   flex-shrink: 0;

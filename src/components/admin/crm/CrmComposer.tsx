@@ -63,6 +63,22 @@ export function CrmComposer({
   const area = useRef<HTMLTextAreaElement>(null);
   const picker = useRef<HTMLInputElement>(null);
   const emojiBox = useRef<HTMLDivElement>(null);
+  const chipRow = useRef<HTMLDivElement>(null);
+  const chipDrag = useRef<{ x: number; left: number; moved: boolean } | null>(null);
+
+  // En computador la rueda es vertical y la barra está oculta: la rueda mueve la fila.
+  useEffect(() => {
+    const row = chipRow.current;
+    if (!row) return;
+    function onWheel(event: WheelEvent) {
+      if (!row || row.scrollWidth <= row.clientWidth) return;
+      if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+      event.preventDefault();
+      row.scrollLeft += event.deltaY;
+    }
+    row.addEventListener("wheel", onWheel, { passive: false });
+    return () => row.removeEventListener("wheel", onWheel);
+  }, []);
 
   function grow(el: HTMLTextAreaElement) {
     el.style.height = "0px";
@@ -198,7 +214,37 @@ export function CrmComposer({
         <p className="crm-composer-note">{openNote}</p>
       ) : null}
 
-      <div className="crm-composer-chips">
+      <div
+        ref={chipRow}
+        className="crm-composer-chips"
+        onPointerDown={(event) => {
+          if (event.pointerType !== "mouse" || event.button !== 0) return;
+          chipDrag.current = { x: event.clientX, left: event.currentTarget.scrollLeft, moved: false };
+        }}
+        onPointerMove={(event) => {
+          const drag = chipDrag.current;
+          if (!drag) return;
+          const dx = event.clientX - drag.x;
+          if (!drag.moved && Math.abs(dx) < 5) return;
+          drag.moved = true;
+          event.currentTarget.scrollLeft = drag.left - dx;
+        }}
+        onPointerUp={() => {
+          // El click llega después del pointerup: se suelta en el siguiente turno.
+          window.setTimeout(() => {
+            chipDrag.current = null;
+          }, 0);
+        }}
+        onPointerLeave={() => {
+          chipDrag.current = null;
+        }}
+        onClickCapture={(event) => {
+          if (chipDrag.current?.moved) {
+            event.preventDefault();
+            event.stopPropagation();
+          }
+        }}
+      >
         {chips.map((item) => (
           <button
             key={item.id}

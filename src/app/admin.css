@@ -1833,6 +1833,46 @@ a.crm-ad-card.is-compact:hover {
   box-shadow: inset 2px 0 0 #7c3aed;
 }
 
+.crm-skeleton-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.95rem 1.25rem;
+}
+
+.crm-skeleton {
+  display: block;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #f2f2f5 0%, #e8e8ed 50%, #f2f2f5 100%);
+  background-size: 200% 100%;
+  animation: crm-shimmer 1.4s ease-in-out infinite;
+}
+
+.crm-skeleton:first-child {
+  height: 0.75rem;
+}
+
+.crm-skeleton.is-short {
+  width: 32%;
+  height: 0.5rem;
+}
+
+@keyframes crm-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .crm-skeleton {
+    animation: none;
+  }
+}
+
 .crm-dot {
   border-radius: 999px;
   background: #7c3aed;

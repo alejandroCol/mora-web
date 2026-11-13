@@ -112,6 +112,7 @@ export function CrmWorkspace() {
   const [newChatBusy, setNewChatBusy] = useState(false);
   const [newChatError, setNewChatError] = useState("");
   const [conversations, setConversations] = useState<WhatsAppConversation[]>([]);
+  const [loaded, setLoaded] = useState(false);
   const [sellers, setSellers] = useState<CrmSeller[]>([]);
   const [settings, setSettings] = useState<CrmSettings | null>(null);
   const [counts, setCounts] = useState<CrmCounts>({
@@ -141,9 +142,9 @@ export function CrmWorkspace() {
       counts?: CrmCounts;
       connection?: Connection;
       instagram?: InstagramConnection;
-      usage?: WhatsAppUsageReport;
     };
     if (!data.ok) return;
+    setLoaded(true);
     const list = data.conversations ?? [];
     if (heard.current) {
       const prev = heard.current;
@@ -162,8 +163,23 @@ export function CrmWorkspace() {
     if (data.counts) setCounts(data.counts);
     if (data.connection) setConnection(data.connection);
     if (data.instagram) setInstagram(data.instagram);
-    if (data.usage) setUsage(data.usage);
   }, [authorizedFetch]);
+
+  // El costo del mes lee hilos enteros: va aparte y sin el ritmo de 8 s del inbox.
+  const loadUsage = useCallback(async () => {
+    const res = await authorizedFetch("/api/admin/crm/usage");
+    const data = (await res.json()) as { ok?: boolean; usage?: WhatsAppUsageReport };
+    if (data.ok && data.usage) setUsage(data.usage);
+  }, [authorizedFetch]);
+
+  useEffect(() => {
+    const start = window.setTimeout(() => void loadUsage(), 0);
+    const timer = window.setInterval(() => void loadUsage(), 120_000);
+    return () => {
+      window.clearTimeout(start);
+      window.clearInterval(timer);
+    };
+  }, [loadUsage]);
 
   const loadThread = useCallback(
     async (id: string) => {
@@ -527,6 +543,8 @@ export function CrmWorkspace() {
           ) : null}
           <CrmInboxList
             conversations={filtered}
+            loading={!loaded}
+            pageKey={`${desk}|${filter}|${channel}|${query}`}
             activeId={activeId}
             query={query}
             filter={filter}

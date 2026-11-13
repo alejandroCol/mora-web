@@ -16,6 +16,8 @@ import { listConversations } from "./whatsapp";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { COLLECTIONS } from "@/commerce/paths";
 
+const USAGE_READ_BATCH = 20;
+
 function messagesCol(conversationId: string) {
   return adminDb()
     .collection(COLLECTIONS.whatsappConversations)
@@ -76,18 +78,29 @@ export async function loadWhatsAppUsage(templates: CrmTemplate[] = []): Promise<
   const billable: Billable[] = [];
   let inbound = 0;
 
-  for (const conversation of conversations) {
-    const lookbackStart = month.start - CTWA_FREE_WINDOW_MS;
-    const snap = await messagesCol(conversation.id)
-      .where("at", ">=", lookbackStart)
-      .orderBy("at", "asc")
-      .limit(400)
-      .get();
+  const lookbackStart = month.start - CTWA_FREE_WINDOW_MS;
+  // Sin mensajes desde el inicio de la ventana, el hilo no aporta nada: no se lee.
+  const active = conversations.filter((item) => (item.lastAt ?? 0) >= lookbackStart);
+  const threads: WhatsAppMessage[][] = [];
+  for (let i = 0; i < active.length; i += USAGE_READ_BATCH) {
+    const batch = await Promise.all(
+      active.slice(i, i + USAGE_READ_BATCH).map(async (conversation) => {
+        const snap = await messagesCol(conversation.id)
+          .where("at", ">=", lookbackStart)
+          .orderBy("at", "asc")
+          .limit(400)
+          .get();
+        return snap.docs.map((doc) => ({
+          id: doc.id,
+          ...(doc.data() as Omit<WhatsAppMessage, "id">),
+        }));
+      }),
+    );
+    threads.push(...batch);
+  }
 
-    const thread = snap.docs.map((doc) => ({
-      id: doc.id,
-      ...(doc.data() as Omit<WhatsAppMessage, "id">),
-    }));
+  for (const [index, conversation] of active.entries()) {
+    const thread = threads[index];
 
     let lastInbound: number | null = null;
     let firstInbound: number | null = null;

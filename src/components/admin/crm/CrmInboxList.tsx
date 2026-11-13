@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import type { CrmChannel, WhatsAppConversation } from "@/growth/types";
 import { CHANNEL_LABEL, channelOf, conversationTitle } from "@/crm/channel";
 import { INTEREST_LABEL, PIPELINE_LABEL, SUPPORT_STATUS_LABEL, followUpLabel, formatWhen, isSnoozed, needsReply } from "@/crm/labels";
@@ -16,6 +17,8 @@ const CHANNEL_FILTERS: { id: ChannelFilter; label: string }[] = [
 
 export function CrmInboxList({
   conversations,
+  loading,
+  pageKey,
   activeId,
   query,
   filter,
@@ -30,6 +33,9 @@ export function CrmInboxList({
   onClaim,
 }: {
   conversations: WhatsAppConversation[];
+  loading: boolean;
+  /** Cambia con filtro, canal o búsqueda: la paginación vuelve a la primera página. */
+  pageKey: string;
   activeId: string | null;
   query: string;
   filter: Filter;
@@ -80,11 +86,59 @@ export function CrmInboxList({
           </div>
         ) : null}
       </div>
+      {loading ? (
+        <ul className="min-h-0 flex-1 overflow-hidden" aria-busy="true" aria-label="Cargando chats">
+          {Array.from({ length: 8 }, (_, i) => (
+            <li key={i} className="crm-skeleton-row">
+              <span className="crm-skeleton" style={{ width: `${48 + ((i * 17) % 30)}%` }} />
+              <span className="crm-skeleton" style={{ width: `${70 + ((i * 11) % 22)}%` }} />
+              <span className="crm-skeleton is-short" />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <CrmInboxRows key={pageKey} conversations={conversations} activeId={activeId} onOpen={onOpen} onClaim={onClaim} />
+      )}
+    </aside>
+  );
+}
+
+const PAGE = 40;
+
+function CrmInboxRows({
+  conversations,
+  activeId,
+  onOpen,
+  onClaim,
+}: {
+  conversations: WhatsAppConversation[];
+  activeId: string | null;
+  onOpen: (id: string) => void;
+  onClaim: (id: string) => void;
+}) {
+  const [limit, setLimit] = useState(PAGE);
+  const more = useRef<HTMLLIElement>(null);
+  const hasMore = conversations.length > limit;
+
+  useEffect(() => {
+    const node = more.current;
+    if (!node || !hasMore) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setLimit((current) => current + PAGE);
+      },
+      { rootMargin: "240px" },
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [hasMore, limit]);
+
+  return (
       <ul className="min-h-0 flex-1 overflow-y-auto">
         {conversations.length === 0 ? (
           <li className="px-5 py-8 text-[13px] text-white/35">Nada en este filtro.</li>
         ) : (
-          conversations.map((item) => {
+          conversations.slice(0, limit).map((item) => {
             const on = item.id === activeId;
             const stage =
               (item.desk ?? "sales") === "support"
@@ -150,7 +204,11 @@ export function CrmInboxList({
             );
           })
         )}
+        {hasMore ? (
+          <li ref={more} className="px-5 py-4 text-center text-[11px] text-white/30">
+            {conversations.length - limit} más
+          </li>
+        ) : null}
       </ul>
-    </aside>
   );
 }

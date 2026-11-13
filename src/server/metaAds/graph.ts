@@ -95,7 +95,7 @@ export type MetaAd = {
   name?: string;
   campaign_id?: string;
   effective_status?: string;
-  creative?: { thumbnail_url?: string; image_url?: string; body?: string; title?: string };
+  creative?: { thumbnail_url?: string; image_url?: string; body?: string; title?: string; object_type?: string };
 };
 
 type MetaAction = { action_type: string; value: string };
@@ -131,19 +131,44 @@ export function fetchAdSets(accountId: string, token: string) {
   );
 }
 
-/** Detalle (nombre, estado, creativo) de los anuncios que gastaron en el periodo. */
-export async function fetchAds(ids: string[], token: string) {
+/** Por defecto Meta esconde los anuncios archivados; un chat viejo puede venir de uno. */
+const AD_STATUSES = [
+  "ACTIVE",
+  "PAUSED",
+  "CAMPAIGN_PAUSED",
+  "ADSET_PAUSED",
+  "ARCHIVED",
+  "IN_PROCESS",
+  "WITH_ISSUES",
+  "PENDING_REVIEW",
+  "DISAPPROVED",
+  "PREAPPROVED",
+  "PENDING_BILLING_INFO",
+];
+
+/**
+ * Detalle (nombre, estado, creativo) de los anuncios que gastaron o trajeron chats.
+ * Se filtra la cuenta por id: `?ids=` ya no lo acepta Meta, y un id ajeno
+ * aquí solo no aparece en vez de tumbar la consulta.
+ */
+export async function fetchAds(accountId: string, ids: string[], token: string) {
   const out: MetaAd[] = [];
   for (let i = 0; i < ids.length; i += 50) {
     const chunk = ids.slice(i, i + 50);
-    const body = await graphGet<Record<string, MetaAd>>(
-      `${GRAPH}/?${query({
-        ids: chunk.join(","),
-        fields: "id,name,campaign_id,effective_status,creative{thumbnail_url,image_url,body,title}",
-        access_token: token,
-      })}`,
+    out.push(
+      ...(await graphAll<MetaAd>(
+        `${accountId}/ads`,
+        {
+          filtering: JSON.stringify([{ field: "id", operator: "IN", value: chunk }]),
+          effective_status: JSON.stringify(AD_STATUSES),
+          // Sin tamaño, Meta da la miniatura a 64 px y se ve borrosa.
+          fields:
+            "id,name,campaign_id,effective_status,creative.thumbnail_width(480).thumbnail_height(480){thumbnail_url,image_url,body,title,object_type}",
+          limit: 50,
+        },
+        token,
+      )),
     );
-    out.push(...Object.values(body));
   }
   return out;
 }

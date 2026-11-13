@@ -262,9 +262,12 @@ function Notes({ notes }: { notes: AdsNote[] }) {
       <h2 className="text-[15px] font-medium tracking-[-0.02em]">Qué haría yo</h2>
       <ul className="mt-4 space-y-3">
         {notes.map((note) => (
-          <li key={note.text} className="flex gap-3 text-[13px] leading-6 text-[#1d1d1f]">
+          <li key={note.text} className="flex items-start gap-3 text-[13px] leading-6 text-[#1d1d1f]">
             <span className={`mt-[0.6rem] h-1.5 w-1.5 shrink-0 rounded-full ${dot[note.tone]}`} aria-hidden />
-            <span>{note.text}</span>
+            <span className="flex-1">{note.text}</span>
+            {note.thumbnail ? (
+              <Thumb src={note.thumbnail} video={Boolean(note.isVideo)} className="h-12 w-12 rounded-[0.7rem]" />
+            ) : null}
           </li>
         ))}
       </ul>
@@ -371,17 +374,20 @@ function CampaignCard({ campaign, currency }: { campaign: CampaignRow; currency:
   return (
     <article className={CARD}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <StatusPill active={campaign.active} label={campaign.statusLabel} />
-            <span className="text-[12px] text-[var(--admin-muted)]">{campaign.objectiveLabel}</span>
+        <div className="flex min-w-0 flex-1 gap-3.5">
+          <Thumb src={campaign.thumbnail} video={campaign.isVideo} className="h-[4.5rem] w-[4.5rem] rounded-[0.9rem]" />
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <StatusPill active={campaign.active} label={campaign.statusLabel} />
+              <span className="text-[12px] text-[var(--admin-muted)]">{campaign.objectiveLabel}</span>
+            </div>
+            <h3 className="mt-2 text-[17px] font-medium tracking-[-0.02em] text-[#1d1d1f]">{campaign.name}</h3>
+            <p className="mt-1 text-[12px] text-[var(--admin-muted)]">
+              {[budget, campaign.startTime ? `desde el ${shortDate(campaign.startTime.slice(0, 10))}` : ""]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
           </div>
-          <h3 className="mt-2 text-[17px] font-medium tracking-[-0.02em] text-[#1d1d1f]">{campaign.name}</h3>
-          <p className="mt-1 text-[12px] text-[var(--admin-muted)]">
-            {[budget, campaign.startTime ? `desde el ${shortDate(campaign.startTime.slice(0, 10))}` : ""]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
         </div>
         <div className="text-right">
           <p className="text-[11px] text-[var(--admin-muted)]">{result.label}</p>
@@ -434,14 +440,7 @@ function AdItem({ ad, currency, best }: { ad: AdRow; currency: string; best: boo
   const idle = ad.spend > 0 && chats === 0 && ad.sales === 0 && ad.linkClicks === 0;
   return (
     <li className="flex gap-3 rounded-[1rem] bg-[var(--admin-field)] p-2.5">
-      <div className="h-16 w-16 shrink-0 overflow-hidden rounded-[0.8rem] bg-white">
-        {ad.thumbnail ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={ad.thumbnail} alt="" className="h-full w-full object-cover" loading="lazy" />
-        ) : (
-          <div className="grid h-full w-full place-items-center text-[11px] text-[var(--admin-muted)]">Meta</div>
-        )}
-      </div>
+      <Thumb src={ad.thumbnail} video={ad.isVideo} className="h-16 w-16 rounded-[0.8rem]" />
       <div className="min-w-0 flex-1 py-0.5">
         <div className="flex flex-wrap items-center gap-2">
           <p className="truncate text-[13px] font-medium text-[#1d1d1f]">{ad.name}</p>
@@ -457,6 +456,36 @@ function AdItem({ ad, currency, best }: { ad: AdRow; currency: string; best: boo
         </p>
       </div>
     </li>
+  );
+}
+
+/** Las URLs del CDN de Meta caducan: si la imagen falla, queda el recuadro con «Meta». */
+function Thumb({ src, video, className }: { src: string; video: boolean; className: string }) {
+  const [broken, setBroken] = useState(false);
+  return (
+    <div className={`relative shrink-0 overflow-hidden bg-[var(--admin-field)] ${className}`}>
+      {src && !broken ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={src}
+          alt=""
+          className="h-full w-full object-cover"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setBroken(true)}
+        />
+      ) : (
+        <div className="grid h-full w-full place-items-center text-[11px] text-[var(--admin-muted)]">Meta</div>
+      )}
+      {video && src && !broken ? (
+        <span
+          className="absolute bottom-1 right-1 grid h-5 w-5 place-items-center rounded-full bg-black/55 text-[8px] text-white"
+          aria-label="Video"
+        >
+          ▶
+        </span>
+      ) : null}
+    </div>
   );
 }
 

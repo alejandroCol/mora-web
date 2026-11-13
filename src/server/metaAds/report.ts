@@ -251,15 +251,29 @@ function buildNotes(report: Omit<AdsReport, "notes" | "generatedAt">): AdsNote[]
   }
 
   const ads = campaigns.flatMap((campaign) => campaign.ads);
+  const campaignOf = new Map(campaigns.flatMap((campaign) => campaign.ads.map((ad) => [ad.id, campaign] as const)));
+  /** «Nombre del anuncio», de la campaña «…» (en pausa): que no quede duda de cuál es. */
+  const which = (ad: AdRow) => {
+    const campaign = campaignOf.get(ad.id);
+    const sameName = !campaign || campaign.name.trim() === ad.name.trim();
+    const paused = ad.status && ad.status !== "ACTIVE" ? ` (${ad.statusLabel.toLowerCase()})` : "";
+    return `«${ad.name}»${sameName ? "" : `, de la campaña «${campaign.name}»`}${paused}`;
+  };
+  const art = (ad: AdRow) => ({ thumbnail: ad.thumbnail || undefined, isVideo: ad.isVideo });
+
   const withChats = ads
     .map((ad) => ({ ad, chats: ad.crmChats || ad.chats }))
     .filter((row) => row.chats >= 2 && row.ad.spend > 0)
     .sort((a, b) => a.ad.spend / a.chats - b.ad.spend / b.chats);
   if (withChats.length >= 2) {
     const best = withChats[0];
+    const paused = best.ad.status && best.ad.status !== "ACTIVE";
     notes.push({
       tone: "good",
-      text: `El anuncio que trae chats más barato es «${best.ad.name}»: ${money(best.ad.spend / best.chats)} por chat. Si vas a subir presupuesto, empieza por ese.`,
+      text: `El anuncio que trae chats más barato es ${which(best.ad)}: ${money(best.ad.spend / best.chats)} por chat${
+        best.ad.crmChats ? `, ${formatCount(best.ad.crmChats)} chats en el CRM` : ""
+      }. ${paused ? "Vale la pena prenderlo otra vez." : "Si vas a subir presupuesto, empieza por ese."}`,
+      ...art(best.ad),
     });
   }
 
@@ -267,9 +281,14 @@ function buildNotes(report: Omit<AdsReport, "notes" | "generatedAt">): AdsNote[]
     .filter((ad) => ad.spend >= totals.spend * 0.2 && !ad.chats && !ad.crmChats && !ad.sales && !ad.pixelPurchases)
     .sort((a, b) => b.spend - a.spend)[0];
   if (waste) {
+    // Un anuncio de tráfico no busca chats: si trae clics, lo que falla es la página, no el anuncio.
     notes.push({
       tone: "warn",
-      text: `«${waste.name}» lleva ${money(waste.spend)} gastados sin traer chats ni ventas. Considera apagarlo o cambiarle la imagen.`,
+      text:
+        waste.linkClicks > 0
+          ? `${which(waste)} lleva ${money(waste.spend)} y llevó ${formatCount(waste.linkClicks)} clics a la web, pero ninguna venta todavía. Revisa a qué página llegan.`
+          : `${which(waste)} lleva ${money(waste.spend)} gastados sin traer chats, clics ni ventas. Considera apagarlo o cambiarle la imagen.`,
+      ...art(waste),
     });
   }
 
@@ -279,6 +298,8 @@ function buildNotes(report: Omit<AdsReport, "notes" | "generatedAt">): AdsNote[]
       notes.push({
         tone: "warn",
         text: `En «${campaign.name}» cada persona ya vio el anuncio ${frequency.toLocaleString("es-CO", { maximumFractionDigits: 1 })} veces en promedio. Se está cansando el público: cambia la imagen o amplía a quién le llega.`,
+        thumbnail: campaign.thumbnail || undefined,
+        isVideo: campaign.isVideo,
       });
       break;
     }
@@ -289,6 +310,8 @@ function buildNotes(report: Omit<AdsReport, "notes" | "generatedAt">): AdsNote[]
     notes.push({
       tone: "info",
       text: `«${idle.name}» está activa pero no gastó nada en este periodo. Revisa en Meta si quedó en revisión o sin presupuesto.`,
+      thumbnail: idle.thumbnail || undefined,
+      isVideo: idle.isVideo,
     });
   }
 
@@ -331,13 +354,10 @@ export async function buildAdsReport(range: AdsRange, options: { fresh?: boolean
 
   const adIds = new Set(adRows.map((row) => row.ad_id).filter((id): id is string => Boolean(id)));
   const crmOnly = [...crm.byAd.keys()].filter((id) => id && !adIds.has(id));
-  let adDetails: MetaAd[] = [];
-  try {
-    adDetails = await fetchAds([...adIds, ...crmOnly], token);
-  } catch {
-    // Un id de chat que no es de esta cuenta tumba el lote entero: se reintenta solo con los de Meta.
-    adDetails = await fetchAds([...adIds], token).catch(() => []);
-  }
+  const adDetails: MetaAd[] = await fetchAds(accountId, [...adIds, ...crmOnly], token).catch((error) => {
+    console.error("[meta ads] detalle de anuncios", error);
+    return [];
+  });
   const adById = new Map(adDetails.map((ad) => [ad.id, ad]));
   const adMetrics = new Map(adRows.map((row) => [row.ad_id ?? "", metricsFromRow(row)]));
 
@@ -357,6 +377,7 @@ export async function buildAdsReport(range: AdsRange, options: { fresh?: boolean
       status: detail?.effective_status ?? "",
       statusLabel: statusLabel(detail?.effective_status),
       thumbnail: creative?.thumbnail_url || creative?.image_url || "",
+      isVideo: creative?.object_type === "VIDEO",
       text: (creative?.body || creative?.title || "").slice(0, 160),
     };
     const list = adsByCampaign.get(campaignId) ?? [];
@@ -385,6 +406,7 @@ export async function buildAdsReport(range: AdsRange, options: { fresh?: boolean
       const setBudget = budgets.get(campaign.id);
       const objective = campaign.objective ?? "";
       const base = { ...metrics, ...outcome, objective };
+      const cover = ads.find((ad) => ad.thumbnail);
       return {
         ...base,
         id: campaign.id,
@@ -397,6 +419,8 @@ export async function buildAdsReport(range: AdsRange, options: { fresh?: boolean
         lifetimeBudget: budgetToAmount(campaign.lifetime_budget, currency) || setBudget?.lifetime || 0,
         startTime: campaign.start_time ?? "",
         stopTime: campaign.stop_time ?? "",
+        thumbnail: cover?.thumbnail ?? "",
+        isVideo: cover?.isVideo ?? false,
         result: mainResult(base),
         ads,
       };

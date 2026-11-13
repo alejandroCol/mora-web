@@ -46,6 +46,7 @@ export type AdRow = AdsMetrics &
     status: string;
     statusLabel: string;
     thumbnail: string;
+    isVideo: boolean;
     text: string;
   };
 
@@ -64,6 +65,9 @@ export type CampaignRow = AdsMetrics &
     lifetimeBudget: number;
     startTime: string;
     stopTime: string;
+    /** Miniatura del anuncio que más gastó, para reconocer la campaña. */
+    thumbnail: string;
+    isVideo: boolean;
     /** Resultado que mejor describe la campaña según su objetivo. */
     /** `per`: el costo es por cada 1 o por cada 1.000 (alcance). */
     result: { label: string; value: number; cost: number; per: 1 | 1000 };
@@ -80,7 +84,13 @@ export type AdsDay = {
 
 export type AdsNoteTone = "good" | "warn" | "info";
 
-export type AdsNote = { tone: AdsNoteTone; text: string };
+export type AdsNote = {
+  tone: AdsNoteTone;
+  text: string;
+  /** Si la nota habla de un anuncio: su miniatura, para reconocerlo de un vistazo. */
+  thumbnail?: string;
+  isVideo?: boolean;
+};
 
 export type AdsReport = {
   range: AdsRange;

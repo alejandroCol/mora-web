@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { catalog } from "@/lib/catalog";
+import { catalog, PRODUCT_HOME, PRODUCT_LOOKS } from "@/lib/catalog";
 import { siteUrl } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
@@ -10,18 +10,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified,
       changeFrequency: "weekly",
       priority: 1,
+      images: catalog.map((item) => siteUrl(PRODUCT_HOME[item.id].src)),
     },
     ...catalog.map((item) => ({
       url: siteUrl(`/anillo/${item.slug}`),
       lastModified,
       changeFrequency: "weekly" as const,
       priority: 0.9,
+      images: [PRODUCT_HOME[item.id].src, ...PRODUCT_LOOKS[item.id].map((look) => look.src)].map((src) =>
+        siteUrl(src),
+      ),
     })),
     {
       url: siteUrl("/case"),
       lastModified,
       changeFrequency: "weekly",
       priority: 0.6,
+      images: [siteUrl("/cases/ice.jpg")],
     },
     {
       url: siteUrl("/descargas"),

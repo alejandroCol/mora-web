@@ -120,6 +120,7 @@ export function BuySheet({
         <div className="flex items-end justify-between gap-3">
           <div className="flex min-w-0 items-end gap-2">
             <h1 className="title-name text-[2.35rem] text-[#1d1d1f] sm:text-[2.85rem]">
+              <span className="sr-only">Mora </span>
               {model.name}
             </h1>
             <p className="shrink-0 text-[11px] tracking-[-0.01em] text-soft sm:text-[12px]">
@@ -199,11 +200,10 @@ export function BuySheet({
               {showCopy ? "‹" : "›"}
             </span>
           </button>
-          {showCopy ? (
-            <div ref={specRef}>
-              <ProductSpecSheet modelId={modelId} />
-            </div>
-          ) : null}
+          {/* Siempre en el HTML (plegada con `hidden`): es el texto que Google lee de la ficha. */}
+          <div ref={specRef} hidden={!showCopy}>
+            <ProductSpecSheet modelId={modelId} />
+          </div>
         </div>
 
       </div>

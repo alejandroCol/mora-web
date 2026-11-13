@@ -293,6 +293,13 @@ export type GrowthSettings = {
   instagramConnectedAt: number;
   /** Permiso «Human Agent» de Meta aprobado: deja responder hasta 7 días después. */
   instagramHumanAgent: boolean;
+  /** Anuncios de Meta: lo llena «Conectar» en Anuncios (token con `ads_read`). */
+  metaAdsToken: string;
+  /** `act_…` */
+  metaAdAccountId: string;
+  metaAdAccountName: string;
+  metaAdsCurrency: string;
+  metaAdsConnectedAt: number;
   updatedAt: number;
 };
 

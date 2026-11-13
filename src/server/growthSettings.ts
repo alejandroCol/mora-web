@@ -32,6 +32,11 @@ function fromEnv(): GrowthSettings {
     instagramUsername: "",
     instagramConnectedAt: 0,
     instagramHumanAgent: false,
+    metaAdsToken: "",
+    metaAdAccountId: "",
+    metaAdAccountName: "",
+    metaAdsCurrency: "",
+    metaAdsConnectedAt: 0,
     updatedAt: 0,
   };
 }
@@ -90,6 +95,7 @@ function cleanPatch(
     "whatsappVerifyToken",
     "whatsappAppSecret",
     "instagramAccessToken",
+    "metaAdsToken",
   ] as const;
   for (const key of secrets) {
     const value = next[key];
@@ -124,6 +130,7 @@ export function publicAdminGrowth(settings: GrowthSettings) {
     whatsappVerifyToken: maskSecret(settings.whatsappVerifyToken),
     whatsappAppSecret: maskSecret(settings.whatsappAppSecret),
     instagramAccessToken: maskSecret(settings.instagramAccessToken),
+    metaAdsToken: maskSecret(settings.metaAdsToken),
     configured: {
       pixel: Boolean(settings.metaPixelId),
       capi: Boolean(settings.metaCapiToken && settings.metaPixelId),

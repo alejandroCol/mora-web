@@ -22,6 +22,7 @@ const NAV: NavItem[] = [
   { href: "/superadmin/anillos", label: "Mis anillos", permission: "rings", icon: <RingIcon /> },
   { href: "/superadmin/crm", label: "CRM", permission: "whatsapp", icon: <ChatIcon /> },
   { href: "/superadmin/automatizaciones", label: "Automatizaciones", permission: "growth", icon: <BoltIcon /> },
+  { href: "/superadmin/anuncios", label: "Anuncios", permission: "growth", icon: <TargetIcon /> },
   { href: "/superadmin/campanas", label: "Campañas", permission: "growth", icon: <MegaphoneIcon /> },
   { href: "/superadmin/creadores", label: "Creadores", permission: "growth", icon: <SparkIcon /> },
   { href: "/superadmin/estadisticas", label: "Estadísticas", permission: "stats", icon: <ChartIcon /> },
@@ -37,7 +38,7 @@ const NAV: NavItem[] = [
 
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: "Casa", hrefs: ["/superadmin/ventas", "/superadmin/carritos", "/superadmin/presupuesto", "/superadmin/anillos"] },
-  { label: "Alcance", hrefs: ["/superadmin/crm", "/superadmin/automatizaciones", "/superadmin/campanas", "/superadmin/creadores", "/superadmin/estadisticas", "/superadmin/analitica"] },
+  { label: "Alcance", hrefs: ["/superadmin/crm", "/superadmin/automatizaciones", "/superadmin/anuncios", "/superadmin/campanas", "/superadmin/creadores", "/superadmin/estadisticas", "/superadmin/analitica"] },
   { label: "Operación", hrefs: ["/superadmin/inventario", "/superadmin/descuentos", "/superadmin/galeria", "/superadmin/envios", "/superadmin/ajustes", "/superadmin/equipo"] },
   { label: "Apps", hrefs: ["/superadmin/developer"] },
 ];
@@ -355,6 +356,16 @@ function MegaphoneIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
       <path d="M4 10v4h3l8 4V6L7 10H4Z" strokeLinejoin="round" />
       <path d="M16.5 9.5a3 3 0 0 1 0 5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function TargetIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+      <circle cx="12" cy="12" r="8" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="12" cy="12" r="0.6" fill="currentColor" />
     </svg>
   );
 }

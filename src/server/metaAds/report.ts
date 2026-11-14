@@ -64,6 +64,10 @@ const EMPTY_METRICS: AdsMetrics = {
   pixelPurchases: 0,
   pixelRevenue: 0,
   leads: 0,
+  landingViews: 0,
+  contentViews: 0,
+  addToCart: 0,
+  checkouts: 0,
 };
 
 const EMPTY_OUTCOME: AdsOutcome = { crmChats: 0, sales: 0, revenue: 0 };
@@ -328,6 +332,11 @@ function buildNotes(report: Omit<AdsReport, "notes" | "generatedAt">): AdsNote[]
 const cache = new Map<string, { at: number; report: AdsReport }>();
 const CACHE_MS = 5 * 60_000;
 
+/** Tras pausar, activar o crear: lo guardado ya no vale. */
+export function clearAdsReportCache() {
+  cache.clear();
+}
+
 export async function buildAdsReport(range: AdsRange, options: { fresh?: boolean } = {}): Promise<AdsReport> {
   const settings = await loadGrowthSettings();
   const token = settings.metaAdsToken;
@@ -379,6 +388,13 @@ export async function buildAdsReport(range: AdsRange, options: { fresh?: boolean
       thumbnail: creative?.thumbnail_url || creative?.image_url || "",
       isVideo: creative?.object_type === "VIDEO",
       text: (creative?.body || creative?.title || "").slice(0, 160),
+      adSetId: detail?.adset_id ?? adRows.find((row) => row.ad_id === id)?.adset_id ?? "",
+      mediaId: creative?.source_instagram_media_id ?? "",
+      issue: (detail?.issues_info ?? [])
+        .map((item) => item.error_summary || item.error_message || "")
+        .filter(Boolean)
+        .join(" · ")
+        .slice(0, 240),
     };
     const list = adsByCampaign.get(campaignId) ?? [];
     list.push(row);
@@ -387,12 +403,23 @@ export async function buildAdsReport(range: AdsRange, options: { fresh?: boolean
 
   const campaignMetrics = new Map(campaignRows.map((row) => [row.campaign_id ?? "", metricsFromRow(row)]));
   const budgets = new Map<string, { daily: number; lifetime: number }>();
+  // Qué busca cada campaña y si ya se le acabó la fecha: Meta deja «Activa» una promoción vencida.
+  const shape = new Map<string, { goals: Set<string>; destinations: Set<string>; open: number; sets: number }>();
+  const now = Date.now();
   for (const set of adSets) {
+    // El objetivo se anota aunque el conjunto esté en pausa: sirve para saber qué buscaba la campaña.
+    const info = shape.get(set.campaign_id) ?? { goals: new Set(), destinations: new Set(), open: 0, sets: 0 };
+    if (set.optimization_goal) info.goals.add(set.optimization_goal);
+    if (set.destination_type) info.destinations.add(set.destination_type);
+    shape.set(set.campaign_id, info);
     if (set.effective_status !== "ACTIVE") continue;
     const current = budgets.get(set.campaign_id) ?? { daily: 0, lifetime: 0 };
     current.daily += budgetToAmount(set.daily_budget, currency);
     current.lifetime += budgetToAmount(set.lifetime_budget, currency);
     budgets.set(set.campaign_id, current);
+    info.sets += 1;
+    const end = set.end_time ? Date.parse(set.end_time) : 0;
+    if (!end || end > now) info.open += 1;
   }
 
   const rows: CampaignRow[] = campaigns
@@ -407,14 +434,22 @@ export async function buildAdsReport(range: AdsRange, options: { fresh?: boolean
       const objective = campaign.objective ?? "";
       const base = { ...metrics, ...outcome, objective };
       const cover = ads.find((ad) => ad.thumbnail);
+      const info = shape.get(campaign.id);
+      const stop = campaign.stop_time ? Date.parse(campaign.stop_time) : 0;
+      const ended = Boolean((stop && stop <= now) || (info && info.sets > 0 && info.open === 0));
+      const isActive = campaign.effective_status === "ACTIVE" && !ended;
       return {
         ...base,
         id: campaign.id,
         name: campaign.name,
         objectiveLabel: OBJECTIVE_LABEL[objective] ?? "Campaña",
         status: campaign.effective_status ?? "",
-        statusLabel: statusLabel(campaign.effective_status),
-        active: campaign.effective_status === "ACTIVE",
+        statusLabel: ended && campaign.effective_status === "ACTIVE" ? "Terminó" : statusLabel(campaign.effective_status),
+        active: isActive,
+        budgetAtCampaign: budgetToAmount(campaign.daily_budget, currency) > 0,
+        goals: [...(info?.goals ?? [])],
+        destinations: [...(info?.destinations ?? [])],
+        ended,
         dailyBudget: budgetToAmount(campaign.daily_budget, currency) || setBudget?.daily || 0,
         lifetimeBudget: budgetToAmount(campaign.lifetime_budget, currency) || setBudget?.lifetime || 0,
         startTime: campaign.start_time ?? "",
@@ -425,7 +460,7 @@ export async function buildAdsReport(range: AdsRange, options: { fresh?: boolean
         ads,
       };
     })
-    .filter((row) => row.spend > 0 || row.active || row.crmChats > 0)
+    .filter((row) => row.spend > 0 || row.active || row.crmChats > 0 || row.status === "PAUSED")
     .sort((a, b) => Number(b.active) - Number(a.active) || b.spend - a.spend);
 
   const dailyBySpan = new Map(dailyRows.map((row) => [row.date_start ?? "", metricsFromRow(row)]));

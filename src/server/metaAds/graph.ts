@@ -1,10 +1,12 @@
 import type { AdAccountOption, AdsMetrics } from "@/ads/types";
 
 /**
- * Marketing API de Meta, solo lectura (`ads_read`). Misma versión que WhatsApp
- * e Instagram. https://developers.facebook.com/docs/marketing-api/insights
+ * Marketing API de Meta. Leer pide `ads_read`; crear y cambiar, `ads_management`.
+ * La versión va explícita: Meta sube sola las versiones vencidas (v21 ya
+ * respondía como v26) y al escribir conviene saber contra cuál se habla.
+ * https://developers.facebook.com/docs/marketing-api
  */
-const GRAPH = "https://graph.facebook.com/v21.0";
+export const GRAPH = "https://graph.facebook.com/v26.0";
 
 export class MetaAdsError extends Error {
   code: number;
@@ -15,7 +17,7 @@ export class MetaAdsError extends Error {
 }
 
 type GraphPage<T> = { data?: T[]; paging?: { next?: string }; error?: GraphErrorBody };
-type GraphErrorBody = { message?: string; code?: number; error_user_msg?: string };
+type GraphErrorBody = { message?: string; code?: number; error_user_msg?: string; error_user_title?: string };
 
 async function graphGet<T>(url: string): Promise<T> {
   const res = await fetch(url, { cache: "no-store" });
@@ -25,6 +27,34 @@ async function graphGet<T>(url: string): Promise<T> {
     throw new MetaAdsError(error.error_user_msg || error.message || `Meta respondió ${res.status}.`, error.code ?? res.status);
   }
   return body;
+}
+
+/** Un objeto o una respuesta sin paginar. */
+export function graphOne<T>(path: string, params: Record<string, string | number | undefined>, token: string) {
+  return graphGet<T>(`${GRAPH}/${path}?${query({ ...params, access_token: token })}`);
+}
+
+/** Escritura. El token va en la cabecera, nunca en la URL ni en el cuerpo. */
+export async function graphWrite<T>(
+  method: "POST" | "DELETE",
+  path: string,
+  body: Record<string, unknown>,
+  token: string,
+): Promise<T> {
+  const res = await fetch(`${GRAPH}/${path}`, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  const data = (await res.json().catch(() => ({}))) as T & { error?: GraphErrorBody };
+  if (!res.ok || data.error) {
+    const error = data.error ?? {};
+    // `error_user_msg` es el que explica qué campo falló; `message` suele ser «Invalid parameter».
+    const text = [error.error_user_title, error.error_user_msg].filter(Boolean).join(": ");
+    throw new MetaAdsError(text || error.message || `Meta respondió ${res.status}.`, error.code ?? res.status);
+  }
+  return data;
 }
 
 function query(params: Record<string, string | number | undefined>) {
@@ -56,6 +86,11 @@ export function budgetToAmount(raw: string | undefined, currency: string) {
   return OFFSET_ONE.has(currency.toUpperCase()) ? value : value / 100;
 }
 
+/** Lo contrario de `budgetToAmount`: lo que Meta espera recibir. */
+export function amountToBudget(amount: number, currency: string) {
+  return OFFSET_ONE.has(currency.toUpperCase()) ? Math.round(amount) : Math.round(amount * 100);
+}
+
 export async function listAdAccounts(token: string): Promise<AdAccountOption[]> {
   const rows = await graphAll<{ id: string; name?: string; currency?: string; account_status?: number }>(
     "me/adaccounts",
@@ -84,24 +119,39 @@ export type MetaCampaign = {
 
 export type MetaAdSet = {
   id: string;
+  name?: string;
   campaign_id: string;
   effective_status?: string;
   daily_budget?: string;
   lifetime_budget?: string;
+  /** Qué busca Meta: CONVERSATIONS, OFFSITE_CONVERSIONS, VISIT_INSTAGRAM_PROFILE… */
+  optimization_goal?: string;
+  destination_type?: string;
+  end_time?: string;
 };
 
 export type MetaAd = {
   id: string;
   name?: string;
   campaign_id?: string;
+  adset_id?: string;
   effective_status?: string;
-  creative?: { thumbnail_url?: string; image_url?: string; body?: string; title?: string; object_type?: string };
+  issues_info?: { error_summary?: string; error_message?: string }[];
+  creative?: {
+    thumbnail_url?: string;
+    image_url?: string;
+    body?: string;
+    title?: string;
+    object_type?: string;
+    source_instagram_media_id?: string;
+  };
 };
 
 type MetaAction = { action_type: string; value: string };
 
 export type MetaInsightRow = {
   campaign_id?: string;
+  adset_id?: string;
   ad_id?: string;
   date_start?: string;
   spend?: string;
@@ -126,7 +176,11 @@ export function fetchCampaigns(accountId: string, token: string) {
 export function fetchAdSets(accountId: string, token: string) {
   return graphAll<MetaAdSet>(
     `${accountId}/adsets`,
-    { fields: "id,campaign_id,effective_status,daily_budget,lifetime_budget", limit: 300 },
+    {
+      fields:
+        "id,name,campaign_id,effective_status,daily_budget,lifetime_budget,optimization_goal,destination_type,end_time",
+      limit: 300,
+    },
     token,
   );
 }
@@ -163,7 +217,7 @@ export async function fetchAds(accountId: string, ids: string[], token: string) 
           effective_status: JSON.stringify(AD_STATUSES),
           // Sin tamaño, Meta da la miniatura a 64 px y se ve borrosa.
           fields:
-            "id,name,campaign_id,effective_status,creative.thumbnail_width(480).thumbnail_height(480){thumbnail_url,image_url,body,title,object_type}",
+            "id,name,campaign_id,adset_id,effective_status,issues_info,creative.thumbnail_width(480).thumbnail_height(480){thumbnail_url,image_url,body,title,object_type,source_instagram_media_id}",
           limit: 50,
         },
         token,
@@ -180,7 +234,8 @@ export function fetchInsights(
   token: string,
   options: { level: "account" | "campaign" | "ad"; since: string; until: string; daily?: boolean },
 ) {
-  const idField = options.level === "campaign" ? "campaign_id," : options.level === "ad" ? "ad_id,campaign_id," : "";
+  const idField =
+    options.level === "campaign" ? "campaign_id," : options.level === "ad" ? "ad_id,adset_id,campaign_id," : "";
   return graphAll<MetaInsightRow>(
     `${accountId}/insights`,
     {
@@ -198,6 +253,14 @@ const CHAT_ACTIONS = ["onsite_conversion.messaging_conversation_started_7d"];
 /** Meta repite la misma compra con varios nombres: se toma el mayor, no la suma. */
 const PURCHASE_ACTIONS = ["omni_purchase", "purchase", "offsite_conversion.fb_pixel_purchase"];
 const LEAD_ACTIONS = ["lead", "onsite_conversion.lead_grouped", "offsite_conversion.fb_pixel_lead"];
+const LANDING_ACTIONS = ["omni_landing_page_view", "landing_page_view"];
+const CONTENT_ACTIONS = ["omni_view_content", "view_content", "offsite_conversion.fb_pixel_view_content"];
+const CART_ACTIONS = ["omni_add_to_cart", "add_to_cart", "offsite_conversion.fb_pixel_add_to_cart"];
+const CHECKOUT_ACTIONS = [
+  "omni_initiated_checkout",
+  "initiate_checkout",
+  "offsite_conversion.fb_pixel_initiate_checkout",
+];
 
 function pick(list: MetaAction[] | undefined, types: string[]) {
   if (!list) return 0;
@@ -219,5 +282,9 @@ export function metricsFromRow(row: MetaInsightRow | undefined): AdsMetrics {
     pixelPurchases: pick(row?.actions, PURCHASE_ACTIONS),
     pixelRevenue: pick(row?.action_values, PURCHASE_ACTIONS),
     leads: pick(row?.actions, LEAD_ACTIONS),
+    landingViews: pick(row?.actions, LANDING_ACTIONS),
+    contentViews: pick(row?.actions, CONTENT_ACTIONS),
+    addToCart: pick(row?.actions, CART_ACTIONS),
+    checkouts: pick(row?.actions, CHECKOUT_ACTIONS),
   };
 }

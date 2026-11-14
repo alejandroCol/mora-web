@@ -780,3 +780,41 @@ export async function sendSupportAckEmail(input: {
     replyTo: BRAND.contact.email,
   });
 }
+
+/** Resumen del monitor de anuncios: qué decidió el piloto y qué queda por decidir. */
+export async function sendAdsDigestEmail(input: {
+  to: string;
+  headline: string;
+  applied: { title: string; target: string; ok: boolean; error?: string }[];
+  pending: { title: string; target: string; why: string }[];
+}) {
+  const row = (title: string, detail: string) =>
+    `<p style="margin:0 0 14px;font-size:15px;line-height:1.55;color:${INK}">${escapeHtml(title)}<br><span style="font-size:13px;color:${SOFT}">${escapeHtml(detail)}</span></p>`;
+  const block = (label: string, rows: string[]) =>
+    rows.length === 0
+      ? ""
+      : `<p style="margin:22px 0 12px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;color:${SOFT}">${escapeHtml(label)}</p>${rows.join("")}`;
+  const html = shell({
+    preheader: input.headline,
+    kicker: "Anuncios",
+    title: "Tus campañas hoy.",
+    intro: escapeHtml(input.headline),
+    body:
+      block(
+        "Lo que hizo el piloto",
+        input.applied.map((item) =>
+          row(
+            `${item.ok ? "Hecho" : "No se pudo"}: ${item.title}`,
+            item.ok ? item.target : `${item.target} · ${item.error ?? ""}`,
+          ),
+        ),
+      ) +
+      block(
+        "Por decidir",
+        input.pending.map((item) => row(item.title, [item.target, item.why].filter(Boolean).join(" · "))),
+      ),
+    cta: button(`${siteUrl()}/superadmin/anuncios`, "Abrir Anuncios"),
+    help: false,
+  });
+  return sendResend(input.to, `Anuncios · ${input.headline.slice(0, 70)}`, html);
+}

@@ -1,5 +1,7 @@
 import { jsonError, requirePermission } from "@/server/adminAuth";
+import { clearAdsAccessCache } from "@/server/metaAds/access";
 import { connectMetaAds, disconnectMetaAds, loadAdsConnection } from "@/server/metaAds/connection";
+import { clearAdsReportCache } from "@/server/metaAds/report";
 
 /** Conecta la cuenta publicitaria. Sin `accountId` y con varias cuentas, devuelve la lista. */
 export async function POST(request: Request) {
@@ -10,6 +12,9 @@ export async function POST(request: Request) {
       token: typeof body.token === "string" ? body.token : "",
       accountId: typeof body.accountId === "string" ? body.accountId : "",
     });
+    // Un token nuevo cambia lo que se puede hacer: nada de lo anterior sirve.
+    clearAdsAccessCache();
+    clearAdsReportCache();
     return Response.json({ ok: true, ...result, connection: await loadAdsConnection() });
   } catch (error) {
     return jsonError(error);

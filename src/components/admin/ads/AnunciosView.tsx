@@ -5,6 +5,7 @@ import { formatAdsMoney, formatCount, formatPercent } from "@/ads/format";
 import type {
   AdAccountOption,
   AdRow,
+  AdsAccess,
   AdsConnection,
   AdsNote,
   AdsRange,
@@ -13,6 +14,12 @@ import type {
 } from "@/ads/types";
 import { BrandLoader } from "@/components/brand/BrandLoader";
 import { useAdminAuth } from "../AdminAuth";
+import { AccessCard, AdSwitch, AdsManageProvider, CampaignControls } from "./AdsManage";
+import { AdsAudiencesPanel } from "./AdsAudiencesPanel";
+import { AdsCreatePanel } from "./AdsCreatePanel";
+import { AdsMonitorPanel } from "./AdsMonitorPanel";
+import { AdsPilotPanel } from "./AdsPilotPanel";
+import { CARD, Thumb } from "./adsUi";
 
 const RANGES: { id: AdsRange; label: string; phrase: string }[] = [
   { id: "today", label: "Hoy", phrase: "hoy" },
@@ -21,7 +28,14 @@ const RANGES: { id: AdsRange; label: string; phrase: string }[] = [
   { id: "month", label: "Este mes", phrase: "en lo que va del mes" },
 ];
 
-const CARD = "rounded-[1.1rem] bg-white p-5 shadow-[0_0_0_1px_rgba(0,0,0,0.06)]";
+type Tab = "results" | "create" | "audiences" | "pilot";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "results", label: "Resultados" },
+  { id: "create", label: "Crear campaña" },
+  { id: "audiences", label: "Audiencias" },
+  { id: "pilot", label: "Piloto" },
+];
 
 type Payload = { connection?: AdsConnection; report?: AdsReport | null; error?: string };
 
@@ -33,7 +47,25 @@ export function AnunciosView() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [refresh, setRefresh] = useState(0);
+  const [tab, setTab] = useState<Tab>("results");
+  const [access, setAccess] = useState<AdsAccess | null>(null);
   const fresh = useRef(false);
+  const connected = Boolean(connection?.connected);
+
+  // Qué deja hacer el token: se pregunta a Meta una vez por visita.
+  useEffect(() => {
+    if (!connected) return;
+    let cancelled = false;
+    void authorizedFetch("/api/admin/ads/manage")
+      .then((res) => res.json() as Promise<{ access?: AdsAccess }>)
+      .then((data) => {
+        if (!cancelled && data.access) setAccess(data.access);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [authorizedFetch, connected]);
 
   const fetchReport = useCallback(
     async (fresh: boolean): Promise<Payload> => {
@@ -95,55 +127,85 @@ export function AnunciosView() {
   }
 
   return (
-    <div className="ventas-app">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <HeaderCopy />
-        <div className="flex flex-wrap items-center gap-2">
-          {RANGES.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => pickRange(item.id)}
-              className={`crm-filter ${range === item.id ? "is-on" : ""}`}
-            >
-              {item.label}
+    <AdsManageProvider access={access} onChanged={reload}>
+      <div className="ventas-app">
+        <header className="flex flex-wrap items-end justify-between gap-4">
+          <HeaderCopy />
+          <nav className="flex flex-wrap items-center gap-2" aria-label="Secciones de anuncios">
+            {TABS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTab(item.id)}
+                aria-current={tab === item.id ? "page" : undefined}
+                className={`crm-filter ${tab === item.id ? "is-on" : ""}`}
+              >
+                {item.label}
+              </button>
+            ))}
+          </nav>
+        </header>
+
+        {/* Oculta en vez de desmontar: el resultado del monitor sigue ahí al volver de otra pestaña. */}
+        <div className={tab === "results" ? "grid gap-4" : "hidden"}>
+          <AdsMonitorPanel />
+
+          {access && !access.canManage && connection ? (
+            <AccessCard access={access} connection={connection} onUpdated={setAccess} />
+          ) : null}
+
+          <div className="flex flex-wrap items-center gap-2 px-1">
+            {RANGES.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => pickRange(item.id)}
+                className={`crm-filter ${range === item.id ? "is-on" : ""}`}
+              >
+                {item.label}
+              </button>
+            ))}
+            <button type="button" onClick={reload} disabled={loading} className="crm-filter disabled:opacity-50">
+              {loading ? "Actualizando…" : "Actualizar"}
             </button>
-          ))}
-          <button
-            type="button"
-            onClick={reload}
-            disabled={loading}
-            className="crm-filter disabled:opacity-50"
-          >
-            {loading ? "Actualizando…" : "Actualizar"}
-          </button>
-        </div>
-      </header>
-
-      {error ? (
-        <p className={`${CARD} text-[13px] text-[var(--admin-danger)]`}>{error}</p>
-      ) : null}
-
-      {!report ? (
-        loading ? (
-          <div className="grid min-h-[30vh] place-items-center">
-            <BrandLoader label="Leyendo los anuncios" />
           </div>
-        ) : null
-      ) : (
-        <Report report={report} phrase={phrase} />
-      )}
 
-      {connection?.connected ? (
-        <AccountFoot
-          connection={connection}
-          onDisconnected={(next) => {
-            setConnection(next);
-            setReport(null);
-          }}
-        />
-      ) : null}
-    </div>
+          {error ? <p className={`${CARD} text-[13px] text-[var(--admin-danger)]`}>{error}</p> : null}
+
+          {!report ? (
+            loading ? (
+              <div className="grid min-h-[30vh] place-items-center">
+                <BrandLoader label="Leyendo los anuncios" />
+              </div>
+            ) : null
+          ) : (
+            <Report report={report} phrase={phrase} />
+          )}
+        </div>
+
+        {tab === "create" ? (
+          <AdsCreatePanel
+            onCreated={() => {
+              setTab("results");
+              reload();
+            }}
+          />
+        ) : null}
+        {tab === "audiences" ? <AdsAudiencesPanel /> : null}
+        {tab === "pilot" ? <AdsPilotPanel currency={connection?.currency || "COP"} /> : null}
+
+        {connection?.connected ? (
+          <AccountFoot
+            connection={connection}
+            onDisconnected={(next) => {
+              setConnection(next);
+              setReport(null);
+              setAccess(null);
+            }}
+          />
+        ) : null}
+      </div>
+    </AdsManageProvider>
   );
 }
 
@@ -161,7 +223,7 @@ function HeaderCopy() {
       <p className="text-[11px] uppercase tracking-[0.16em] text-[var(--admin-muted)]">Alcance</p>
       <h1 className="mt-2 font-display text-4xl tracking-[-0.05em] text-[#1d1d1f]">Anuncios.</h1>
       <p className="mt-2 max-w-xl text-sm leading-6 text-[var(--admin-muted)]">
-        Cuánto pusiste en Meta, qué trajo y qué anuncio conviene dejar prendido.
+        Cuánto pusiste en Meta, qué trajo y qué hacer ahora. Desde aquí también se crean, se pausan y se segmentan.
       </p>
     </div>
   );
@@ -417,6 +479,8 @@ function CampaignCard({ campaign, currency }: { campaign: CampaignRow; currency:
             }${campaign.sales > 0 ? ` y ${formatCount(campaign.sales)} compraron por ${money(campaign.revenue)}.` : "."}`}
       </p>
 
+      <CampaignControls campaign={campaign} currency={currency} />
+
       {campaign.ads.length > 0 ? (
         <details className="group mt-4">
           <summary className="cursor-pointer list-none text-[13px] text-[#1d1d1f]">
@@ -454,38 +518,10 @@ function AdItem({ ad, currency, best }: { ad: AdRow; currency: string; best: boo
           {ad.sales > 0 ? ` · ${formatCount(ad.sales)} ventas` : ""}
           <span className="text-[var(--admin-muted)]"> · {ad.statusLabel.toLowerCase()}</span>
         </p>
+        {ad.issue ? <p className="mt-1 text-[12px] leading-5 text-[var(--admin-danger)]">Meta: {ad.issue}</p> : null}
       </div>
+      <AdSwitch ad={ad} />
     </li>
-  );
-}
-
-/** Las URLs del CDN de Meta caducan: si la imagen falla, queda el recuadro con «Meta». */
-function Thumb({ src, video, className }: { src: string; video: boolean; className: string }) {
-  const [broken, setBroken] = useState(false);
-  return (
-    <div className={`relative shrink-0 overflow-hidden bg-[var(--admin-field)] ${className}`}>
-      {src && !broken ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          src={src}
-          alt=""
-          className="h-full w-full object-cover"
-          loading="lazy"
-          referrerPolicy="no-referrer"
-          onError={() => setBroken(true)}
-        />
-      ) : (
-        <div className="grid h-full w-full place-items-center text-[11px] text-[var(--admin-muted)]">Meta</div>
-      )}
-      {video && src && !broken ? (
-        <span
-          className="absolute bottom-1 right-1 grid h-5 w-5 place-items-center rounded-full bg-black/55 text-[8px] text-white"
-          aria-label="Video"
-        >
-          ▶
-        </span>
-      ) : null}
-    </div>
   );
 }
 
@@ -544,8 +580,8 @@ function MiniKpi({ label, value, hint }: { label: string; value: string; hint?: 
 
 const STEPS = [
   "En business.facebook.com entra a Configuración del negocio › Usuarios del sistema y abre el usuario de Mora (el mismo de WhatsApp).",
-  "Asignar activos › Cuentas publicitarias › la cuenta de Mora, con permiso para ver el rendimiento.",
-  "Generar token › la app de Mora › marca ads_read › caducidad «Nunca».",
+  "Asignar activos › Cuentas publicitarias › la cuenta de Mora › «Administrar campañas» (con solo «Ver rendimiento» Mora lee, pero no puede pausar ni crear).",
+  "Generar token › la app de Mora › marca ads_management y ads_read › caducidad «Nunca».",
   "Pega el token aquí y dale Conectar.",
 ];
 
@@ -592,8 +628,8 @@ function ConnectCard({ onConnected }: { onConnected: (connection: AdsConnection)
     <section className={CARD}>
       <h2 className="text-[17px] font-medium tracking-[-0.02em]">Conecta la cuenta publicitaria</h2>
       <p className="mt-1 text-[13px] leading-6 text-[var(--admin-muted)]">
-        Solo lectura: Mora ve gasto y resultados, no puede crear ni cambiar anuncios. El token de WhatsApp no
-        sirve porque le falta el permiso ads_read.
+        Con ads_read Mora ve gasto y resultados. Con ads_management además pausa, cambia presupuesto, crea
+        campañas y mantiene audiencias. Nada se cambia sin que lo confirmes.
       </p>
       <ol className="mt-4 space-y-2">
         {STEPS.map((step, index) => (
@@ -638,7 +674,7 @@ function ConnectCard({ onConnected }: { onConnected: (connection: AdsConnection)
         >
           <div className="admin-sheet">
             <label className="admin-field">
-              <span>Token con ads_read</span>
+              <span>Token de anuncios</span>
               <input
                 className="admin-input"
                 value={token}

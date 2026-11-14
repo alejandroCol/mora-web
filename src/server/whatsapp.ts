@@ -9,6 +9,7 @@ import { adminDb } from "@/lib/firebaseAdmin";
 import { loadGrowthSettings } from "./growthSettings";
 import { upsertLead } from "./leads";
 import { normalizePhone, sendMetaEvent } from "./metaCapi";
+import { rememberWhatsAppAccount } from "./adsConversions";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
@@ -495,6 +496,8 @@ type WebhookStatus = {
 export async function ingestWhatsAppWebhook(payload: unknown) {
   const root = payload as {
     entry?: {
+      /** Id de la cuenta de WhatsApp Business. */
+      id?: string;
       changes?: {
         value?: {
           contacts?: WebhookContact[];
@@ -509,6 +512,7 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
   const seen: string[] = [];
 
   for (const entry of root.entry ?? []) {
+    await rememberWhatsAppAccount(entry.id).catch(() => undefined);
     for (const change of entry.changes ?? []) {
       const value = change.value;
       const contacts = value?.contacts ?? [];
@@ -616,18 +620,21 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
             await conversations().doc(phone).set({ leadId: lead.id }, { merge: true });
           }
 
-          await sendMetaEvent({
-            name: referral || isFirst ? "Lead" : "Contact",
-            eventId: raw.id,
-            actionSource: "business_messaging",
-            sourceUrl: referral?.sourceUrl,
-            user: { phone, firstName: name },
-            attribution,
-            data: {
-              content_name: referral?.headline || "WhatsApp",
-              content_category: "whatsapp",
-            },
-          }).catch(() => undefined);
+          // Un evento por persona que llega (o por clic nuevo en un anuncio), no por cada mensaje.
+          if (isFirst || referral) {
+            await sendMetaEvent({
+              name: "Lead",
+              eventId: raw.id,
+              actionSource: "chat",
+              sourceUrl: referral?.sourceUrl,
+              user: { phone, firstName: name },
+              attribution,
+              data: {
+                content_name: referral?.headline || "WhatsApp",
+                content_category: "whatsapp",
+              },
+            }).catch(() => undefined);
+          }
         }
 
         if (isFirst && settings.whatsappWelcome.trim()) {

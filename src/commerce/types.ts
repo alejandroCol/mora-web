@@ -191,6 +191,8 @@ export type MoraOrder = {
     offerCode?: string;
     /** Solo si `offerCode` es un código de descuento del super admin (cuenta usos). */
     discountCode?: string;
+    /** La compra ya se le reportó a Meta como venta de un anuncio de WhatsApp. */
+    messagingPurchaseSent?: boolean;
   };
   conversationId?: string;
   createdAt: number;

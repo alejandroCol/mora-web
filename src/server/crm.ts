@@ -30,6 +30,7 @@ import { listAbandonedCarts } from "./abandonedCarts";
 import { loadGrowthSettings } from "./growthSettings";
 import { findLeadByInstagram, findLeadByPhone, upsertLead } from "./leads";
 import { normalizePhone } from "./metaCapi";
+import { recordChatQualified } from "./adsConversions";
 import { listOrdersByPhone } from "./orders";
 import {
   conversationIdFromPhone,
@@ -340,6 +341,11 @@ export async function patchConversation(
 
   const conversation = await updateConversation(id, compact(next));
   if (!conversation) return null;
+
+  // Interesado o cotizado: si llegó por un anuncio de WhatsApp, Meta se entera de que el contacto sirve.
+  if (patch.status === "interested" || patch.status === "quoted") {
+    await recordChatQualified(id).catch(() => undefined);
+  }
 
   if (conversation.desk !== "creators") {
     await upsertLead({

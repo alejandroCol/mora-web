@@ -5,6 +5,13 @@ import type {
   MetaStandardEvent,
 } from "@/growth/types";
 import { loadGrowthSettings } from "./growthSettings";
+import { recordMetaSignal } from "./metaHealth";
+
+const GRAPH = "https://graph.facebook.com/v26.0";
+
+/** Tras un rechazo, la web no insiste con cada visita: espera unos minutos. */
+const BACKOFF_MS = 10 * 60_000;
+let pausedUntil = 0;
 
 type UserHints = {
   email?: string;
@@ -25,7 +32,8 @@ type CapiInput = {
   user?: UserHints;
   ip?: string;
   userAgent?: string;
-  actionSource?: "website" | "system_generated" | "business_messaging";
+  /** `chat`: alguien que escribió por WhatsApp o Instagram. */
+  actionSource?: "website" | "system_generated" | "chat";
 };
 
 function sha256(value: string) {
@@ -58,7 +66,10 @@ function hashedUser(user: UserHints | undefined, attribution?: AttributionSnapsh
 
 export async function sendMetaEvent(input: CapiInput) {
   const settings = await loadGrowthSettings();
-  if (!settings.metaPixelId || !settings.metaCapiToken) return { ok: false as const };
+  // Sin token propio de conversiones sirve el de anuncios, si su usuario del sistema tiene el Pixel asignado.
+  const token = settings.metaCapiToken || settings.metaAdsToken;
+  if (!settings.metaPixelId || !token) return { ok: false as const };
+  if (Date.now() < pausedUntil) return { ok: false as const };
 
   const event = {
     event_name: input.name,
@@ -77,30 +88,38 @@ export async function sendMetaEvent(input: CapiInput) {
     },
   };
 
-  const body: Record<string, unknown> = {
-    data: [event],
-    access_token: settings.metaCapiToken,
-  };
+  const body: Record<string, unknown> = { data: [event] };
   if (settings.metaCapiTestEventCode) {
     body.test_event_code = settings.metaCapiTestEventCode;
   }
 
-  const url = `https://graph.facebook.com/v21.0/${settings.metaPixelId}/events`;
   try {
-    const res = await fetch(url, {
+    const res = await fetch(`${GRAPH}/${settings.metaPixelId}/events`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify(body),
     });
     if (!res.ok) {
       const text = await res.text();
-      console.error("[meta capi]", res.status, text);
+      pausedUntil = Date.now() + BACKOFF_MS;
+      console.error("[meta capi]", res.status, text.slice(0, 300));
+      await recordMetaSignal("capi", { ok: false, error: graphMessage(text), event: input.name });
       return { ok: false as const };
     }
+    await recordMetaSignal("capi", { ok: true, event: input.name });
     return { ok: true as const };
   } catch (error) {
     console.error("[meta capi]", error);
     return { ok: false as const };
+  }
+}
+
+function graphMessage(text: string) {
+  try {
+    const error = (JSON.parse(text) as { error?: { message?: string; error_user_msg?: string } }).error;
+    return error?.error_user_msg || error?.message || text.slice(0, 200);
+  } catch {
+    return text.slice(0, 200);
   }
 }
 

@@ -45,6 +45,7 @@ import { holdDiscountCode, releaseDiscountCode, settleDiscountCode } from "./dis
 import { ensurePricing } from "./pricing";
 import { markLeadSold } from "./leads";
 import { sendMetaEvent } from "./metaCapi";
+import { recordChatPurchase } from "./adsConversions";
 import { updateConversation } from "./whatsapp";
 
 function orderRef(db: Firestore, id: string) {
@@ -559,6 +560,7 @@ async function recordPurchase(order: MoraOrder) {
     orderNumber: order.orderNumber,
   }).catch(() => undefined);
   await recordInsightsPurchase(order).catch(() => undefined);
+  await recordChatPurchase(order).catch((error) => console.error("[orders] chat vendido", error));
   await sendMetaEvent({
     name: "Purchase",
     eventId: purchaseEventId,

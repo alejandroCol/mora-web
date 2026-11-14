@@ -4,7 +4,14 @@ import { BrandLogo } from "@/components/brand/BrandLogo";
 import { CartButton } from "@/components/cart/CartDrawer";
 import { IconOrder } from "@/components/icons/NavIcons";
 
-export function SiteHeader({ solid = false }: { solid?: boolean }) {
+export function SiteHeader({
+  solid = false,
+  switchTo,
+}: {
+  solid?: boolean;
+  /** En la ficha de un anillo: atajo a la del otro. */
+  switchTo?: { href: string; label: string };
+}) {
   return (
     <header
       className={`fixed inset-x-0 top-0 z-40 pt-[env(safe-area-inset-top)] ${
@@ -20,6 +27,14 @@ export function SiteHeader({ solid = false }: { solid?: boolean }) {
           />
         </Link>
         <div className="flex items-center gap-5 sm:gap-6">
+          {switchTo ? (
+            <Link
+              href={switchTo.href}
+              className="rounded-full border border-[rgba(22,20,31,0.1)] bg-white/75 px-3.5 py-[0.4rem] text-[13px] leading-none tracking-[-0.01em] text-[#1d1d1f] backdrop-blur-md transition-colors hover:bg-white"
+            >
+              {switchTo.label}
+            </Link>
+          ) : null}
           <Link
             href="/pedido"
             aria-label="mi pedido"

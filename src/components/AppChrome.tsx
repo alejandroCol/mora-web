@@ -6,6 +6,7 @@ import { CartDrawer } from "@/components/cart/CartDrawer";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useInsightHome } from "@/insights/client";
+import { productPath, products, resolveProductSlug } from "@/lib/catalog";
 
 export function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -47,7 +48,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   if (isProduct || isCheckout) {
     return (
       <>
-        <SiteHeader solid={isCheckout} />
+        <SiteHeader solid={isCheckout} switchTo={otherRing(pathname)} />
         <main className="flex-1">{children}</main>
         <CartDrawer />
       </>
@@ -63,6 +64,14 @@ export function AppChrome({ children }: { children: ReactNode }) {
       <CartDrawer />
     </>
   );
+}
+
+function otherRing(pathname: string) {
+  const match = /^\/anillo\/([^/]+)/.exec(pathname);
+  const modelId = match ? resolveProductSlug(match[1]) : null;
+  if (!modelId) return undefined;
+  const other = products[modelId === "aero" ? "titan" : "aero"];
+  return { href: productPath(other.id), label: `Ver ${other.name}` };
 }
 
 function HomeInsight() {

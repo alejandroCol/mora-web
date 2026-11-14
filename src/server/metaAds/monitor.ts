@@ -17,6 +17,7 @@ import { loadMetaHealth, type MetaHealth } from "../metaHealth";
 import { loadAdsAccess } from "./access";
 import { loadAdsPilotSettings } from "./pilotSettings";
 import { buildAdsReport } from "./report";
+import { detectPixelRestriction, loadWebFunnel, type WebFunnel } from "./webFunnel";
 
 const MINUTE = 60_000;
 const DAY = 86_400_000;
@@ -99,7 +100,12 @@ type Context = {
   money: (value: number) => string;
   pilot: AdsPilotSettings;
   access: AdsAccess;
+  /** Meta no recibe carrito, pago ni compra de la web (cuenta de salud y bienestar). */
+  pixelBlocked: boolean;
 };
+
+const BLOCKED_WHY =
+  "Meta clasificó a Mora como salud y bienestar y bloquea el carrito, el pago y la compra de la web: solo ve visitas.";
 
 function chatsOf(row: { crmChats: number; chats: number }) {
   return row.crmChats || row.chats;
@@ -295,7 +301,18 @@ function judgeCampaign(campaign: CampaignRow, context: Context): AdsDecision[] {
   }
 
   if (kind === "web") {
-    if (sales > 0) {
+    if (context.pixelBlocked && sales === 0 && spend > 0) {
+      out.push({
+        ...common,
+        id: `pause:${campaign.id}`,
+        verdict: "pause",
+        priority: 84,
+        title: "Apágala: busca compras que Meta no puede ver",
+        why: `${BLOCKED_WHY} Esta campaña le pide compras, así que optimiza a ciegas. Lleva ${money(spend)} en 7 días sin ventas.`,
+        impact: `${free} Esa plata rinde más en la campaña de WhatsApp.`.trim(),
+        ...pauseAction(campaign),
+      });
+    } else if (sales > 0) {
       const costPerSale = spend / sales;
       const raise = campaign.budgetAtCampaign ? nextBudget(campaign.dailyBudget, pilot) : 0;
       if (costPerSale <= pilot.targetCostPerSale) {
@@ -532,6 +549,19 @@ function accountDecisions(input: {
     });
   }
 
+  if (context.pixelBlocked) {
+    out.push({
+      ...account,
+      id: "account:pixel-blocked",
+      verdict: "fix",
+      priority: 57,
+      title: "Meta no ve los carritos ni las ventas de la web",
+      why: `${BLOCKED_WHY} Por eso Meta reporta 0 carritos aunque sí los haya.`,
+      impact:
+        "Pide revisión en Administrador de eventos › Pixel Mora Ring. Mientras tanto, vende por WhatsApp y mide la web con los números de Mora.",
+    });
+  }
+
   if (!input.capiOk && totals.spend > 0) {
     out.push({
       ...account,
@@ -553,12 +583,14 @@ function healthChecks(input: {
   health: MetaHealth;
   week: AdsReport;
   pulse: CrmPulse;
+  funnel: WebFunnel;
+  pixelBlocked: boolean;
 }): AdsHealthCheck[] {
-  const { access, health, week, pulse } = input;
+  const { access, health, pulse, funnel } = input;
   const now = Date.now();
   const capi = health.capi;
   const messaging = health.messaging;
-  const t = week.totals;
+  const cartRate = funnel.product > 0 ? Math.round((funnel.cart / funnel.product) * 100) : 0;
   return [
     {
       id: "manage",
@@ -589,13 +621,22 @@ function healthChecks(input: {
           : `Meta rechazó la última (${messaging.error || "sin detalle"}). Al generar el token marca también whatsapp_business_manage_events.`,
     },
     {
+      id: "pixel",
+      ok: !input.pixelBlocked,
+      label: "Meta ve el carrito y la compra",
+      detail: input.pixelBlocked
+        ? "No. Meta marcó la cuenta como salud y bienestar y bloquea carrito, pago y compra; solo recibe visitas. Pide revisión en Administrador de eventos › Pixel Mora Ring."
+        : "Sí: el Pixel recibe los pasos de compra.",
+    },
+    {
       id: "funnel",
-      ok: !(t.landingViews >= 50 && t.addToCart === 0),
+      // Contado por Mora: no depende de lo que Meta deje pasar.
+      ok: funnel.purchase > 0 || funnel.product < 50 || cartRate >= 5,
       label: "La web convierte",
       detail:
-        t.landingViews === 0
-          ? "En 7 días ningún anuncio llevó gente a la web."
-          : `En 7 días llegaron ${formatCount(t.landingViews)} personas a la web desde anuncios, ${formatCount(t.contentViews)} vieron un producto y ${formatCount(t.addToCart)} lo agregaron al carrito.`,
+        funnel.visitors === 0
+          ? "En 7 días nadie entró a la web."
+          : `En 7 días entraron ${formatCount(funnel.visitors)} personas, ${formatCount(funnel.product)} vieron un anillo, ${formatCount(funnel.cart)} lo pusieron en la bolsa (${cartRate} %), ${plural(funnel.pay, "llegó a pagar", "llegaron a pagar")} y ${plural(funnel.purchase, "pagó", "pagaron")}.`,
     },
     {
       id: "crm",
@@ -634,7 +675,7 @@ function headline(input: { today: AdsMonitor["today"]; decisions: AdsDecision[];
  */
 export async function buildAdsMonitor(): Promise<AdsMonitor> {
   const now = Date.now();
-  const [today, week, access, pilot, settings, health, pulse] = await Promise.all([
+  const [today, week, access, pilot, settings, health, pulse, funnel, monthFunnel] = await Promise.all([
     buildAdsReport("today", { fresh: true }),
     buildAdsReport("7d", { fresh: true }),
     loadAdsAccess({ fresh: true }),
@@ -642,10 +683,13 @@ export async function buildAdsMonitor(): Promise<AdsMonitor> {
     loadGrowthSettings(),
     loadMetaHealth(),
     loadCrmPulse(now),
+    loadWebFunnel(7, now),
+    loadWebFunnel(30, now),
   ]);
+  const pixelBlocked = await detectPixelRestriction(settings.metaPixelId, settings.metaAdsToken, monthFunnel, now);
   const currency = week.currency;
   const money = (value: number) => formatAdsMoney(value, currency);
-  const context: Context = { money, pilot, access };
+  const context: Context = { money, pilot, access, pixelBlocked };
 
   const active = week.campaigns.filter((campaign) => campaign.active);
   const perCampaign = active.flatMap((campaign) => [...judgeCampaign(campaign, context), ...judgeAds(campaign, context)]);
@@ -659,7 +703,7 @@ export async function buildAdsMonitor(): Promise<AdsMonitor> {
   );
 
   const hasCapiToken = Boolean(settings.metaPixelId && (settings.metaCapiToken || settings.metaAdsToken));
-  const checks = healthChecks({ access, hasCapiToken, health, week, pulse });
+  const checks = healthChecks({ access, hasCapiToken, health, week, pulse, funnel, pixelBlocked });
   const capiCheck = checks.find((check) => check.id === "capi");
   const decisions = [
     ...accountDecisions({

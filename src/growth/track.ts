@@ -14,6 +14,17 @@ export function eventId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
+type PixelCall = [string, MetaStandardEvent, Record<string, unknown>, { eventID: string }];
+
+/** Eventos que salen antes de que el Pixel esté instalado (la ficha dispara ViewContent al montar). */
+const pending: PixelCall[] = [];
+
+/** Lo llama GrowthStack justo después de instalar el Pixel. */
+export function flushPixelQueue() {
+  if (typeof window === "undefined" || !window.fbq) return;
+  for (const call of pending.splice(0)) window.fbq(...call);
+}
+
 export function track(
   name: MetaStandardEvent,
   data: GrowthEventPayload = {},
@@ -24,7 +35,9 @@ export function track(
   const attribution = captureAttribution();
   const eid = id ?? eventId();
 
-  window.fbq?.("track", name, { currency: "COP", ...data }, { eventID: eid });
+  const call: PixelCall = ["track", name, { currency: "COP", ...data }, { eventID: eid }];
+  if (window.fbq) window.fbq(...call);
+  else if (pending.length < 20) pending.push(call);
 
   void fetch("/api/track", {
     method: "POST",

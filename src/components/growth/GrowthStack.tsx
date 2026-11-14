@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { captureAttribution } from "@/growth/attribution";
-import { eventId } from "@/growth/track";
+import { eventId, flushPixelQueue } from "@/growth/track";
 import type { PublicGrowthConfig } from "@/growth/types";
 
 declare global {
@@ -13,8 +13,11 @@ declare global {
   }
 }
 
+let installedPixel = "";
+
 function installPixel(pixelId: string) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || installedPixel === pixelId) return;
+  installedPixel = pixelId;
   if (window.fbq) {
     window.fbq("init", pixelId);
     return;
@@ -80,6 +83,7 @@ export function GrowthStack() {
     lastPath.current = pathname;
     const eid = eventId();
     window.fbq?.("track", "PageView", {}, { eventID: eid });
+    flushPixelQueue();
     void fetch("/api/track", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

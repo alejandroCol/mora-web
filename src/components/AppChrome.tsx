@@ -71,7 +71,7 @@ function otherRing(pathname: string) {
   const modelId = match ? resolveProductSlug(match[1]) : null;
   if (!modelId) return undefined;
   const other = products[modelId === "aero" ? "titan" : "aero"];
-  return { href: productPath(other.id), label: `Ver ${other.name}` };
+  return { href: productPath(other.id), label: `Ver Mora ${other.name}` };
 }
 
 function HomeInsight() {

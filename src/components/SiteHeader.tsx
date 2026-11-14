@@ -30,7 +30,7 @@ export function SiteHeader({
           {switchTo ? (
             <Link
               href={switchTo.href}
-              className="rounded-full border border-[rgba(22,20,31,0.1)] bg-white/75 px-3.5 py-[0.4rem] text-[13px] leading-none tracking-[-0.01em] text-[#1d1d1f] backdrop-blur-md transition-colors hover:bg-white"
+              className="rounded-full bg-[#1d1d1f] px-3.5 py-[0.45rem] text-[13px] leading-none tracking-[-0.01em] text-white transition-opacity hover:opacity-85"
             >
               {switchTo.label}
             </Link>

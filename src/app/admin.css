@@ -2516,6 +2516,50 @@ a.crm-ad-card.is-compact:hover {
     padding: 0 0.65rem;
   }
 
+  /* Arriba menú y acciones; abajo las bandejas a todo el ancho, sin montarse. */
+  .crm-toolbar {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas:
+      "menu extra"
+      "desks desks";
+    gap: 0.5rem;
+  }
+
+  .crm-menu {
+    grid-area: menu;
+  }
+
+  .crm-toolbar-extra {
+    grid-area: extra;
+    justify-self: end;
+    min-width: 0;
+  }
+
+  .crm-desks {
+    grid-area: desks;
+    gap: 0;
+    padding: 0.2rem;
+    border-radius: 999px;
+    background: #f2f2f5;
+  }
+
+  .crm-desk {
+    flex: 1 1 0;
+    min-width: 0;
+    height: 1.9rem;
+    padding: 0 0.5rem;
+    background: transparent;
+    box-shadow: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .crm-desk.is-on {
+    background: #1d1d1f;
+    color: #fff;
+  }
+
   .crm-frame {
     display: flex;
     flex-direction: column;

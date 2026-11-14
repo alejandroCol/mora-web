@@ -16,16 +16,30 @@ const RETURN_POLICY = {
   returnPolicyCategory: "https://schema.org/MerchantReturnFiniteReturnWindow",
   merchantReturnDays: 5,
   returnMethod: "https://schema.org/ReturnByMail",
+  returnFees: "https://schema.org/ReturnFeesCustomerResponsibility",
   merchantReturnLink: siteUrl("/envios-y-garantia#retracto"),
 };
 
-const SHIPPING = {
-  "@type": "OfferShippingDetails",
-  shippingDestination: {
-    "@type": "DefinedRegion",
-    addressCountry: "CO",
-  },
+const DELIVERY_TIME = {
+  "@type": "ShippingDeliveryTime",
+  handlingTime: { "@type": "QuantitativeValue", minValue: 1, maxValue: 3, unitCode: "DAY" },
+  transitTime: { "@type": "QuantitativeValue", minValue: 3, maxValue: 10, unitCode: "DAY" },
 };
+
+/** Gratis si el pedido trae un anillo; el Case solo se cotiza en el checkout y no lleva tarifa fija. */
+function shippingDetails(freeShipping: boolean) {
+  return {
+    "@type": "OfferShippingDetails",
+    shippingDestination: {
+      "@type": "DefinedRegion",
+      addressCountry: "CO",
+    },
+    ...(freeShipping
+      ? { shippingRate: { "@type": "MonetaryAmount", value: 0, currency: "COP" } }
+      : {}),
+    deliveryTime: DELIVERY_TIME,
+  };
+}
 
 const WARRANTY = {
   "@type": "WarrantyPromise",
@@ -91,7 +105,7 @@ export function OrgJsonLd({ sales }: { sales: SalesPresentation }) {
   });
 }
 
-function offer(sales: SalesPresentation, url: string, price: number) {
+function offer(sales: SalesPresentation, url: string, price: number, freeShipping: boolean) {
   const origin = siteOrigin();
   return {
     "@type": "Offer",
@@ -101,7 +115,7 @@ function offer(sales: SalesPresentation, url: string, price: number) {
     availability: sales.schemaAvailability,
     ...(sales.schemaAvailabilityEnds ? { availabilityEnds: sales.schemaAvailabilityEnds } : {}),
     itemCondition: "https://schema.org/NewCondition",
-    shippingDetails: SHIPPING,
+    shippingDetails: shippingDetails(freeShipping),
     hasMerchantReturnPolicy: RETURN_POLICY,
     seller: { "@id": `${origin}/#org` },
   };
@@ -129,7 +143,7 @@ export function ProductJsonLd({
     material: model.material,
     image: [`${origin}${home.src}`, ...PRODUCT_LOOKS[modelId].map((item) => `${origin}${item.src}`)],
     warranty: WARRANTY,
-    offers: offer(sales, siteUrl(path), model.price),
+    offers: offer(sales, siteUrl(path), model.price, true),
   });
 }
 
@@ -146,7 +160,7 @@ export function CaseJsonLd({ sales }: { sales: SalesPresentation }) {
     sku: CASE_PRODUCT.id,
     material: CASE_PRODUCT.material,
     image: [`${origin}/cases/ice.jpg`],
-    offers: offer(sales, siteUrl(path), CASE_PRODUCT.price),
+    offers: offer(sales, siteUrl(path), CASE_PRODUCT.price, false),
   });
 }
 

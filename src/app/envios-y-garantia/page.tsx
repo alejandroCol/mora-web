@@ -9,13 +9,13 @@ import { BreadcrumbJsonLd } from "@/components/seo/JsonLd";
 import { sizeRangeLabel } from "@/lib/catalog";
 import { siteUrl } from "@/lib/site";
 
-const UPDATED = "25 de octubre de 2026";
+const UPDATED = "14 de noviembre de 2026";
 
 export function generateMetadata(): Metadata {
   return {
     title: "Envíos, cambios y garantía",
     description:
-      "Envíos a todo Colombia, medidor de talla, retracto y garantía de un mes de Mora Ring.",
+      "Envío gratis con tu anillo a todo Colombia, en 3 a 10 días. Medidor de talla, retracto y garantía de un mes de Mora Ring.",
     alternates: { canonical: "/envios-y-garantia" },
     openGraph: {
       title: `Envíos, cambios y garantía · ${BRAND.siteName}`,
@@ -43,7 +43,11 @@ function sections(): Section[] {
       title: "Envíos",
       body: (
         <>
-          <p>Enviamos a todo Colombia. El costo se cotiza en el checkout, según la ciudad.</p>
+          <p>
+            Enviamos a todo Colombia.{" "}
+            <strong className="font-medium text-ink">El envío es gratis si tu pedido incluye un anillo.</strong>{" "}
+            Si solo pides el Case, el envío se cotiza en el checkout, según tu ciudad.
+          </p>
           <p>
             El seguimiento está en{" "}
             <Link href="/pedido" className="text-ink underline decoration-bloom/80 underline-offset-2">
@@ -58,7 +62,11 @@ function sections(): Section[] {
               cambia, te avisamos por el canal de tu pedido.
             </p>
           ) : (
-            <p>Despachamos tu anillo después del pago. El tiempo depende del destino.</p>
+            <p>
+              Despachamos en <strong className="font-medium text-ink">1 a 3 días hábiles</strong> después
+              del pago. Llega en <strong className="font-medium text-ink">3 a 10 días</strong>, según tu
+              ciudad.
+            </p>
           )}
         </>
       ),
@@ -110,6 +118,9 @@ function sections(): Section[] {
           <p>
             En una compra a distancia tienes cinco días hábiles desde la entrega para desistir, según el
             artículo 47 de la Ley 1480 de 2011. Escríbenos con el número de pedido.
+          </p>
+          <p>
+            El envío de vuelta lo paga el cliente.
           </p>
           <p>
             El retracto devuelve el producto. No es un cambio de talla: esa opción no existe, y el

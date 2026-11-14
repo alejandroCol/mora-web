@@ -163,14 +163,15 @@ function immediatePresentation(): SalesPresentation {
     saleOn: null,
     saleAt: null,
     closeLabel: "Envío",
-    closeValue: "Todo Colombia, cotizado al pagar",
+    closeValue: "Gratis con tu anillo, a todo Colombia",
     sizeSteps: [
       { title: "Compras hoy", body: "El precio es el mismo, con o sin medidor." },
       { title: "Te enviamos el medidor", body: "Llega a tu casa antes que el anillo." },
       { title: "Nos cuentas tu talla", body: "Te lo pruebas con calma y eliges tu número con tu pedido." },
       { title: "Te enviamos tu anillo", body: "Con tu talla lista, sale directo hacia ti." },
     ],
-    faqWhen: "Lo despachamos después del pago. Si pediste el medidor, te llega primero.",
+    faqWhen:
+      "Sale en 1 a 3 días hábiles y llega en 3 a 10 días, según tu ciudad. Si pediste el medidor, te llega primero.",
     brandDescription: BRAND_CORE,
     ogLine: "Pro · Ultra · Colombia",
     schemaAvailability: "https://schema.org/InStock",

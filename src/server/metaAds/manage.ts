@@ -10,6 +10,9 @@ import { clearAdsReportCache } from "./report";
 /** Bitácora de cambios hechos desde Mora. Solo Admin SDK. */
 const LOG = "adsChangeLog";
 
+/** «Calls to this API have exceeded the concurrent request rate limit». */
+const RATE_LIMIT_CODE = 613;
+
 const LEVEL_LABEL = { campaign: "campaña", adset: "conjunto", ad: "anuncio" } as const;
 
 function bad(message: string, status = 400) {
@@ -136,6 +139,13 @@ export async function applyAdsAction(input: {
   try {
     await graphWrite("POST", action.id, body, token);
   } catch (error) {
+    // Tras un cambio de presupuesto Meta bloquea esa campaña unos 30 s: no es un fallo, solo hay que esperar.
+    if (error instanceof MetaAdsError && error.code === RATE_LIMIT_CODE) {
+      throw bad(
+        "Meta pide esperar medio minuto entre un cambio y otro en la misma campaña. Vuelve a intentarlo en un momento.",
+        429,
+      );
+    }
     const message = error instanceof MetaAdsError ? error.message : "No se pudo aplicar el cambio.";
     await adminDb()
       .collection(LOG)

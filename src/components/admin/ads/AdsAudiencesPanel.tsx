@@ -20,6 +20,21 @@ function statusOf(audience: AdsAudience) {
   };
 }
 
+/** Un aviso que trae un enlace (aceptar condiciones en Meta) se puede tocar. */
+function StatusText({ text }: { text: string }) {
+  const match = /https:\/\/\S+/.exec(text);
+  if (!match) return <>{text}</>;
+  const before = text.slice(0, match.index).replace(/:\s*$/, ".");
+  return (
+    <>
+      {before}{" "}
+      <a href={match[0]} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+        Abrir en Meta
+      </a>
+    </>
+  );
+}
+
 /** Las audiencias que Mora mantiene sola en Meta, y las que ya había en la cuenta. */
 export function AdsAudiencesPanel() {
   const api = useAdsApi();
@@ -101,7 +116,9 @@ export function AdsAudiencesPanel() {
                       {formatCount(audience.local)} {audience.local === 1 ? "persona" : "personas"} en Mora
                     </p>
                   ) : null}
-                  <p className={`text-[12.5px] leading-5 ${status.tone}`}>{status.text}</p>
+                  <p className={`text-[12.5px] leading-5 ${status.tone}`}>
+                    <StatusText text={status.text} />
+                  </p>
                 </div>
               </li>
             );

@@ -440,7 +440,13 @@ function createBody(def: Def, ids: { pixel: string; instagram: string; origin: s
   };
 }
 
-function plain(error: unknown) {
+/** Meta responde 2663 hasta que alguien acepta, una vez, las condiciones de audiencias de la cuenta. */
+const TERMS_CODE = 2663;
+
+function plain(error: unknown, accountId: string) {
+  if (error instanceof MetaAdsError && error.code === TERMS_CODE) {
+    return `Falta aceptar, una sola vez, las condiciones de audiencias de Meta. Acéptalas aquí y vuelve a sincronizar: https://www.facebook.com/customaudiences/app/tos/?act=${accountId.replace(/^act_/, "")}`;
+  }
   if (error instanceof MetaAdsError) return `Meta: ${error.message}`;
   return error instanceof Error ? error.message : "No se pudo sincronizar.";
 }
@@ -485,7 +491,7 @@ export async function syncAudiences(): Promise<AdsAudiencesState> {
         if (entry.id && def.kind === "list" && local.length > 0) await uploadPeople(entry.id, local, token);
       }
     } catch (error) {
-      entry.error = plain(error);
+      entry.error = plain(error, accountId);
     }
     items[def.key] = entry;
   }

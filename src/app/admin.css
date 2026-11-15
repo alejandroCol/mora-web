@@ -1437,6 +1437,24 @@ a.crm-ad-card.is-compact:hover {
   height: 11rem;
 }
 
+.crm-media-play {
+  width: 14rem;
+  height: 8rem;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.crm-attachment-glyph {
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  color: #6d28d9;
+}
+
+.crm-quick-media {
+  opacity: 0.6;
+}
+
 .crm-media-note {
   font-size: 11px;
   color: var(--admin-muted);

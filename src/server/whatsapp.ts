@@ -6,6 +6,7 @@ import type {
   WhatsAppReferral,
 } from "@/growth/types";
 import { adminDb } from "@/lib/firebaseAdmin";
+import { outboundFileError, outboundKindOf, WHATSAPP_CAPTION_MAX } from "@/crm/media";
 import { loadGrowthSettings } from "./growthSettings";
 import { upsertLead } from "./leads";
 import { normalizePhone, sendMetaEvent } from "./metaCapi";
@@ -175,12 +176,48 @@ export async function sendWhatsAppText(input: {
   return message;
 }
 
-/** Formatos que la Cloud API acepta como `image` (webp va como sticker, no aquí). */
-export const WHATSAPP_IMAGE_MIME = ["image/jpeg", "image/png"] as const;
-/** Tope de Meta para imágenes. */
-export const WHATSAPP_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+async function whatsappCredentials() {
+  const settings = await loadGrowthSettings();
+  if (!settings.whatsappPhoneNumberId || !settings.whatsappAccessToken) {
+    throw Object.assign(new Error("WhatsApp Business aún no está conectado."), {
+      status: 503,
+    });
+  }
+  return { phoneNumberId: settings.whatsappPhoneNumberId, token: settings.whatsappAccessToken };
+}
 
-export async function sendWhatsAppImage(input: {
+/** Sube un archivo a Meta. El id sirve para enviarlo cuantas veces se quiera durante 30 días. */
+export async function uploadWhatsAppMedia(input: { bytes: Buffer; mimeType: string; fileName?: string }) {
+  const kind = outboundKindOf(input.mimeType);
+  const problem = outboundFileError(input.mimeType, input.bytes.byteLength);
+  if (!kind || problem) throw Object.assign(new Error(problem), { status: 400 });
+  const { phoneNumberId, token } = await whatsappCredentials();
+  const form = new FormData();
+  form.set("messaging_product", "whatsapp");
+  form.set("type", input.mimeType);
+  const fallbackName = kind === "video" ? "video.mp4" : input.mimeType === "image/png" ? "foto.png" : "foto.jpg";
+  form.set(
+    "file",
+    new Blob([new Uint8Array(input.bytes)], { type: input.mimeType }),
+    input.fileName || fallbackName,
+  );
+  const upload = await fetch(`${GRAPH}/${phoneNumberId}/media`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: form,
+  });
+  const uploaded = (await upload.json()) as { id?: string; error?: { message?: string } };
+  if (!upload.ok || !uploaded.id) {
+    throw Object.assign(
+      new Error(uploaded.error?.message ?? (kind === "video" ? "WhatsApp no recibió el video." : "WhatsApp no recibió la imagen.")),
+      { status: 400 },
+    );
+  }
+  return uploaded.id;
+}
+
+/** Sube y envía una foto o video con pie opcional. */
+export async function sendWhatsAppFile(input: {
   phone: string;
   bytes: Buffer;
   mimeType: string;
@@ -190,54 +227,33 @@ export async function sendWhatsAppImage(input: {
   byName?: string;
   claim?: boolean;
 }) {
-  const settings = await loadGrowthSettings();
-  if (!settings.whatsappPhoneNumberId || !settings.whatsappAccessToken) {
-    throw Object.assign(new Error("WhatsApp Business aún no está conectado."), {
-      status: 503,
-    });
-  }
-  if (!(WHATSAPP_IMAGE_MIME as readonly string[]).includes(input.mimeType)) {
-    throw Object.assign(new Error("Solo JPG o PNG."), { status: 400 });
-  }
-  if (input.bytes.byteLength > WHATSAPP_IMAGE_MAX_BYTES) {
-    throw Object.assign(new Error("La imagen pesa más de 5 MB."), { status: 400 });
-  }
+  const mediaId = await uploadWhatsAppMedia(input);
+  return sendWhatsAppMedia({ ...input, mediaId });
+}
 
+/** Envía un archivo que ya está en Meta (`mediaId` de `uploadWhatsAppMedia`). */
+export async function sendWhatsAppMedia(input: {
+  phone: string;
+  mediaId: string;
+  mimeType: string;
+  caption?: string;
+  by?: string;
+  byName?: string;
+  claim?: boolean;
+}) {
+  const kind = outboundKindOf(input.mimeType);
+  if (!kind) throw Object.assign(new Error("Solo fotos JPG/PNG o videos MP4."), { status: 400 });
+  const { phoneNumberId, token } = await whatsappCredentials();
   const to = conversationIdFromPhone(input.phone);
-  const auth = { Authorization: `Bearer ${settings.whatsappAccessToken}` };
-
-  // 1) Subir el binario a Meta → media id reutilizable (30 días).
-  const form = new FormData();
-  form.set("messaging_product", "whatsapp");
-  form.set("type", input.mimeType);
-  form.set(
-    "file",
-    new Blob([new Uint8Array(input.bytes)], { type: input.mimeType }),
-    input.fileName || (input.mimeType === "image/png" ? "foto.png" : "foto.jpg"),
-  );
-  const upload = await fetch(`${GRAPH}/${settings.whatsappPhoneNumberId}/media`, {
+  const caption = (input.caption?.trim() || "").slice(0, WHATSAPP_CAPTION_MAX);
+  const res = await fetch(`${GRAPH}/${phoneNumberId}/messages`, {
     method: "POST",
-    headers: auth,
-    body: form,
-  });
-  const uploaded = (await upload.json()) as { id?: string; error?: { message?: string } };
-  if (!upload.ok || !uploaded.id) {
-    throw Object.assign(
-      new Error(uploaded.error?.message ?? "WhatsApp no recibió la imagen."),
-      { status: 400 },
-    );
-  }
-
-  // 2) Enviar el mensaje apuntando a ese media id.
-  const caption = input.caption?.trim() || "";
-  const res = await fetch(`${GRAPH}/${settings.whatsappPhoneNumberId}/messages`, {
-    method: "POST",
-    headers: { ...auth, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       messaging_product: "whatsapp",
       to,
-      type: "image",
-      image: { id: uploaded.id, ...(caption ? { caption } : {}) },
+      type: kind,
+      [kind]: { id: input.mediaId, ...(caption ? { caption } : {}) },
     }),
   });
   const data = (await res.json()) as {
@@ -246,10 +262,12 @@ export async function sendWhatsAppImage(input: {
   };
   if (!res.ok) {
     throw Object.assign(
-      new Error(data.error?.message ?? "WhatsApp no aceptó la imagen."),
+      new Error(data.error?.message ?? (kind === "video" ? "WhatsApp no aceptó el video." : "WhatsApp no aceptó la imagen.")),
       { status: 400 },
     );
   }
+  const icon = kind === "video" ? "🎬" : "📷";
+  const plain = kind === "video" ? "🎬 Video" : "📷 Foto";
 
   const waId = data.messages?.[0]?.id;
   const at = Date.now();
@@ -257,11 +275,11 @@ export async function sendWhatsAppImage(input: {
     id: waId ?? messages(to).doc().id,
     waId,
     direction: "out",
-    type: "image",
+    type: kind,
     text: caption,
     at,
     status: "sent",
-    mediaId: uploaded.id,
+    mediaId: input.mediaId,
     mimeType: input.mimeType,
     billingCategory: "service",
     by: input.by,
@@ -276,7 +294,7 @@ export async function sendWhatsAppImage(input: {
     compact({
       id: to,
       phone: to,
-      lastMessage: caption ? `📷 ${caption}` : "📷 Foto",
+      lastMessage: caption ? `${icon} ${caption}` : plain,
       lastDirection: "out",
       lastAt: at,
       lastOutboundAt: at,

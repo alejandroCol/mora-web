@@ -432,8 +432,11 @@ function MediaBubble({
   const [src, setSrc] = useState("");
   const [blob, setBlob] = useState<Blob | null>(null);
   const [failed, setFailed] = useState(false);
+  // Un video pesa hasta 16 MB y pasa por el servidor: se baja solo si lo van a ver.
+  const [wanted, setWanted] = useState(kind !== "video");
 
   useEffect(() => {
+    if (!wanted) return;
     let url = "";
     let cancelled = false;
     void authorizedFetch(source)
@@ -455,7 +458,7 @@ function MediaBubble({
       cancelled = true;
       if (url) URL.revokeObjectURL(url);
     };
-  }, [authorizedFetch, source]);
+  }, [authorizedFetch, source, wanted]);
 
   const label =
     kind === "image" ? "Foto" : kind === "sticker" ? "Sticker" : kind === "video" ? "Video" : kind === "audio" ? "Audio" : "Archivo";
@@ -465,6 +468,13 @@ function MediaBubble({
       <p className="crm-media-note">
         {label} no disponible{stored ? "." : " (WhatsApp guarda los archivos 30 días)."}
       </p>
+    );
+  }
+  if (!wanted) {
+    return (
+      <button type="button" onClick={() => setWanted(true)} className="crm-media-skeleton crm-media-play">
+        ▶ Ver video
+      </button>
     );
   }
   if (!src) {
@@ -485,7 +495,7 @@ function MediaBubble({
     );
   }
   if (kind === "video") {
-    return <video src={src} controls playsInline preload="metadata" className="crm-media-video" />;
+    return <video src={src} controls autoPlay playsInline preload="metadata" className="crm-media-video" />;
   }
   if (kind === "audio" && blob) {
     return <CrmVoiceNote blob={blob} mimeType={mimeType} />;

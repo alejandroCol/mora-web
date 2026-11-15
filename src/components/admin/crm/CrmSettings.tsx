@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
-import type { CrmQuickReply, CrmSettings, CrmTemplate } from "@/growth/types";
+import type { CrmQuickReply, CrmQuickReplyMedia, CrmSettings, CrmTemplate } from "@/growth/types";
+import { OUTBOUND_ACCEPT, OUTBOUND_MEDIA, outboundFileError } from "@/crm/media";
 import { defaultCrmReplies } from "@/crm/replies";
 
 type Connection = {
@@ -31,6 +32,8 @@ export function CrmSettingsPanel({
   onClose,
   onSave,
   onSetPin,
+  onUploadMedia,
+  onDiscardMedia,
 }: {
   settings: CrmSettings | null;
   connection: Connection | null;
@@ -38,6 +41,9 @@ export function CrmSettingsPanel({
   onClose: () => void;
   onSave: (next: CrmSettings, welcome: string) => Promise<void>;
   onSetPin: (pin: string) => Promise<void>;
+  onUploadMedia: (file: File) => Promise<CrmQuickReplyMedia>;
+  /** Borra un adjunto recién subido; si ya estaba guardado, el servidor lo borra al Guardar. */
+  onDiscardMedia: (path: string) => Promise<void>;
 }) {
   const [replies, setRepliesState] = useState<CrmQuickReply[]>(settings?.replies ?? defaultCrmReplies());
   const [templates, setTemplatesState] = useState<CrmTemplate[]>(settings?.templates ?? []);
@@ -59,6 +65,27 @@ export function CrmSettingsPanel({
   const [pinMsg, setPinMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState("");
+  const [uploading, setUploading] = useState<string | null>(null);
+  const [mediaError, setMediaError] = useState("");
+
+  async function attach(replyId: string, file: File) {
+    const problem = outboundFileError(file.type, file.size);
+    if (problem) {
+      setMediaError(problem);
+      return;
+    }
+    setMediaError("");
+    setUploading(replyId);
+    try {
+      const media = await onUploadMedia(file);
+      setReplies((current) => current.map((item) => (item.id === replyId ? { ...item, media } : item)));
+      setSaved("Adjunto listo. Falta Guardar.");
+    } catch (error) {
+      setMediaError(error instanceof Error ? error.message : "No se pudo subir.");
+    } finally {
+      setUploading(null);
+    }
+  }
 
   useEffect(() => {
     if (!settings || dirty.current) return;
@@ -297,14 +324,60 @@ export function CrmSettingsPanel({
                 />
                 <button
                   type="button"
-                  onClick={() => setReplies((current) => current.filter((_, i) => i !== index))}
+                  onClick={() => {
+                    if (reply.media) void onDiscardMedia(reply.media.path);
+                    setReplies((current) => current.filter((_, i) => i !== index));
+                  }}
                   className="text-[12px] text-white/35"
                 >
                   Quitar
                 </button>
+                <div className="flex flex-wrap items-center gap-2 text-[12px] sm:col-span-5">
+                  {reply.media ? (
+                    <>
+                      <span className="rounded-full bg-white/8 px-3 py-1 text-white/70">
+                        {reply.media.kind === "video" ? "Video" : "Foto"}
+                        {reply.media.name ? ` · ${reply.media.name}` : ""}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const path = reply.media!.path;
+                          setReplies((current) =>
+                            current.map((item, i) => (i === index ? { ...item, media: undefined } : item)),
+                          );
+                          void onDiscardMedia(path);
+                        }}
+                        className="text-white/35"
+                      >
+                        Quitar adjunto
+                      </button>
+                    </>
+                  ) : (
+                    <label className={`cursor-pointer text-white/45 ${uploading === reply.id ? "opacity-50" : ""}`}>
+                      {uploading === reply.id ? "Subiendo…" : "+ Foto o video"}
+                      <input
+                        type="file"
+                        accept={OUTBOUND_ACCEPT}
+                        className="hidden"
+                        disabled={uploading !== null}
+                        onChange={(event) => {
+                          const file = event.target.files?.[0];
+                          event.target.value = "";
+                          if (file) void attach(reply.id, file);
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
               </div>
             ))}
           </div>
+          <p className="mt-2 text-[12px] text-white/40">
+            Foto {OUTBOUND_MEDIA.image.label} o video {OUTBOUND_MEDIA.video.label}. Se sube una vez y se reutiliza en
+            cada envío. Instagram solo recibe la foto.
+          </p>
+          {mediaError ? <p className="mt-1 text-[12px] text-red-300">{mediaError}</p> : null}
         </section>
 
         <section className="mt-8">

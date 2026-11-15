@@ -15,6 +15,7 @@ import type {
   CrmLostReason,
   CrmNote,
   CrmQuickReply,
+  CrmQuickReplyMedia,
   CrmSeller,
   CrmSettings,
   CrmTemplate,
@@ -24,7 +25,9 @@ import type {
   WhatsAppConversation,
   WhatsAppConversationStatus,
 } from "@/growth/types";
+import { outboundKindOf } from "@/crm/media";
 import { listStaff } from "./adminAuth";
+import { deleteReplyMedia, isReplyMediaPath } from "./crmReplyMedia";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { listAbandonedCarts } from "./abandonedCarts";
 import { loadGrowthSettings } from "./growthSettings";
@@ -185,25 +188,56 @@ export async function loadCrmSettings(): Promise<CrmSettings> {
 export async function saveCrmSettings(patch: Partial<CrmSettings>): Promise<CrmSettings> {
   const current = await loadCrmSettings();
   const next: CrmSettings = {
-    replies: sanitizeReplies(patch.replies ?? current.replies),
+    replies: sanitizeReplies(patch.replies ?? current.replies, current.replies),
     templates: sanitizeTemplates(patch.templates ?? current.templates),
     autoClaimOnReply: patch.autoClaimOnReply ?? current.autoClaimOnReply,
     updatedAt: Date.now(),
   };
   await settingsDoc().set(next, { merge: true });
+  const kept = new Set(next.replies.map((item) => item.media?.path).filter(Boolean));
+  const orphans = current.replies
+    .map((item) => item.media?.path)
+    .filter((path): path is string => Boolean(path) && !kept.has(path));
+  await Promise.all(orphans.map((path) => deleteReplyMedia(path).catch(() => undefined)));
   return next;
 }
 
-function sanitizeReplies(replies: CrmQuickReply[]): CrmQuickReply[] {
+function sanitizeReplies(replies: CrmQuickReply[], current: CrmQuickReply[]): CrmQuickReply[] {
+  const known = new Map(
+    current.filter((item) => item.media).map((item) => [item.media!.path, item.media!] as const),
+  );
   return replies
-    .map((item) => ({
-      id: String(item.id || crypto.randomUUID()),
-      title: String(item.title ?? "").trim(),
-      body: String(item.body ?? "").trim(),
-      desk: (isCrmDesk(item.desk) ? item.desk : "both") as CrmQuickReply["desk"],
-    }))
-    .filter((item) => item.title && item.body)
+    .map((item) => {
+      const reply: CrmQuickReply = {
+        id: String(item.id || crypto.randomUUID()),
+        title: String(item.title ?? "").trim(),
+        body: String(item.body ?? "").trim(),
+        desk: (isCrmDesk(item.desk) ? item.desk : "both") as CrmQuickReply["desk"],
+      };
+      const media = sanitizeReplyMedia(item.media, known);
+      if (media) reply.media = media;
+      return reply;
+    })
+    .filter((item) => item.title && (item.body || item.media))
     .slice(0, 40);
+}
+
+function sanitizeReplyMedia(
+  media: CrmQuickReplyMedia | undefined,
+  known: Map<string, CrmQuickReplyMedia>,
+): CrmQuickReplyMedia | undefined {
+  if (!media || !isReplyMediaPath(String(media.path ?? ""))) return undefined;
+  const kind = outboundKindOf(String(media.mimeType ?? ""));
+  if (!kind) return undefined;
+  // El id de Meta lo pone el servidor: si ya lo conocía, manda el suyo.
+  const cached = known.get(media.path) ?? media;
+  const clean: CrmQuickReplyMedia = { kind, path: media.path, mimeType: media.mimeType };
+  if (media.name) clean.name = String(media.name).slice(0, 120);
+  if (cached.waMediaId && cached.waUploadedAt) {
+    clean.waMediaId = String(cached.waMediaId);
+    clean.waUploadedAt = Number(cached.waUploadedAt);
+  }
+  return clean;
 }
 
 function sanitizeTemplates(templates: CrmTemplate[]): CrmTemplate[] {

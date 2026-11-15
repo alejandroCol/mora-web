@@ -1,17 +1,16 @@
 import { channelOf } from "@/crm/channel";
+import { outboundFileError, outboundKindOf, WHATSAPP_CAPTION_MAX } from "@/crm/media";
 import { jsonError, requirePermission } from "@/server/adminAuth";
 import { sendInstagramImage } from "@/server/instagram/inbox";
 import { loadCrmSettings } from "@/server/crm";
-import {
-  getConversation,
-  sendWhatsAppImage,
-  WHATSAPP_IMAGE_MAX_BYTES,
-  WHATSAPP_IMAGE_MIME,
-} from "@/server/whatsapp";
+import { getConversation, sendWhatsAppFile } from "@/server/whatsapp";
 
 export const dynamic = "force-dynamic";
 
-/** Envía una imagen (JPG/PNG ≤ 5 MB) con pie opcional al chat. Body: multipart `file`, `caption`. */
+/**
+ * Envía una foto (JPG/PNG ≤ 5 MB) o un video (MP4 ≤ 16 MB) con pie opcional. Body: multipart `file`, `caption`.
+ * El archivo va directo a Meta: no pasa por nuestro Storage.
+ */
 export async function POST(
   request: Request,
   context: { params: Promise<{ id: string }> },
@@ -27,18 +26,17 @@ export async function POST(
     const form = await request.formData().catch(() => null);
     const file = form?.get("file");
     if (!form || !(file instanceof File) || file.size === 0) {
-      return Response.json({ ok: false, error: "Adjunta una imagen." }, { status: 400 });
+      return Response.json({ ok: false, error: "Adjunta una foto o un video." }, { status: 400 });
     }
-    if (!(WHATSAPP_IMAGE_MIME as readonly string[]).includes(file.type)) {
-      return Response.json({ ok: false, error: "Solo JPG o PNG." }, { status: 400 });
-    }
-    if (file.size > WHATSAPP_IMAGE_MAX_BYTES) {
-      return Response.json({ ok: false, error: "La imagen pesa más de 5 MB." }, { status: 400 });
-    }
-    const caption = String(form.get("caption") ?? "").trim().slice(0, 1024);
+    const problem = outboundFileError(file.type, file.size);
+    if (problem) return Response.json({ ok: false, error: problem }, { status: 400 });
+    const caption = String(form.get("caption") ?? "").trim().slice(0, WHATSAPP_CAPTION_MAX);
 
     const settings = await loadCrmSettings();
     if (channelOf(conversation) === "instagram") {
+      if (outboundKindOf(file.type) === "video") {
+        return Response.json({ ok: false, error: "Instagram no recibe videos desde el CRM." }, { status: 400 });
+      }
       const message = await sendInstagramImage({
         conversation,
         bytes: Buffer.from(await file.arrayBuffer()),
@@ -50,7 +48,7 @@ export async function POST(
       });
       return Response.json({ ok: true, message });
     }
-    const message = await sendWhatsAppImage({
+    const message = await sendWhatsAppFile({
       phone: conversation.phone,
       bytes: Buffer.from(await file.arrayBuffer()),
       mimeType: file.type,

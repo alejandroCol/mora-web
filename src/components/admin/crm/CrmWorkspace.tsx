@@ -11,6 +11,7 @@ import type {
   CrmCounts,
   CrmDesk,
   CrmNote,
+  CrmQuickReplyMedia,
   CrmSeller,
   CrmSettings,
   MoraLead,
@@ -21,6 +22,7 @@ import type {
 import { CHANNEL_LABEL, channelOf } from "@/crm/channel";
 import { playMoraChime, unlockMoraChime } from "@/crm/chime";
 import { DESK_LABEL, isCrmDesk, isSnoozed, needsReply } from "@/crm/labels";
+import { WHATSAPP_CAPTION_MAX } from "@/crm/media";
 import { referralKindLabel } from "@/crm/referral";
 import { useAdminAuth } from "../AdminAuth";
 import { ManualSaleForm } from "../ManualSaleForm";
@@ -374,22 +376,47 @@ export function CrmWorkspace() {
     return true;
   }
 
-  async function sendImage(file: File, caption: string) {
+  async function sendFile(file: File, caption: string) {
     if (!activeId) return false;
     setError("");
+    // Un pie más largo que el tope de WhatsApp sale como mensaje aparte, después del archivo.
+    const longText = caption.length > WHATSAPP_CAPTION_MAX ? caption : "";
     const form = new FormData();
     form.set("file", file, file.name);
-    if (caption) form.set("caption", caption);
+    if (caption && !longText) form.set("caption", caption);
     const res = await authorizedFetch(`/api/admin/whatsapp/${activeId}/media`, {
       method: "POST",
       body: form,
     });
-    const data = (await res.json()) as { ok?: boolean; error?: string; message?: WhatsAppMessage };
+    const data = (await res.json().catch(() => ({ ok: false, error: "El archivo es demasiado grande." }))) as {
+      ok?: boolean;
+      error?: string;
+      message?: WhatsAppMessage;
+    };
     if (!data.ok) {
-      setError(data.error ?? "No se pudo enviar la imagen.");
+      setError(data.error ?? "No se pudo enviar el archivo.");
       return false;
     }
     if (data.message) setMessages((current) => [...current, data.message!]);
+    if (longText) return send(longText);
+    await loadWorkspace();
+    await loadThread(activeId);
+    return true;
+  }
+
+  async function sendReply(replyId: string, text: string) {
+    if (!activeId) return false;
+    setError("");
+    const res = await authorizedFetch(`/api/admin/whatsapp/${activeId}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ replyId, text }),
+    });
+    const data = (await res.json()) as { ok?: boolean; error?: string; messages?: WhatsAppMessage[] };
+    if (!data.ok) {
+      setError(data.error ?? "No se pudo enviar la respuesta.");
+      return false;
+    }
+    if (data.messages?.length) setMessages((current) => [...current, ...data.messages!]);
     await loadWorkspace();
     await loadThread(activeId);
     return true;
@@ -586,7 +613,8 @@ export function CrmWorkspace() {
                   windowClosesAt={contact?.windowClosesAt ?? null}
                   error={error}
                   onSend={(text) => send(text)}
-                  onSendImage={(file, caption) => sendImage(file, caption)}
+                  onSendFile={(file, caption) => sendFile(file, caption)}
+                  onSendReply={(replyId, text) => sendReply(replyId, text)}
                   onTemplate={(id) => void sendTemplate(id)}
                 />
               </>
@@ -653,6 +681,23 @@ export function CrmWorkspace() {
                 ? { ...current, twoStep: Boolean(data.twoStep), twoStepSetAt: data.twoStepSetAt }
                 : current,
             );
+          }}
+          onUploadMedia={async (file) => {
+            const form = new FormData();
+            form.set("file", file, file.name);
+            const res = await authorizedFetch("/api/admin/crm/replies/media", { method: "POST", body: form });
+            const data = (await res.json().catch(() => ({ ok: false, error: "El archivo es demasiado grande." }))) as {
+              ok?: boolean;
+              error?: string;
+              media?: CrmQuickReplyMedia;
+            };
+            if (!data.ok || !data.media) throw new Error(data.error ?? "No se pudo subir.");
+            return data.media;
+          }}
+          onDiscardMedia={async (path) => {
+            await authorizedFetch(`/api/admin/crm/replies/media?path=${encodeURIComponent(path)}`, {
+              method: "DELETE",
+            }).catch(() => undefined);
           }}
         />
       ) : null}

@@ -230,11 +230,23 @@ export type CrmNote = {
   kind: "note" | "system";
 };
 
+export type CrmQuickReplyMedia = {
+  kind: "image" | "video";
+  /** Original en Storage (`crm/replies/…`): solo se lee para volver a subirlo a Meta. */
+  path: string;
+  mimeType: string;
+  name?: string;
+  /** Id en Meta, reutilizable hasta que caduca (30 días): enviar no relee Storage. */
+  waMediaId?: string;
+  waUploadedAt?: number;
+};
+
 export type CrmQuickReply = {
   id: string;
   title: string;
   body: string;
   desk: CrmDesk | "both";
+  media?: CrmQuickReplyMedia;
 };
 
 export type CrmTemplate = {

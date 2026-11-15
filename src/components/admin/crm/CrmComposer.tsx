@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CrmChannel, CrmDesk, CrmSettings } from "@/growth/types";
+import type { CrmChannel, CrmDesk, CrmQuickReply, CrmSettings } from "@/growth/types";
 import { formatClock, formatDay } from "@/crm/labels";
+import { OUTBOUND_ACCEPT, outboundFileError, outboundKindOf, type OutboundMediaKind } from "@/crm/media";
 import { quickSells } from "@/crm/sells";
-
-const IMAGE_TYPES = ["image/jpeg", "image/png"];
-const IMAGE_MAX = 5 * 1024 * 1024;
 
 const EMOJI_GROUPS: { label: string; items: string[] }[] = [
   {
@@ -23,7 +21,7 @@ const EMOJI_GROUPS: { label: string; items: string[] }[] = [
   },
 ];
 
-type Attachment = { file: File; url: string };
+type Attachment = { file: File; url: string; kind: OutboundMediaKind };
 
 export function CrmComposer({
   desk,
@@ -35,7 +33,8 @@ export function CrmComposer({
   windowClosesAt,
   error,
   onSend,
-  onSendImage,
+  onSendFile,
+  onSendReply,
   onTemplate,
 }: {
   desk: CrmDesk;
@@ -51,13 +50,16 @@ export function CrmComposer({
   error: string;
   /** Devuelve `false` si no salió: el borrador se conserva para reintentar. */
   onSend: (text: string) => boolean | void | Promise<boolean | void>;
-  onSendImage: (file: File, caption: string) => boolean | void | Promise<boolean | void>;
+  onSendFile: (file: File, caption: string) => boolean | void | Promise<boolean | void>;
+  /** Respuesta rápida con foto o video: el servidor reutiliza el archivo ya subido a Meta. */
+  onSendReply: (replyId: string, text: string) => boolean | void | Promise<boolean | void>;
   onTemplate: (id: string) => void | Promise<void>;
 }) {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [attachment, setAttachment] = useState<Attachment | null>(null);
+  const [replyMedia, setReplyMedia] = useState<CrmQuickReply | null>(null);
   const [attachError, setAttachError] = useState("");
   const [dragging, setDragging] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
@@ -127,17 +129,31 @@ export function CrmComposer({
 
   function pickFile(file: File | null | undefined) {
     if (!file) return;
-    if (!IMAGE_TYPES.includes(file.type)) {
-      setAttachError("Solo JPG o PNG.");
+    const kind = outboundKindOf(file.type);
+    const problem = outboundFileError(file.type, file.size);
+    if (!kind || problem) {
+      setAttachError(problem);
       return;
     }
-    if (file.size > IMAGE_MAX) {
-      setAttachError("La imagen pesa más de 5 MB.");
+    if (kind === "video" && channel === "instagram") {
+      setAttachError("Instagram no recibe videos desde el CRM.");
       return;
     }
     setAttachError("");
-    setAttachment({ file, url: URL.createObjectURL(file) });
+    setReplyMedia(null);
+    setAttachment({ file, url: URL.createObjectURL(file), kind });
     area.current?.focus();
+  }
+
+  function pickReply(reply: CrmQuickReply) {
+    setDraft(reply.body);
+    setAttachError("");
+    if (reply.media) {
+      setAttachment(null);
+      setReplyMedia(reply);
+    } else {
+      setReplyMedia(null);
+    }
   }
 
   function insertEmoji(emoji: string) {
@@ -173,17 +189,20 @@ export function CrmComposer({
     });
   }
 
-  const canSend = windowOpen && !busy && (Boolean(attachment) || Boolean(draft.trim()));
+  const canSend = windowOpen && !busy && (Boolean(attachment) || Boolean(replyMedia) || Boolean(draft.trim()));
 
   async function submit() {
     if (!canSend) return;
     setBusy(true);
     try {
-      const ok = attachment
-        ? await onSendImage(attachment.file, draft.trim())
-        : await onSend(draft.trim());
+      const ok = replyMedia
+        ? await onSendReply(replyMedia.id, draft.trim())
+        : attachment
+          ? await onSendFile(attachment.file, draft.trim())
+          : await onSend(draft.trim());
       if (ok === false) return;
       setAttachment(null);
+      setReplyMedia(null);
       setDraft("");
       setEmojiOpen(false);
       if (area.current) area.current.style.height = "";
@@ -259,10 +278,13 @@ export function CrmComposer({
           <button
             key={reply.id}
             type="button"
-            onClick={() => setDraft(reply.body)}
+            onClick={() => pickReply(reply)}
             className="crm-quick"
           >
             {reply.title}
+            {reply.media ? (
+              <span className="crm-quick-media">{reply.media.kind === "video" ? " · video" : " · foto"}</span>
+            ) : null}
           </button>
         ))}
       </div>
@@ -286,19 +308,47 @@ export function CrmComposer({
 
       {attachment ? (
         <div className="crm-attachment">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={attachment.url} alt="" className="crm-attachment-thumb" />
+          {attachment.kind === "video" ? (
+            <video src={attachment.url} muted playsInline preload="metadata" className="crm-attachment-thumb" />
+          ) : (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={attachment.url} alt="" className="crm-attachment-thumb" />
+          )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-[12px] text-[#1d1d1f]">{attachment.file.name}</p>
             <p className="text-[11px] text-[#86868b]">
               {(attachment.file.size / 1024 / 1024).toFixed(1)} MB ·{" "}
-              {instagram ? "el texto sale como mensaje aparte" : "el texto va como pie de foto"}
+              {instagram ? "el texto sale como mensaje aparte" : "el texto va como pie"}
             </p>
           </div>
           <button
             type="button"
             onClick={() => setAttachment(null)}
-            aria-label="Quitar imagen"
+            aria-label="Quitar adjunto"
+            className="crm-attachment-remove"
+          >
+            ×
+          </button>
+        </div>
+      ) : null}
+
+      {replyMedia?.media ? (
+        <div className="crm-attachment">
+          <span className="crm-attachment-thumb crm-attachment-glyph" aria-hidden>
+            {replyMedia.media.kind === "video" ? "▶" : "▣"}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[12px] text-[#1d1d1f]">
+              {replyMedia.media.kind === "video" ? "Video" : "Foto"} de «{replyMedia.title}»
+            </p>
+            <p className="text-[11px] text-[#86868b]">
+              {instagram ? "el texto sale como mensaje aparte" : "el texto va como pie"}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setReplyMedia(null)}
+            aria-label="Enviar sin el adjunto"
             className="crm-attachment-remove"
           >
             ×
@@ -316,7 +366,7 @@ export function CrmComposer({
         <input
           ref={picker}
           type="file"
-          accept="image/jpeg,image/png"
+          accept={instagram ? "image/jpeg,image/png" : OUTBOUND_ACCEPT}
           className="hidden"
           onChange={(event) => {
             pickFile(event.target.files?.[0]);
@@ -327,8 +377,8 @@ export function CrmComposer({
           type="button"
           onClick={() => picker.current?.click()}
           disabled={!windowOpen || busy}
-          aria-label="Adjuntar imagen"
-          title="Adjuntar imagen (JPG o PNG)"
+          aria-label="Adjuntar foto o video"
+          title={instagram ? "Adjuntar foto (JPG o PNG)" : "Adjuntar foto (JPG o PNG) o video (MP4 hasta 16 MB)"}
           className="crm-composer-tool"
         >
           <ClipGlyph />
@@ -346,7 +396,7 @@ export function CrmComposer({
             }}
             onPaste={(event) => {
               const file = Array.from(event.clipboardData.files ?? []).find((item) =>
-                item.type.startsWith("image/"),
+                item.type.startsWith("image/") || item.type.startsWith("video/"),
               );
               if (file && windowOpen) {
                 event.preventDefault();
@@ -364,10 +414,10 @@ export function CrmComposer({
                 ? instagram
                   ? "Espera a que te escriba."
                   : "Ventana cerrada. Usa una plantilla."
-                : attachment
+                : attachment || replyMedia
                   ? instagram
                     ? "Texto (opcional)"
-                    : "Pie de foto (opcional)"
+                    : "Pie (opcional)"
                   : "Mensaje"
             }
             disabled={!windowOpen}

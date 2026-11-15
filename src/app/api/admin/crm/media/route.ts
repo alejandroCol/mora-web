@@ -1,12 +1,13 @@
 import { jsonError, requirePermission } from "@/server/adminAuth";
+import { isReplyMediaPath, readReplyMedia } from "@/server/crmReplyMedia";
 import { readCrmMedia } from "@/server/instagram/media";
 
-/** Foto, audio o archivo de un chat de Instagram, guardado en nuestro Storage. */
+/** Archivo guardado en nuestro Storage: adjuntos de Instagram o de respuestas rápidas. */
 export async function GET(request: Request) {
   try {
     await requirePermission(request, "whatsapp");
     const path = new URL(request.url).searchParams.get("path") ?? "";
-    const media = await readCrmMedia(path);
+    const media = isReplyMediaPath(path) ? await readReplyMedia(path) : await readCrmMedia(path);
     return new Response(new Uint8Array(media.buffer), {
       headers: {
         "Content-Type": media.mime,

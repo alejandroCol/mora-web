@@ -5,6 +5,7 @@ import type { CrmChannel, CrmDesk, CrmQuickReply, CrmSettings } from "@/growth/t
 import { formatClock, formatDay } from "@/crm/labels";
 import { OUTBOUND_ACCEPT, outboundFileError, outboundKindOf, type OutboundMediaKind } from "@/crm/media";
 import { quickSells } from "@/crm/sells";
+import { CrmStorePhotos } from "./CrmStorePhotos";
 
 const EMOJI_GROUPS: { label: string; items: string[] }[] = [
   {
@@ -383,6 +384,13 @@ export function CrmComposer({
         >
           <ClipGlyph />
         </button>
+        <CrmStorePhotos
+          disabled={!windowOpen || busy}
+          onPick={(file, caption) => {
+            pickFile(file);
+            setDraft((current) => current || caption);
+          }}
+        />
 
         <div className="crm-composer-field">
           <textarea

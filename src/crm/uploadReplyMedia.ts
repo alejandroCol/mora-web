@@ -46,17 +46,51 @@ async function uploadVideo(fetcher: Fetcher, file: File, onProgress: (p: ReplyUp
       } catch (error) {
         attempt += 1;
         if (attempt >= 3) throw error;
+        await new Promise((resolve) => setTimeout(resolve, 1500 * attempt));
       }
     }
     onProgress({ phase: "upload", percent: Math.round(((part + 1) / parts) * 100) });
   }
   onProgress({ phase: "convert" });
-  const res = await fetcher("/api/admin/crm/replies/media/video", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ id, parts, name: file.name }),
-  });
-  return (await readResult(res)).media!;
+  const start = () =>
+    fetcher("/api/admin/crm/replies/media/video", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id, parts, name: file.name }),
+    });
+  try {
+    const res = await start();
+    if (res.status !== 202) return (await readResult(res)).media!;
+  } catch {
+    // iOS corta la conexión si Safari pasa a segundo plano; el servidor sigue y deja el resultado.
+  }
+  return waitForVideo(fetcher, id, start);
+}
+
+const POLL_MS = 3000;
+const POLL_LIMIT_MS = 6 * 60 * 1000;
+
+async function waitForVideo(fetcher: Fetcher, id: string, start: () => Promise<Response>) {
+  const until = Date.now() + POLL_LIMIT_MS;
+  let restarted = false;
+  while (Date.now() < until) {
+    await new Promise((resolve) => setTimeout(resolve, POLL_MS));
+    let res: Response;
+    try {
+      res = await fetcher(`/api/admin/crm/replies/media/video?id=${id}`);
+    } catch {
+      continue;
+    }
+    if (res.status === 202) continue;
+    if (res.status === 404 && !restarted) {
+      // El POST nunca llegó: las partes siguen en el servidor, se pide de nuevo.
+      restarted = true;
+      start().catch(() => undefined);
+      continue;
+    }
+    return (await readResult(res)).media!;
+  }
+  throw new Error("La conversión tardó demasiado. Vuelve a subir el video.");
 }
 
 /** Foto o video de una respuesta rápida. Los videos del iPhone (.mov) se convierten a MP4 en el servidor. */
@@ -65,7 +99,15 @@ export async function uploadReplyMedia(
   file: File,
   onProgress: (p: ReplyUploadProgress) => void,
 ): Promise<CrmQuickReplyMedia> {
-  if (looksLikeVideo(file)) return uploadVideo(fetcher, file, onProgress);
+  if (looksLikeVideo(file)) {
+    // Que el iPhone no bloquee la pantalla mientras sube y convierte.
+    const lock = await navigator.wakeLock?.request("screen").catch(() => null);
+    try {
+      return await uploadVideo(fetcher, file, onProgress);
+    } finally {
+      await lock?.release().catch(() => undefined);
+    }
+  }
   if (!file.type.startsWith("image/") && !/\.(heic|heif|webp)$/i.test(file.name)) {
     throw new Error("Solo fotos o videos.");
   }

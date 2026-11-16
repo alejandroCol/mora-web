@@ -11,7 +11,6 @@ import type {
   CrmCounts,
   CrmDesk,
   CrmNote,
-  CrmQuickReplyMedia,
   CrmSeller,
   CrmSettings,
   MoraLead,
@@ -24,6 +23,7 @@ import { playMoraChime, unlockMoraChime } from "@/crm/chime";
 import { DESK_LABEL, isCrmDesk, isSnoozed, needsReply } from "@/crm/labels";
 import { WHATSAPP_CAPTION_MAX } from "@/crm/media";
 import { referralKindLabel } from "@/crm/referral";
+import { uploadReplyMedia } from "@/crm/uploadReplyMedia";
 import { useAdminAuth } from "../AdminAuth";
 import { ManualSaleForm } from "../ManualSaleForm";
 import { CrmBoard } from "./CrmBoard";
@@ -682,18 +682,7 @@ export function CrmWorkspace() {
                 : current,
             );
           }}
-          onUploadMedia={async (file) => {
-            const form = new FormData();
-            form.set("file", file, file.name);
-            const res = await authorizedFetch("/api/admin/crm/replies/media", { method: "POST", body: form });
-            const data = (await res.json().catch(() => ({ ok: false, error: "El archivo es demasiado grande." }))) as {
-              ok?: boolean;
-              error?: string;
-              media?: CrmQuickReplyMedia;
-            };
-            if (!data.ok || !data.media) throw new Error(data.error ?? "No se pudo subir.");
-            return data.media;
-          }}
+          onUploadMedia={(file, onProgress) => uploadReplyMedia(authorizedFetch, file, onProgress)}
           onDiscardMedia={async (path) => {
             await authorizedFetch(`/api/admin/crm/replies/media?path=${encodeURIComponent(path)}`, {
               method: "DELETE",

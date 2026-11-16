@@ -10,35 +10,15 @@ import {
   type FinishId,
   type ModelId,
 } from "@/lib/catalog";
-import { OUTBOUND_MEDIA } from "@/crm/media";
+import { toJpeg } from "@/crm/jpeg";
 
 type Galleries = Record<ModelId, GalleryImage[]>;
-
-/** Lado mayor del JPG que sale por WhatsApp: se ve nítido en el chat y pesa poco. */
-const MAX_SIDE = 1600;
 
 /** La tienda guarda WebP; WhatsApp lo trataría como sticker. Se reenvía como JPG. */
 async function asJpeg(src: string, name: string): Promise<File> {
   const response = await fetch(src);
   if (!response.ok) throw new Error("No se pudo traer la foto.");
-  const bitmap = await createImageBitmap(await response.blob());
-  const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("No se pudo preparar la foto.");
-  context.fillStyle = "#ffffff";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close();
-  for (const quality of [0.88, 0.75, 0.6]) {
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
-    if (blob && blob.size <= OUTBOUND_MEDIA.image.maxBytes) {
-      return new File([blob], `${name}.jpg`, { type: "image/jpeg" });
-    }
-  }
-  throw new Error("La foto pesa demasiado.");
+  return toJpeg(await response.blob(), name);
 }
 
 function fileName(modelId: ModelId, finishId: FinishId) {

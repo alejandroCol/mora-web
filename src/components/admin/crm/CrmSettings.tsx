@@ -3,8 +3,11 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import Link from "next/link";
 import type { CrmQuickReply, CrmQuickReplyMedia, CrmSettings, CrmTemplate } from "@/growth/types";
-import { OUTBOUND_ACCEPT, OUTBOUND_MEDIA, outboundFileError } from "@/crm/media";
+import { OUTBOUND_MEDIA } from "@/crm/media";
 import { defaultCrmReplies } from "@/crm/replies";
+import type { ReplyUploadProgress } from "@/crm/uploadReplyMedia";
+
+type UploadState = { name: string; progress?: ReplyUploadProgress; error?: string };
 
 type Connection = {
   ready: boolean;
@@ -16,6 +19,28 @@ type Connection = {
   twoStepSetAt?: number;
   webhookDebug?: { signatureProvenFor?: string };
 };
+
+function UploadRow({ name, progress }: { name: string; progress: ReplyUploadProgress }) {
+  const converting = progress.phase === "convert";
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-3" role="status" aria-live="polite">
+      <span className="truncate text-white/70">
+        {converting ? "Convirtiendo para WhatsApp…" : `Subiendo ${progress.percent} %`}
+        <span className="text-white/35"> · {name}</span>
+      </span>
+      <span className="relative h-1 w-28 shrink-0 overflow-hidden rounded-full bg-white/10">
+        {converting ? (
+          <span className="crm-upload-indeterminate absolute inset-y-0 w-1/3 rounded-full bg-white/60" />
+        ) : (
+          <span
+            className="absolute inset-y-0 left-0 rounded-full bg-white/60 transition-[width] duration-300"
+            style={{ width: `${Math.max(4, progress.percent)}%` }}
+          />
+        )}
+      </span>
+    </div>
+  );
+}
 
 function moveItem<T>(list: T[], from: number, to: number) {
   if (to < 0 || to >= list.length) return list;
@@ -41,7 +66,7 @@ export function CrmSettingsPanel({
   onClose: () => void;
   onSave: (next: CrmSettings, welcome: string) => Promise<void>;
   onSetPin: (pin: string) => Promise<void>;
-  onUploadMedia: (file: File) => Promise<CrmQuickReplyMedia>;
+  onUploadMedia: (file: File, onProgress: (progress: ReplyUploadProgress) => void) => Promise<CrmQuickReplyMedia>;
   /** Borra un adjunto recién subido; si ya estaba guardado, el servidor lo borra al Guardar. */
   onDiscardMedia: (path: string) => Promise<void>;
 }) {
@@ -65,25 +90,27 @@ export function CrmSettingsPanel({
   const [pinMsg, setPinMsg] = useState("");
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState("");
-  const [uploading, setUploading] = useState<string | null>(null);
-  const [mediaError, setMediaError] = useState("");
+  const [uploads, setUploads] = useState<Record<string, UploadState>>({});
+  const uploading = Object.values(uploads).some((item) => item.progress);
+
+  function setUpload(replyId: string, next: UploadState | null) {
+    setUploads((current) => {
+      const copy = { ...current };
+      if (next) copy[replyId] = next;
+      else delete copy[replyId];
+      return copy;
+    });
+  }
 
   async function attach(replyId: string, file: File) {
-    const problem = outboundFileError(file.type, file.size);
-    if (problem) {
-      setMediaError(problem);
-      return;
-    }
-    setMediaError("");
-    setUploading(replyId);
+    setUpload(replyId, { name: file.name, progress: { phase: "upload", percent: 0 } });
     try {
-      const media = await onUploadMedia(file);
+      const media = await onUploadMedia(file, (progress) => setUpload(replyId, { name: file.name, progress }));
       setReplies((current) => current.map((item) => (item.id === replyId ? { ...item, media } : item)));
+      setUpload(replyId, null);
       setSaved("Adjunto listo. Falta Guardar.");
     } catch (error) {
-      setMediaError(error instanceof Error ? error.message : "No se pudo subir.");
-    } finally {
-      setUploading(null);
+      setUpload(replyId, { name: file.name, error: error instanceof Error ? error.message : "No se pudo subir." });
     }
   }
 
@@ -353,14 +380,15 @@ export function CrmSettingsPanel({
                         Quitar adjunto
                       </button>
                     </>
+                  ) : uploads[reply.id]?.progress ? (
+                    <UploadRow name={uploads[reply.id].name} progress={uploads[reply.id].progress!} />
                   ) : (
-                    <label className={`cursor-pointer text-white/45 ${uploading === reply.id ? "opacity-50" : ""}`}>
-                      {uploading === reply.id ? "Subiendo…" : "+ Foto o video"}
+                    <label className="cursor-pointer text-white/45">
+                      {uploads[reply.id]?.error ? "Probar con otro archivo" : "+ Foto o video"}
                       <input
                         type="file"
-                        accept={OUTBOUND_ACCEPT}
+                        accept="image/*,video/*,.mov,.heic"
                         className="hidden"
-                        disabled={uploading !== null}
                         onChange={(event) => {
                           const file = event.target.files?.[0];
                           event.target.value = "";
@@ -369,15 +397,19 @@ export function CrmSettingsPanel({
                       />
                     </label>
                   )}
+                  {uploads[reply.id]?.error ? (
+                    <p className="w-full text-[12px] text-red-300">
+                      {uploads[reply.id].name}: {uploads[reply.id].error}
+                    </p>
+                  ) : null}
                 </div>
               </div>
             ))}
           </div>
           <p className="mt-2 text-[12px] text-white/40">
-            Foto {OUTBOUND_MEDIA.image.label} o video {OUTBOUND_MEDIA.video.label}. Se sube una vez y se reutiliza en
-            cada envío. Instagram solo recibe la foto.
+            Foto o video del iPhone o del computador. Los videos se pasan a {OUTBOUND_MEDIA.video.label} para WhatsApp
+            (hasta 2 minutos). Se sube una vez y se reutiliza en cada envío. Instagram solo recibe la foto.
           </p>
-          {mediaError ? <p className="mt-1 text-[12px] text-red-300">{mediaError}</p> : null}
         </section>
 
         <section className="mt-8">
@@ -513,11 +545,11 @@ export function CrmSettingsPanel({
         <div className="mt-8 flex items-center gap-4">
           <button
             type="button"
-            disabled={busy}
+            disabled={busy || uploading}
             onClick={() => void persist()}
             className="h-11 rounded-full bg-white px-6 text-[13px] text-[#12111a] disabled:opacity-40"
           >
-            {busy ? "Guardando…" : "Guardar"}
+            {busy ? "Guardando…" : uploading ? "Esperando el adjunto…" : "Guardar"}
           </button>
           {saved ? <p className="text-[13px] text-white/45">{saved}</p> : null}
         </div>

@@ -6,7 +6,12 @@ const nextConfig: NextConfig = {
   transpilePackages: ["three"],
   // Decoder Opus (notas de voz del CRM): solo corre en el navegador; en SSR su
   // shim de Worker para Node trae un import dinámico que Turbopack no resuelve.
-  serverExternalPackages: ["ogg-opus-decoder"],
+  // ffmpeg-static resuelve su binario con __dirname: empaquetado, apuntaría a otra carpeta.
+  serverExternalPackages: ["ogg-opus-decoder", "ffmpeg-static"],
+  // El binario no se importa, así que el trazado de standalone no lo copia solo.
+  outputFileTracingIncludes: {
+    "/api/admin/crm/replies/media/video": ["./node_modules/ffmpeg-static/ffmpeg"],
+  },
   images: {
     qualities: [75, 100],
   },

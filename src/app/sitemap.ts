@@ -47,6 +47,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.4,
     },
     {
+      url: siteUrl("/datos-del-sueno"),
+      lastModified,
+      changeFrequency: "yearly",
+      priority: 0.3,
+    },
+    {
       url: siteUrl("/privacidad"),
       lastModified,
       changeFrequency: "yearly",

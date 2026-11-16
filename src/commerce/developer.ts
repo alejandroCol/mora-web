@@ -71,6 +71,19 @@ export function cleanTesters(raw: unknown): string[] {
 export const GIFT_SPIRITS: { lineage: string; name: string; blurb: string; code: string }[] = [
   { lineage: "cocker", name: "Mimi", blurb: "Cocker spaniel de orejas de seda. Legendaria.", code: "COCKER" },
   { lineage: "maltes", name: "Haku", blurb: "Maltés blanco con moño de ronin. Legendario.", code: "MALTES" },
+  // Mascotas: el código regala la raza y la app le da a cada quien su versión (mujer u hombre).
+  { lineage: "golden", name: "Taiyo", blurb: "Golden retriever. Sol de cuatro patas.", code: "GOLDEN" },
+  { lineage: "husky", name: "Yuki", blurb: "Husky siberiano de ojos de hielo.", code: "HUSKY" },
+  { lineage: "frenchie", name: "Momo", blurb: "Bulldog francés de orejas de murciélago.", code: "FRENCHIE" },
+  { lineage: "pug", name: "Mochi", blurb: "Pug de antifaz y cola de rosquilla.", code: "PUG" },
+  { lineage: "poodle", name: "Kumo", blurb: "Poodle de copete y pompones.", code: "POODLE" },
+  { lineage: "pastor", name: "Kiba", blurb: "Pastor alemán, guardián de lomo negro.", code: "PASTOR" },
+  { lineage: "siames", name: "Sumi", blurb: "Siamés de puntas oscuras y ojos azules.", code: "SIAMES" },
+  { lineage: "persa", name: "Tama", blurb: "Persa naranja de melena esponjosa.", code: "PERSA" },
+  { lineage: "mainecoon", name: "Kuma", blurb: "Maine coon atigrado con mechones de lince.", code: "MAINECOON" },
+  { lineage: "bengali", name: "Tora", blurb: "Bengalí de rosetas, un tigre de bolsillo.", code: "BENGALI" },
+  { lineage: "esfinge", name: "Suna", blurb: "Esfinge sin pelo con collar de oro.", code: "ESFINGE" },
+  { lineage: "scottish", name: "Maru", blurb: "Scottish fold gris de orejas dobladas.", code: "SCOTTISH" },
 ];
 
 export function giftSpiritName(lineage: string) {

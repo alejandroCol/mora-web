@@ -93,6 +93,13 @@ export function ProductSpecSheet({ modelId }: { modelId: ModelId }) {
         >
           Envíos, cambios y garantía
         </Link>
+        <span className="text-[11px] leading-4 text-soft"> · </span>
+        <Link
+          href="/datos-del-sueno"
+          className="text-[11px] leading-4 text-soft underline decoration-[#d2d2d7] underline-offset-2 hover:text-[#1d1d1f]"
+        >
+          Cómo se calcula el sueño
+        </Link>
       </p>
     </div>
   );

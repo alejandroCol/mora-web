@@ -38,14 +38,7 @@ html {
   scroll-behavior: smooth;
 }
 
-/* Páginas a pantalla completa: el scroll nativo se asienta cerca del borde, nunca se secuestra. */
-html:has(.snap-page) {
-  scroll-snap-type: y proximity;
-}
-
-.snap-page {
-  scroll-snap-align: start;
-}
+/* Páginas a pantalla completa. Sin imán vertical: a media sección tiraba del scroll a la fuerza. */
 
 .hide-scroll {
   scrollbar-width: none;
@@ -2097,11 +2090,12 @@ body {
     box-shadow 0.75s cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-.case-collage-tile-0 { left: 0; z-index: 1; transform: translateY(-50%) rotate(-10deg); }
-.case-collage-tile-1 { left: 16%; z-index: 2; transform: translateY(-54%) rotate(-4deg); }
-.case-collage-tile-2 { left: 32%; z-index: 5; transform: translateY(-50%) rotate(0deg); }
-.case-collage-tile-3 { left: 48%; z-index: 3; transform: translateY(-46%) rotate(5deg); }
-.case-collage-tile-4 { left: 64%; z-index: 2; transform: translateY(-52%) rotate(11deg); }
+.case-collage-tile-0 { left: 0; z-index: 1; transform: translateY(-50%) rotate(-11deg); }
+.case-collage-tile-1 { left: 11.6%; z-index: 2; transform: translateY(-54%) rotate(-6deg); }
+.case-collage-tile-2 { left: 23.2%; z-index: 4; transform: translateY(-49%) rotate(-2deg); }
+.case-collage-tile-3 { left: 34.8%; z-index: 5; transform: translateY(-51%) rotate(2deg); }
+.case-collage-tile-4 { left: 46.4%; z-index: 3; transform: translateY(-46%) rotate(6deg); }
+.case-collage-tile-5 { left: 58%; z-index: 2; transform: translateY(-52%) rotate(11deg); }
 
 @media (hover: hover) and (pointer: fine) {
   .case-collage-tile:hover {
@@ -2126,6 +2120,7 @@ body {
 .case-collage-stage-in .case-collage-tile-2 .case-collage-tile-inner { animation-delay: 0.18s; }
 .case-collage-stage-in .case-collage-tile-3 .case-collage-tile-inner { animation-delay: 0.26s; }
 .case-collage-stage-in .case-collage-tile-4 .case-collage-tile-inner { animation-delay: 0.34s; }
+.case-collage-stage-in .case-collage-tile-5 .case-collage-tile-inner { animation-delay: 0.42s; }
 
 @keyframes case-tile-hop {
   0% {
@@ -2330,6 +2325,12 @@ body {
   .case-collage-tile {
     width: 34%;
   }
+
+  .case-collage-tile-1 { left: 13.2%; }
+  .case-collage-tile-2 { left: 26.4%; }
+  .case-collage-tile-3 { left: 39.6%; }
+  .case-collage-tile-4 { left: 52.8%; }
+  .case-collage-tile-5 { left: 66%; }
 
   .case-collage-tile-inner {
     border-radius: 1.4rem;

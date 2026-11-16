@@ -11,7 +11,7 @@ export const previewCopy: Record<ModelId, string> = {
 };
 
 const readingsShared: SpecRow[] = [
-  { label: "Noche", value: "Cómo dormiste" },
+  { label: "Noche", value: "Cómo dormiste, estimado con movimiento y pulso" },
   { label: "Pulso", value: "Latidos por minuto" },
   { label: "Oxígeno", value: "Oxígeno en sangre" },
   { label: "Recuperación", value: "Cómo responde el cuerpo" },

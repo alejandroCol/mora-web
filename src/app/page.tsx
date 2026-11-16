@@ -26,9 +26,9 @@ export default function Home() {
       <FaqJsonLd sales={FALLBACK_SALES} />
       <Hero />
       <Atelier />
+      <CaseCollage />
       <Film />
       <PresaleModule />
-      <CaseCollage />
       <CreatorsStrip />
       <Close />
       <Faq />

@@ -12,6 +12,7 @@ const LINKS = [
   { href: "/creadores", label: "Creadores" },
   { href: "/soporte", label: "Soporte" },
   { href: "/envios-y-garantia", label: "Envíos y garantía" },
+  { href: "/datos-del-sueno", label: "Datos del sueño" },
   { href: "/privacidad", label: "Privacidad" },
   { href: "/terminos", label: "Condiciones" },
 ] as const;

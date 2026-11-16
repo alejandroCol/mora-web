@@ -21,6 +21,9 @@ type PublicOrder = {
   status: OrderStatus;
   paymentStatus?: PaymentStatus;
   canRetry?: boolean;
+  /** Venta con enlace de pago: es el primer pago, no un reintento. */
+  firstPay?: boolean;
+  payMethod?: string;
   expiresAt?: number | null;
   needsSize?: boolean;
   hasSizer?: boolean;
@@ -231,10 +234,17 @@ export function OrderTracker({
       const data = (await res.json()) as {
         ok: boolean;
         error?: string;
+        method?: "bold" | "addi";
+        redirectUrl?: string;
         session?: BoldCheckoutSession;
       };
       if (!data.ok || !data.session) {
         throw new Error(data.error ?? "No pudimos reabrir el pago.");
+      }
+      // Addi cobra en su propia página.
+      if (data.method === "addi" && data.redirectUrl) {
+        window.location.assign(data.redirectUrl);
+        return;
       }
       await payWithBold(data.session);
     } catch (err) {
@@ -349,7 +359,11 @@ function OrderStatusCard({
 
       {waitingPay ? (
         <p className="mt-8 rounded-2xl bg-white/70 px-5 py-4 text-[14px] leading-6 text-soft">
-          {order.paymentStatus === "pending"
+          {order.firstPay
+            ? order.payMethod === "addi"
+              ? "Tu pedido está apartado. Págalo a cuotas con Addi y lo alistamos."
+              : "Tu pedido está apartado. Págalo aquí y lo alistamos."
+            : order.paymentStatus === "pending"
             ? "Estamos confirmando tu pago. Nequi y PSE tardan un momento."
             : order.paymentStatus
               ? `Pago ${PAYMENT_STATUS_LABEL[order.paymentStatus].toLowerCase()}.`
@@ -364,7 +378,11 @@ function OrderStatusCard({
           disabled={paying}
           className="mt-4 h-11 w-full rounded-full bg-ink text-[13px] text-white disabled:opacity-50"
         >
-          {paying ? "Abriendo el pago…" : "Pagar otra vez"}
+          {paying
+            ? "Abriendo el pago…"
+            : order.firstPay
+              ? `Pagar ${formatMoney(order.totals.total)}${order.payMethod === "addi" ? " con Addi" : ""}`
+              : "Pagar otra vez"}
         </button>
       ) : null}
 

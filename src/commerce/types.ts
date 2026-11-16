@@ -105,6 +105,8 @@ export type PaymentSnapshot = {
   addiApplicationId?: string;
   addiReference?: string;
   addiStatus?: string;
+  /** Venta manual: comprobante, número de aprobación o nota del pago. */
+  reference?: string;
 };
 
 export type OrderTimelineEvent = {
@@ -193,6 +195,10 @@ export type MoraOrder = {
     discountCode?: string;
     /** La compra ya se le reportó a Meta como venta de un anuncio de WhatsApp. */
     messagingPurchaseSent?: boolean;
+    /** Venta manual: el vendedor pidió factura electrónica al quedar pagada. */
+    invoiceRequested?: boolean;
+    /** Venta manual: el cliente paga solo (Bold o Addi) desde la página de su pedido. */
+    payLink?: boolean;
   };
   conversationId?: string;
   createdAt: number;

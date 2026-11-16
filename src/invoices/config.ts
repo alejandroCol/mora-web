@@ -22,6 +22,8 @@ export type MatiasConfig = {
   cityId: string;
   postalCode: string;
   meansElectronic: number;
+  /** Medio de pago DIAN para efectivo (10). */
+  meansCash: number;
   defaultMobile: string;
   withVat: boolean;
 };
@@ -47,6 +49,7 @@ export function matiasConfig(): MatiasConfig | null {
     cityId: env("MATIAS_DEFAULT_CITY_ID") || "149",
     postalCode: env("MATIAS_DEFAULT_POSTAL_CODE") || "110111",
     meansElectronic: envInt("MATIAS_MEANS_PAYMENT_ELECTRONIC", 49),
+    meansCash: envInt("MATIAS_MEANS_PAYMENT_CASH", 10),
     defaultMobile: env("MATIAS_DEFAULT_MOBILE") || "3000000000",
     withVat: env("MATIAS_INVOICE_WITH_VAT") !== "0",
   };

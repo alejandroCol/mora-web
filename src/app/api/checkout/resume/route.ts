@@ -48,7 +48,9 @@ export async function POST(request: Request) {
         : (order.payment.boldReference ?? order.payment.wompiReference ?? order.id);
     const origin = requestOrigin(request);
 
-    if (order.payment.status === "pending" && method === "addi") {
+    // Enlace de una venta manual: la solicitud de Addi se crea cuando el cliente abre el pago.
+    const payLink = Boolean(order.meta?.payLink);
+    if (order.payment.status === "pending" && method === "addi" && !payLink) {
       return Response.json(
         { ok: false, error: "Ese pago sigue en proceso. Espera un momento." },
         { status: 409 },

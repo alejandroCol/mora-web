@@ -5,6 +5,12 @@ import { canTransition } from "@/commerce/orderMachine";
 import { inventorySku, lineToOrderItem } from "@/commerce/sku";
 import { orderHasSizer, orderNeedsSize } from "@/commerce/sizing";
 import { legFromShipping } from "@/commerce/shipments";
+import {
+  isLinkMethod,
+  MANUAL_PAY_LABEL,
+  MANUAL_PENDING_TTL_MS,
+  type ManualPayMethod,
+} from "@/commerce/manualSale";
 import type {
   AttributionSnapshot,
   CartLine,
@@ -197,7 +203,12 @@ export async function createManualOrder(input: {
   items: CartLine[];
   customer: CustomerSnapshot;
   shipping: ShippingSnapshot;
-  paymentMethod: Exclude<PaymentMethod, "bold" | "wompi" | "addi">;
+  payment: { method: ManualPayMethod; paid: boolean; reference?: string };
+  /** Factura electrónica cuando el pedido quede pagado. */
+  invoice?: boolean;
+  discountCop?: number;
+  /** Referencia de Bold ya generada para el enlace de pago. */
+  boldReference?: string;
   notes?: string;
   createdBy: string;
   skipStock?: boolean;
@@ -205,75 +216,143 @@ export async function createManualOrder(input: {
   conversationId?: string;
   attribution?: AttributionSnapshot;
 }): Promise<MoraOrder> {
-  await ensurePricing();
+  await Promise.all([releaseExpiredCheckouts().catch(() => undefined), ensurePricing()]);
   const db = adminDb();
   const orderItems = input.items.map(lineToOrderItem);
   const demand = demandBySku(input.items);
-  if (!input.skipStock) {
-    await consumeWithoutReservation(db, demand);
+  const paid = input.payment.paid;
+  // Pagada: el stock sale ya. Pendiente: se aparta hasta que paguen o venza.
+  if (paid) {
+    if (!input.skipStock) await consumeWithoutReservation(db, demand);
+  } else {
+    await assertAndReserve(db, demand);
   }
-  const totals = totalsOf(orderItems, input.shipping.envioCop);
+
+  const channel = input.channel ?? "manual";
+  const totals = totalsOf(orderItems, input.shipping.envioCop, input.discountCop ?? 0);
   const now = Date.now();
   const ref = db.collection(COLLECTIONS.orders).doc();
-  const orderNumber = await nextOrderNumber(db);
+  const reference = input.payment.reference?.trim();
+  const payLink = !paid && isLinkMethod(input.payment.method);
+  const meta: NonNullable<MoraOrder["meta"]> = {
+    ...(input.invoice ? { invoiceRequested: true } : {}),
+    ...(payLink ? { payLink: true } : {}),
+  };
+  let orderNumber: string;
+  try {
+    orderNumber = await nextOrderNumber(db);
+  } catch (error) {
+    if (!paid) await releaseReservation(db, demand).catch(() => undefined);
+    else if (!input.skipStock) await restoreUnits(db, demand).catch(() => undefined);
+    throw error;
+  }
   const order: MoraOrder = {
     id: ref.id,
     orderNumber,
-    status: "paid",
-    channel: input.channel ?? "manual",
+    status: paid ? "paid" : "awaiting_payment",
+    channel,
     payment: {
-      method: input.paymentMethod,
-      status: "approved",
+      method: input.payment.method,
+      status: paid ? "approved" : "pending",
+      ...(reference ? { reference } : {}),
+      ...(payLink && input.boldReference ? { boldReference: input.boldReference } : {}),
     },
     customer: input.customer,
     shipping: input.shipping,
     items: orderItems,
     totals,
-    notes: input.notes,
-    attribution: input.attribution,
-    conversationId: input.conversationId,
-    timeline: [
-      { status: "awaiting_payment", at: now, by: input.createdBy },
-      { status: "paid", at: now, by: input.createdBy, note: MANUAL_SALE_NOTE[input.channel ?? "manual"] },
-    ],
+    timeline: paid
+      ? [
+          { status: "awaiting_payment", at: now, by: input.createdBy },
+          { status: "paid", at: now, by: input.createdBy, note: MANUAL_SALE_NOTE[channel] },
+        ]
+      : [
+          {
+            status: "awaiting_payment",
+            at: now,
+            by: input.createdBy,
+            note: `${MANUAL_SALE_NOTE[channel]} · espera ${MANUAL_PAY_LABEL[input.payment.method].toLowerCase()}`,
+          },
+        ],
     createdAt: now,
     updatedAt: now,
-    paidAt: now,
     createdBy: input.createdBy,
+    ...(input.notes?.trim() ? { notes: input.notes.trim() } : {}),
+    ...(input.attribution ? { attribution: input.attribution } : {}),
+    ...(input.conversationId ? { conversationId: input.conversationId } : {}),
+    ...(Object.keys(meta).length ? { meta } : {}),
+    ...(paid ? { paidAt: now } : { expiresAt: now + MANUAL_PENDING_TTL_MS }),
   };
   await ref.set(order);
   await db
     .collection(COLLECTIONS.orderNumbers)
     .doc(orderNumber)
     .set({ orderId: ref.id, createdAt: now });
-  await bumpDailyStats(order);
-  await sendPaidCustomerEmail(order).catch(() => undefined);
-  await sendPaidStaffEmail(order).catch(() => undefined);
-  await recordPurchase(order);
-  if (input.conversationId) {
-    await updateConversation(input.conversationId, {
-      status: "sold",
-      orderId: order.id,
-      orderNumber: order.orderNumber,
-      // Chat de Instagram: el celular del pedido lo une con sus compras y con su WhatsApp.
-      ...(isInstagramConversationId(input.conversationId) && normalizePhone(input.customer.phone ?? "").length >= 12
-        ? { phone: normalizePhone(input.customer.phone ?? "") }
-        : {}),
-    }).catch(() => undefined);
-    const { addCrmNote } = await import("./crm");
-    await addCrmNote({
-      phone: input.conversationId,
-      text: `Venta ${order.orderNumber}`,
-      by: input.createdBy,
-      byName: "Ventas",
-      kind: "system",
-    }).catch(() => undefined);
+
+  if (!paid) {
+    if (input.conversationId) {
+      await linkConversation(order, input.createdBy, "pending");
+    }
+    return order;
   }
-  await ref.set(
-    { emails: { paidSentAt: Date.now() }, updatedAt: Date.now() },
-    { merge: true },
-  );
-  return { ...order, emails: { paidSentAt: Date.now() } };
+
+  const emails = await settlePaidOrder(order, input.createdBy);
+  const invoice = await tryEmitPaidOrderInvoice(db, order).catch((error) => {
+    console.error("[matias]", error);
+    return null;
+  });
+  return {
+    ...order,
+    emails,
+    ...(invoice && order.meta?.invoiceRequested ? { invoice: invoice.snapshot } : {}),
+  };
+}
+
+/** Une el chat con el pedido. Con el pago adentro, el chat queda como vendido. */
+async function linkConversation(order: MoraOrder, by: string | undefined, state: "pending" | "sold") {
+  const conversationId = order.conversationId;
+  if (!conversationId) return;
+  const phone = normalizePhone(order.customer.phone ?? "");
+  await updateConversation(conversationId, {
+    ...(state === "sold" ? { status: "sold" as const } : {}),
+    orderId: order.id,
+    orderNumber: order.orderNumber,
+    // Chat de Instagram: el celular del pedido lo une con sus compras y con su WhatsApp.
+    ...(isInstagramConversationId(conversationId) && phone.length >= 12 ? { phone } : {}),
+  }).catch(() => undefined);
+  const { addCrmNote } = await import("./crm");
+  await addCrmNote({
+    phone: conversationId,
+    text:
+      state === "sold"
+        ? `Venta ${order.orderNumber}`
+        : `Pedido ${order.orderNumber} creado, esperando el pago`,
+    by: by ?? "sistema",
+    byName: "Ventas",
+    kind: "system",
+  }).catch(() => undefined);
+}
+
+/**
+ * Todo lo que pasa cuando un pedido queda pagado, venga de donde venga:
+ * estadísticas, correo al cliente y al equipo, compra en Meta/CRM y chat vendido.
+ * Nunca lanza: el pedido ya está pagado y nada de esto lo puede devolver.
+ */
+async function settlePaidOrder(order: MoraOrder, by?: string) {
+  await bumpDailyStats(order).catch((error) => console.error("[stats]", error));
+  if (order.customer.email?.trim()) {
+    await sendPaidCustomerEmail(order).catch((error) =>
+      console.error("[email paid customer]", error),
+    );
+  }
+  await sendPaidStaffEmail(order).catch(() => undefined);
+  await recordPurchase(order).catch((error) => console.error("[orders] compra", error));
+  await linkConversation(order, by, "sold");
+  const emails = { ...(order.emails ?? {}), paidSentAt: Date.now() };
+  await orderRef(adminDb(), order.id)
+    .set({ emails, updatedAt: Date.now() }, { merge: true })
+    .catch(() => undefined);
+  return emails;
 }
 
 export async function getOrder(id: string) {
@@ -520,16 +599,7 @@ async function fulfillOrderDoc(
         console.error("[discount settle]", error),
       );
     }
-    await bumpDailyStats(paid);
-    await sendPaidCustomerEmail(paid).catch((error) =>
-      console.error("[email paid customer]", error),
-    );
-    await sendPaidStaffEmail(paid).catch(() => undefined);
-    await recordPurchase(paid);
-    await ref.set(
-      { emails: { ...(paid.emails ?? {}), paidSentAt: Date.now() } },
-      { merge: true },
-    );
+    await settlePaidOrder(paid);
   }
 
   if (paid.status === "paid" && paid.payment.status === "approved") {
@@ -673,11 +743,11 @@ export async function transitionOrder(input: {
   const next = { ...order, ...patch } as MoraOrder;
   const emails = { ...(order.emails ?? {}) };
 
-  if (input.to === "paid" && !emails.paidSentAt) {
-    await sendPaidCustomerEmail(next).catch((error) =>
-      console.error("[email paid customer]", error),
-    );
-    emails.paidSentAt = Date.now();
+  if (input.to === "paid" && order.status === "awaiting_payment") {
+    // Mismo cierre que un pago en línea: estadísticas, correos, compra y factura.
+    Object.assign(emails, await settlePaidOrder(next, input.by));
+    const invoice = await tryEmitPaidOrderInvoice(db, next).catch(() => null);
+    if (invoice && invoice.snapshot.status !== "skipped") next.invoice = invoice.snapshot;
   }
 
   if (input.to === "sizer_transit" && !emails.sizerDispatchedSentAt) {
@@ -811,17 +881,21 @@ export async function confirmOrderSizes(input: {
 
 export function publicOrderView(order: MoraOrder) {
   const expired = Boolean(order.expiresAt && order.expiresAt <= Date.now());
-  const canRetry =
-    order.status === "awaiting_payment" &&
-    !expired &&
-    (order.payment.status === "declined" ||
-      order.payment.status === "voided" ||
-      order.payment.status === "error");
+  const failed =
+    order.payment.status === "declined" ||
+    order.payment.status === "voided" ||
+    order.payment.status === "error";
+  // Venta manual con enlace: el cliente aún no ha intentado pagar.
+  const payLink = Boolean(order.meta?.payLink) && isLinkMethod(order.payment.method);
+  const canRetry = order.status === "awaiting_payment" && !expired && (failed || payLink);
   return {
     orderNumber: order.orderNumber,
     status: order.status,
     paymentStatus: order.payment.status,
     canRetry,
+    /** Primer pago de un enlace (no un reintento): cambia el texto del botón. */
+    firstPay: canRetry && payLink && !failed,
+    payMethod: order.payment.method,
     expiresAt: order.expiresAt ?? null,
     needsSize: orderNeedsSize(order.items),
     hasSizer: orderHasSizer(order.items),

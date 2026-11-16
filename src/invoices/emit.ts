@@ -198,7 +198,8 @@ function buildPayload(
     payments: [
       {
         payment_method_id: 1,
-        means_payment_id: config.meansElectronic,
+        means_payment_id:
+          order.payment.method === "efectivo" ? config.meansCash : config.meansElectronic,
         value_paid: copToDecimal2(payable),
       },
     ],
@@ -251,7 +252,7 @@ function buildPayload(
 }
 
 /**
- * Factura electrónica de un pedido de ecommerce ya pagado.
+ * Factura electrónica de un pedido ya pagado (tienda, o venta manual que la pidió).
  * Idempotente: un pedido exitoso genera a lo sumo una factura.
  * Nunca lanza; el cobro no depende de MATIAS.
  */
@@ -260,7 +261,10 @@ export async function tryEmitPaidOrderInvoice(
   order: MoraOrder,
 ): Promise<InvoiceEmitResult> {
   try {
-    if (order.channel !== "online") return skipped("no_ecommerce");
+    // Tienda: siempre. Venta manual: solo si el vendedor marcó «Factura electrónica».
+    if (order.channel !== "online" && !order.meta?.invoiceRequested) {
+      return skipped("no_ecommerce");
+    }
     if (order.status !== "paid" || order.payment.status !== "approved") {
       return skipped("venta_no_exitosa");
     }

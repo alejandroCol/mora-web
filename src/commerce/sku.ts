@@ -112,6 +112,24 @@ export function normalizeCartLine(line: CartLine): CartLine {
   };
 }
 
+/** Por qué una línea (ya normalizada) no se puede vender, o null si todas sirven. */
+export function cartLinesError(lines: CartLine[]): string | null {
+  for (const line of lines) {
+    if (isCaseLine(line)) {
+      if (!isCaseColorId(line.finishId)) return "Hay un case inválido.";
+      continue;
+    }
+    if (!isModelId(line.modelId)) return "Hay un anillo inválido.";
+    const product = products[line.modelId];
+    if (!product || !product.finishes.includes(line.finishId as FinishId)) {
+      return "Hay un anillo inválido.";
+    }
+    if (isSizePending(line)) continue;
+    if (!product.sizes.includes(line.size)) return "Hay una talla inválida.";
+  }
+  return null;
+}
+
 export function lineToOrderItem(line: CartLine): OrderItem {
   const normalized = normalizeCartLine(line);
   if (isCaseLine(normalized)) {

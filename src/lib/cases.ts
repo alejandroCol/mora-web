@@ -1,5 +1,5 @@
 export type AccessoryId = "case";
-export type CaseColorId = "ice" | "mint" | "chocolate" | "sage" | "sky";
+export type CaseColorId = "ice" | "mint" | "chocolate" | "sage" | "sky" | "lavender";
 
 export type CaseColor = {
   id: CaseColorId;
@@ -31,11 +31,11 @@ export const CASE_PRODUCT: CaseProduct = {
   line: "Silicona",
   material: "Silicona suave",
   price: 19_900,
-  colors: ["ice", "mint", "chocolate", "sage", "sky"],
+  colors: ["ice", "mint", "chocolate", "sage", "sky", "lavender"],
   promise: "Lo cuida. No se ve.",
   details: [
     "Cubre el anillo sin añadir peso.",
-    "Cinco colores, un mismo gesto.",
+    "Seis colores, un mismo gesto.",
     "Para Pro y Ultra.",
   ],
 };
@@ -81,6 +81,14 @@ export const caseColors: Record<CaseColorId, CaseColor> = {
     swatch: "linear-gradient(145deg, #8a97d4 0%, #5b6fbf 52%, #3d4e9a 100%)",
     src: "/cases/sky.jpg",
   },
+  lavender: {
+    id: "lavender",
+    title: "Lavanda",
+    whisper: "Rosa que tira a lila.",
+    slug: "lavanda",
+    swatch: "linear-gradient(145deg, #f3dcee 0%, #dcb6d8 52%, #c097bf 100%)",
+    src: "/cases/lavender.jpg",
+  },
 };
 
 export const CASE_COLOR_LIST = CASE_PRODUCT.colors.map((id) => caseColors[id]);
@@ -95,7 +103,8 @@ export function isCaseColorId(value: unknown): value is CaseColorId {
     value === "mint" ||
     value === "chocolate" ||
     value === "sage" ||
-    value === "sky"
+    value === "sky" ||
+    value === "lavender"
   );
 }
 

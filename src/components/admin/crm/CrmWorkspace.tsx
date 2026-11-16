@@ -722,7 +722,6 @@ export function CrmWorkspace() {
           authorizedFetch={authorizedFetch}
           onClose={() => setSale(false)}
           onCreated={() => {
-            setSale(false);
             void loadWorkspace();
             if (activeId) void loadThread(activeId);
           }}

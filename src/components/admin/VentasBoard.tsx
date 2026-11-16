@@ -11,6 +11,7 @@ import type { CommerceSettings, MoraOrder, OrderStatus } from "@/commerce/types"
 import { commerceLineLabel, orderHasSizer, orderNeedsSize } from "@/commerce/sizing";
 import { enCaminoTarget, guideKindFor } from "@/commerce/shipments";
 import { orderJourney } from "@/commerce/orderJourney";
+import { payLinkPath } from "@/commerce/manualSale";
 import { formatMoney } from "@/lib/catalog";
 import { useAdminAuth } from "./AdminAuth";
 import { ManualSaleForm } from "./ManualSaleForm";
@@ -395,6 +396,7 @@ export function VentasBoard() {
 
       {selectedFresh ? (
         <OrderDrawer
+          key={selectedFresh.id}
           order={selectedFresh}
           tracking={tracking}
           setTracking={setTracking}
@@ -583,6 +585,20 @@ function OrderDrawer({
       : null;
   const { steps, next } = orderJourney(order);
   const camino = enCaminoTarget(order);
+  const [copied, setCopied] = useState(false);
+  // Venta manual por enlace que aún no se paga.
+  const payUrl =
+    order.status === "awaiting_payment" && order.meta?.payLink && typeof window !== "undefined"
+      ? `${window.location.origin}${payLinkPath(order.orderNumber)}`
+      : "";
+  const invoiceLine =
+    order.invoice?.status === "success"
+      ? `Factura ${order.invoice.prefix ?? ""}${order.invoice.documentNumber ?? ""}`
+      : order.invoice?.status === "failed"
+        ? `Factura sin emitir: ${order.invoice.error ?? "error"}`
+        : order.meta?.invoiceRequested && order.status === "awaiting_payment"
+          ? "Factura electrónica al recibir el pago"
+          : "";
   const sizerGuide = Boolean(order.shipments?.sizer?.hekaGuideId);
   const ringsGuide = Boolean(
     order.shipments?.rings?.hekaGuideId ||
@@ -641,7 +657,23 @@ function OrderDrawer({
           {order.payment.boldPaymentType ?? order.payment.wompiPaymentType
             ? ` · ${order.payment.boldPaymentType ?? order.payment.wompiPaymentType}`
             : ""}
+          {order.payment.reference ? ` · ${order.payment.reference}` : ""}
         </p>
+        {invoiceLine ? (
+          <p className="mt-1 text-right text-[12px] text-[var(--admin-muted)]">{invoiceLine}</p>
+        ) : null}
+        {payUrl ? (
+          <div className="order-paylink">
+            <p>El cliente paga desde este enlace. Al pagar, el pedido se confirma solo.</p>
+            <button
+              type="button"
+              className="order-soft-btn"
+              onClick={() => void navigator.clipboard?.writeText(payUrl).then(() => setCopied(true))}
+            >
+              {copied ? "Enlace copiado" : "Copiar enlace de pago"}
+            </button>
+          </div>
+        ) : null}
 
         {/* Qué sigue: una tarjeta, una acción. */}
         <section className={`order-next is-${next.tone}`}>

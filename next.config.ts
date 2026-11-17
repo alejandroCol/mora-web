@@ -15,6 +15,16 @@ const nextConfig: NextConfig = {
   images: {
     qualities: [75, 100],
   },
+  // Links cortos para escribir en DMs; la marca UTM se agrega aquí.
+  async redirects() {
+    return [
+      {
+        source: "/ig",
+        destination: "/?utm_source=instagram&utm_medium=dm&utm_campaign=comentario_mora",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {

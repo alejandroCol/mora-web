@@ -1,6 +1,6 @@
 import { loadGrowthSettings } from "@/server/growthSettings";
-import { recordInstagramWebhook } from "@/server/instagram/debug";
-import { ingestInstagramWebhook } from "@/server/instagram/webhook";
+import { noteInstagramWebhookKinds, recordInstagramWebhook } from "@/server/instagram/debug";
+import { ingestInstagramWebhook, webhookKinds } from "@/server/instagram/webhook";
 import { verifyMetaSignature } from "@/server/metaSignature";
 
 export const dynamic = "force-dynamic";
@@ -59,11 +59,14 @@ export async function POST(request: Request) {
     errors: [error instanceof Error ? error.message : "fallo al procesar"],
   }));
   if (result.errors.length > 0) console.error("[instagram webhook]", result.errors);
+  const kinds = webhookKinds(payload);
+  console.log("[instagram webhook]", kinds.join(", ") || "vacío");
   await recordInstagramWebhook({
     lastPostAt: Date.now(),
     lastComments: result.comments,
     lastMessages: result.messages,
     lastError: result.errors.join(" · ").slice(0, 500),
   });
+  await noteInstagramWebhookKinds(kinds, result.messages);
   return Response.json({ ok: true });
 }

@@ -34,6 +34,29 @@ function reason(error: unknown) {
   return error instanceof Error ? error.message : "fallo desconocido";
 }
 
+function kindOf(event: InstagramMessagingEvent) {
+  if (event.message) return event.message.is_echo ? "eco" : "mensaje";
+  if (event.postback) return "botón";
+  if (event.reaction) return "reacción";
+  if (event.read) return "visto";
+  return "otro";
+}
+
+/** Tipos de aviso que trae el payload, sin contenido: «comments», «messaging:mensaje», «messaging:eco»… */
+export function webhookKinds(payload: unknown) {
+  const root = payload as Payload;
+  const kinds: string[] = [];
+  if (root.object !== "instagram") return [`objeto:${String(root.object)}`];
+  for (const entry of root.entry ?? []) {
+    for (const event of entry.messaging ?? []) kinds.push(`messaging:${kindOf(event)}`);
+    for (const change of entry.changes ?? []) {
+      const value = change.value as InstagramMessagingEvent | undefined;
+      kinds.push(MESSAGE_FIELDS.has(change.field ?? "") && value ? `${change.field}:${kindOf(value)}` : String(change.field));
+    }
+  }
+  return kinds;
+}
+
 export async function ingestInstagramWebhook(payload: unknown, settings: GrowthSettings) {
   const root = payload as Payload;
   const result = { comments: 0, messages: 0, errors: [] as string[] };

@@ -26,6 +26,19 @@ export async function loadInstagramWebhookDebug(): Promise<InstagramWebhookDebug
   }
 }
 
+const RECENT_MAX = 20;
+
+export async function noteInstagramWebhookKinds(kinds: string[], messages: number) {
+  await adminDb()
+    .runTransaction(async (tx) => {
+      const snap = await tx.get(debugDoc());
+      const data = (snap.data() ?? {}) as Partial<InstagramWebhookDebug>;
+      const recent = [{ at: Date.now(), kinds: kinds.slice(0, 10) }, ...(data.recent ?? [])].slice(0, RECENT_MAX);
+      tx.set(debugDoc(), { recent, messagesTotal: (data.messagesTotal ?? 0) + messages }, { merge: true });
+    })
+    .catch((error) => console.error("[instagram webhook] debug", error));
+}
+
 export async function recordInstagramWebhook(patch: Partial<InstagramWebhookDebug>) {
   await debugDoc()
     .set(patch, { merge: true })

@@ -118,6 +118,10 @@ export type InstagramWebhookDebug = {
   /** Última vez que Mora registró el webhook en la app de Meta, y los campos que Meta dejó suscritos. */
   registeredAt: number;
   registeredFields: string[];
+  /** Últimos avisos (más nuevo primero): solo el tipo, sin texto, para saber si Meta manda mensajes. */
+  recent?: { at: number; kinds: string[] }[];
+  /** Total de mensajes recibidos desde que existe el contador. */
+  messagesTotal?: number;
 };
 
 /** Avisos de Instagram que usa Mora: comentarios para las reglas, mensajes para el CRM. */

@@ -151,42 +151,37 @@ export function SizeChoice({
   return (
     <div>
       <div>
-        <div className="flex max-w-[26rem] items-center gap-2">
-          <div
-            className="grid min-w-0 flex-1 gap-1"
-            style={{ gridTemplateColumns: `repeat(${sizes.length}, minmax(0, 1fr))` }}
-            role="group"
-            aria-label="Talla"
-          >
-            {sizes.map((item) => {
-              const on = item === size;
-              const row = ringSize(item);
-              return (
-                <button
-                  key={item}
-                  type="button"
-                  aria-pressed={on}
-                  aria-label={row ? `Talla ${item}, ${diameterLabel(row)} por dentro` : `Talla ${item}`}
-                  onClick={() => onSize(item)}
-                  className={`mx-auto flex aspect-square w-full max-w-[2.2rem] items-center justify-center rounded-full text-[13px] tracking-[-0.02em] tabular-nums transition-colors ${
-                    on ? "bg-[#1d1d1f] text-white" : "bg-[#ebebef] text-[#1d1d1f] hover:bg-[#e0e0e5]"
-                  }`}
-                >
-                  {item}
-                </button>
-              );
-            })}
+        <div className="@container">
+          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 @min-[19.5rem]:flex-nowrap">
+            <div className="flex min-w-0 max-w-[14.5rem] grow flex-wrap items-center gap-[5px]" role="group" aria-label="Talla">
+              {sizes.map((item) => {
+                const on = item === size;
+                const row = ringSize(item);
+                return (
+                  <button
+                    key={item}
+                    type="button"
+                    aria-pressed={on}
+                    aria-label={row ? `Talla ${item}, ${diameterLabel(row)} por dentro` : `Talla ${item}`}
+                    onClick={() => onSize(item)}
+                    className={`flex aspect-square max-w-[1.8rem] shrink-0 grow basis-6 items-center justify-center rounded-full text-[12.5px] tracking-[-0.02em] tabular-nums transition-colors ${
+                      on ? "bg-[#1d1d1f] text-white" : "bg-[#ebebef] text-[#1d1d1f] hover:bg-[#e0e0e5]"
+                    }`}
+                  >
+                    {item}
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              aria-controls="size-equivalence"
+              onClick={() => setEquiv("note")}
+              className="whitespace-nowrap py-1 text-[11px] leading-none tracking-[-0.005em] text-[#6e6e73] underline decoration-black/20 underline-offset-[3px] transition-colors hover:text-[#1d1d1f]"
+            >
+              No encuentro mi talla
+            </button>
           </div>
-          <button
-            type="button"
-            aria-controls="size-equivalence"
-            onClick={() => setEquiv("note")}
-            className="shrink-0 text-left text-[11px] leading-[1.25] tracking-[-0.005em] text-[#6e6e73] underline decoration-black/20 underline-offset-[3px] transition-colors hover:text-[#1d1d1f]"
-          >
-            No encuentro
-            <br />
-            mi talla
-          </button>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <button

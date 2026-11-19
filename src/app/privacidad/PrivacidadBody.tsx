@@ -60,7 +60,7 @@ function english(): LegalCopy {
             </li>
             <li>
               <strong className={strong}>Ring data:</strong> sleep, steps, activity, heart rate, recovery
-              (HRV), blood oxygen, stress/tide, skin temperature, and other wellness readings depending on
+              (HRV), stress/tide, skin temperature, and other wellness readings depending on
               model. Synced over Bluetooth and stored <strong className={strong}>on your phone first</strong>.
             </li>
             <li>
@@ -112,7 +112,7 @@ function english(): LegalCopy {
           <p>
             <strong className={strong}>Apple Health (iOS, optional):</strong> if you turn on “Save to
             Health” in the app, Mora <strong className={strong}>writes</strong> steps, distance, active
-            energy, heart rate, blood oxygen, sleep stages, workouts and mindful minutes measured by your
+            energy, heart rate, sleep stages, workouts and mindful minutes measured by your
             ring into the Health app on your iPhone. Mora{" "}
             <strong className={strong}>never reads</strong> data from Health, and nothing from Health is
             sent to our servers or used for advertising. You can switch each data type off in Health ›
@@ -121,8 +121,8 @@ function english(): LegalCopy {
           <p>
             <strong className={strong}>Health Connect (Android, optional):</strong> the same applies on
             Android. If you turn on “Save to Health Connect”, Mora{" "}
-            <strong className={strong}>writes</strong> steps, distance, active energy, heart rate, blood
-            oxygen, sleep sessions, workouts and mindful minutes into Health Connect. Mora asks for
+            <strong className={strong}>writes</strong> steps, distance, active energy, heart rate, sleep
+            sessions, workouts and mindful minutes into Health Connect. Mora asks for
             write‑only permissions and <strong className={strong}>never reads</strong> from Health
             Connect. You can revoke each permission or delete Mora’s data from the Health Connect app.
           </p>
@@ -242,7 +242,7 @@ function english(): LegalCopy {
     kicker: "Legal · Wellness",
     title: "Privacy Policy",
     lead: "Your ring lives on your phone. Círculo only uploads summaries if you turn it on.",
-    updated: "Last updated · October 17, 2026",
+    updated: "Last updated · November 18, 2026",
     navLabel: "On this page",
     intro: (
       <p>
@@ -322,7 +322,7 @@ function spanish(): LegalCopy {
             </li>
             <li>
               <strong className={strong}>Datos del anillo:</strong> sueño, pasos, actividad, pulso,
-              recuperación (VFC), oxígeno en sangre, estrés/marea, temperatura de la piel y otras lecturas
+              recuperación (VFC), estrés/marea, temperatura de la piel y otras lecturas
               de bienestar según el modelo. Se sincronizan por Bluetooth y se guardan{" "}
               <strong className={strong}>primero en tu teléfono</strong>.
             </li>
@@ -377,7 +377,7 @@ function spanish(): LegalCopy {
           <p>
             <strong className={strong}>Salud de Apple (iOS, opcional):</strong> si activas «Guardar en
             Salud» en la app, Mora <strong className={strong}>escribe</strong> en la app Salud de tu
-            iPhone los pasos, la distancia, la energía activa, el pulso, el oxígeno, las fases de sueño,
+            iPhone los pasos, la distancia, la energía activa, el pulso, las fases de sueño,
             los entrenos y los minutos de calma que midió tu anillo. Mora{" "}
             <strong className={strong}>nunca lee</strong> datos de Salud, y nada de Salud se envía a
             nuestros servidores ni se usa para publicidad. Puedes apagar cada tipo en Salud › Compartir ›
@@ -387,7 +387,7 @@ function spanish(): LegalCopy {
             <strong className={strong}>Health Connect (Android, opcional):</strong> en Android pasa lo
             mismo. Si activas «Guardar en Health Connect», Mora{" "}
             <strong className={strong}>escribe</strong> en Health Connect los pasos, la distancia, la
-            energía activa, el pulso, el oxígeno, las sesiones de sueño, los entrenos y los minutos de
+            energía activa, el pulso, las sesiones de sueño, los entrenos y los minutos de
             calma. Mora pide permisos solo de escritura y <strong className={strong}>nunca lee</strong>{" "}
             de Health Connect. Puedes quitar cada permiso o borrar los datos de Mora desde la app Health
             Connect.
@@ -510,7 +510,7 @@ function spanish(): LegalCopy {
     kicker: "Legal · Bienestar",
     title: "Política de privacidad",
     lead: "Tu anillo vive en tu teléfono. Círculo solo sube resúmenes si tú lo activas.",
-    updated: "Última actualización · 17 de octubre de 2026",
+    updated: "Última actualización · 18 de noviembre de 2026",
     navLabel: "En esta página",
     intro: (
       <p>

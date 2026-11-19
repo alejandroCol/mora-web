@@ -2347,6 +2347,23 @@ body {
   }
 }
 
+.size-equiv {
+  animation: size-equiv-in 220ms ease-out;
+}
+
+@keyframes size-equiv-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .size-equiv {
+    animation: none;
+  }
+}
+
 .size-seg {
   display: flex;
   gap: 3px;

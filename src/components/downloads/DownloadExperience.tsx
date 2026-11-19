@@ -16,10 +16,6 @@ const SHOTS = [
     src: "/descargas/pulso.jpg",
     alt: "Entiende tu ritmo. La app muestra el pulso en 71 lpm, con mínimo, media y máximo del día.",
   },
-  {
-    src: "/descargas/cuerpo.jpg",
-    alt: "Conoce tu cuerpo. La app reúne pasos, pulso, recuperación, oxígeno, presión, estrés, piel y noche.",
-  },
 ] as const;
 
 function detectPlatform(): Platform {
@@ -206,7 +202,7 @@ export function DownloadExperience() {
           </p>
         </div>
 
-        <ul className="grid grid-cols-3 items-end gap-2 sm:gap-3 lg:gap-4">
+        <ul className="mx-auto grid w-full max-w-md grid-cols-2 items-end gap-3 sm:gap-4 lg:gap-5">
           {SHOTS.map((shot) => (
             <li key={shot.src}>
               <img

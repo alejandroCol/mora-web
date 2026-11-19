@@ -38,7 +38,7 @@ const FAQ = [
   },
   {
     q: "¿Se conecta con Salud de Apple o Health Connect?",
-    a: "Sí. En iPhone, Yo → Salud de Apple; en Android, Yo → Health Connect. Mora guarda pasos, pulso, oxígeno, sueño, entrenos y minutos de calma. Solo escribe; nunca lee tus datos de Salud ni de Health Connect.",
+    a: "Sí. En iPhone, Yo → Salud de Apple; en Android, Yo → Health Connect. Mora guarda pasos, pulso, sueño, entrenos y minutos de calma. Solo escribe; nunca lee tus datos de Salud ni de Health Connect.",
   },
   {
     q: "¿Cómo borro mi cuenta?",

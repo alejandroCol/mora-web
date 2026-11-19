@@ -123,7 +123,7 @@ export const products: Record<ModelId, RingProduct> = {
     finishes: ["lilac", "white", "black"],
     promise: "Se siente. No se anuncia.",
     details: [
-      "Estrés y presión del día, sin tocar nada.",
+      "Tu estrés del día, sin tocar nada.",
       "Gestos para una foto, el pulso o jugar.",
       "Para llevar todo el día, y olvidarlo.",
     ],

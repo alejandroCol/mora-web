@@ -3,45 +3,112 @@
 import { useEffect, useRef, useState } from "react";
 import type { SizingMethod } from "@/commerce/types";
 import { useSales } from "@/components/sales/SalesProvider";
+import { RING_SIZES, aroundLabel, diameterLabel, ringSize } from "@/lib/ringSizes";
 import { SizeGuideFilm } from "./SizeGuideFilm";
 import { SizerHologram } from "./SizerHologram";
-
-const SIZE_CHART = [
-  { size: 7, around: "5,50 cm", diameter: "17,5 mm" },
-  { size: 8, around: "5,75 cm", diameter: "18,3 mm" },
-  { size: 9, around: "6 cm", diameter: "19,1 mm" },
-  { size: 10, around: "6,28 cm", diameter: "20 mm" },
-  { size: 11, around: "6,54 cm", diameter: "20,8 mm" },
-  { size: 12, around: "6,79 cm", diameter: "21,6 mm" },
-  { size: 13, around: "7 cm", diameter: "22,3 mm" },
-];
 
 function SizeChart({ active }: { active: number }) {
   return (
     <div className="mt-3 px-1 pb-1">
       <p className="text-[14px] tracking-[-0.018em] text-[#1d1d1f]">Según tu medida</p>
       <p className="mt-0.5 text-[12px] leading-4 text-[#6e6e73]">Contorno del dedo, en centímetros.</p>
-      <table className="mt-2.5 w-full border-collapse text-left">
-        <thead>
-          <tr className="text-[11px] text-[#8e8e93]">
-            <th className="pb-1.5 pl-2 font-normal">Talla</th>
-            <th className="pb-1.5 font-normal">Contorno</th>
-            <th className="pb-1.5 pr-2 text-right font-normal">Diámetro</th>
-          </tr>
-        </thead>
-        <tbody>
-          {SIZE_CHART.map((row) => {
-            const on = row.size === active;
-            return (
-              <tr key={row.size} className={on ? "bg-[#f5f5f7]" : ""}>
-                <td className="rounded-l-lg py-1.5 pl-2 text-[14px] tabular-nums text-[#1d1d1f]">{row.size}</td>
-                <td className="py-1.5 text-[14px] tabular-nums text-[#1d1d1f]">{row.around}</td>
-                <td className="rounded-r-lg py-1.5 pr-2 text-right text-[13px] tabular-nums text-[#6e6e73]">{row.diameter}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <SizeTable active={active} />
+    </div>
+  );
+}
+
+function SizeTable({ active }: { active: number }) {
+  return (
+    <table className="mt-2.5 w-full border-collapse text-left">
+      <thead>
+        <tr className="text-[11px] text-[#8e8e93]">
+          <th className="pb-1.5 pl-2 font-normal">Talla</th>
+          <th className="pb-1.5 font-normal">Por dentro</th>
+          <th className="pb-1.5 pr-2 text-right font-normal">Contorno</th>
+        </tr>
+      </thead>
+      <tbody>
+        {RING_SIZES.map((row) => {
+          const on = row.size === active;
+          return (
+            <tr key={row.size} className={on ? "bg-white" : ""}>
+              <td className="rounded-l-lg py-1.5 pl-2 text-[14px] tabular-nums text-[#1d1d1f]">{row.size}</td>
+              <td className="py-1.5 text-[13px] tabular-nums text-[#1d1d1f]">{diameterLabel(row)}</td>
+              <td className="rounded-r-lg py-1.5 pr-2 text-right text-[13px] tabular-nums text-[#6e6e73]">{aroundLabel(row)}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <svg
+      width="11"
+      height="11"
+      viewBox="0 0 12 12"
+      aria-hidden
+      className={`text-[#8e8e93] transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+    >
+      <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function JewelryNote({ onGuide }: { onGuide: () => void }) {
+  const smallest = RING_SIZES[0];
+  return (
+    <div className="px-2">
+      <p className="text-[13px] leading-[1.4] tracking-[-0.012em] text-[#6e6e73]">
+        <span className="text-[#1d1d1f]">¿En joyería eres 5 o 6?</span> La talla más pequeña de Mora es la{" "}
+        {smallest.size} ({diameterLabel(smallest)} por dentro). Mora{" "}
+        <span className="font-semibold text-[#1d1d1f]">va en el dedo índice</span>, que suele ser más grueso que el
+        anular: mide ese dedo o pide el medidor <span className="text-[#1d1d1f]">totalmente gratis</span>.
+      </p>
+      <button
+        type="button"
+        onClick={onGuide}
+        className="mt-2 text-[13px] text-[#1d1d1f] underline decoration-black/20 underline-offset-4"
+      >
+        Ver cómo medirme
+      </button>
+    </div>
+  );
+}
+
+function SizeEquivalence({
+  size,
+  noteFirst,
+  onGuide,
+}: {
+  size: number;
+  noteFirst: boolean;
+  onGuide: () => void;
+}) {
+  const divider = <div className="mx-2 my-3 h-px bg-black/[0.06]" />;
+  return (
+    <div id="size-equivalence" className="size-equiv mt-2 max-w-[22rem] rounded-[14px] bg-[#f5f5f7] px-2.5 pb-3 pt-3">
+      {noteFirst ? (
+        <>
+          <JewelryNote onGuide={onGuide} />
+          {divider}
+        </>
+      ) : null}
+      <p className="px-2 text-[13px] tracking-[-0.012em] text-[#1d1d1f]">
+        Medidas · <span className="font-semibold">dedo índice</span>
+      </p>
+      <SizeTable active={size} />
+      {noteFirst ? null : (
+        <>
+          {divider}
+          <JewelryNote onGuide={onGuide} />
+        </>
+      )}
+      <p className="mt-2.5 px-2 text-[11px] leading-4 text-[#8e8e93]">
+        Medidas aproximadas, del anillo por dentro.
+      </p>
     </div>
   );
 }
@@ -64,6 +131,8 @@ export function SizeChoice({
   const sales = useSales();
   const [info, setInfo] = useState(false);
   const [guide, setGuide] = useState(false);
+  const [equiv, setEquiv] = useState<"closed" | "sizes" | "note">("closed");
+  const open = equiv !== "closed";
   const rowRef = useRef<HTMLDivElement>(null);
   const ask = prompt > 0 && !sizing;
 
@@ -82,31 +151,67 @@ export function SizeChoice({
   return (
     <div>
       <div>
-        <div className="flex flex-wrap justify-start gap-1" role="group" aria-label="Talla">
-          {sizes.map((item) => {
-            const on = item === size;
-            return (
-              <button
-                key={item}
-                type="button"
-                aria-pressed={on}
-                onClick={() => onSize(item)}
-                className={`grid h-8 w-8 place-items-center rounded-full text-[14px] tabular-nums tracking-[-0.02em] transition-colors ${
-                  on ? "bg-[#1d1d1f] text-white" : "text-[#1d1d1f] hover:bg-black/[0.05]"
-                }`}
-              >
-                {item}
-              </button>
-            );
-          })}
+        <div className="flex max-w-[26rem] items-center gap-2">
+          <div
+            className="grid min-w-0 flex-1 gap-1"
+            style={{ gridTemplateColumns: `repeat(${sizes.length}, minmax(0, 1fr))` }}
+            role="group"
+            aria-label="Talla"
+          >
+            {sizes.map((item) => {
+              const on = item === size;
+              const row = ringSize(item);
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  aria-pressed={on}
+                  aria-label={row ? `Talla ${item}, ${diameterLabel(row)} por dentro` : `Talla ${item}`}
+                  onClick={() => onSize(item)}
+                  className={`mx-auto flex aspect-square w-full max-w-[2.2rem] items-center justify-center rounded-full text-[13px] tracking-[-0.02em] tabular-nums transition-colors ${
+                    on ? "bg-[#1d1d1f] text-white" : "bg-[#ebebef] text-[#1d1d1f] hover:bg-[#e0e0e5]"
+                  }`}
+                >
+                  {item}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            aria-controls="size-equivalence"
+            onClick={() => setEquiv("note")}
+            className="shrink-0 text-left text-[11px] leading-[1.25] tracking-[-0.005em] text-[#6e6e73] underline decoration-black/20 underline-offset-[3px] transition-colors hover:text-[#1d1d1f]"
+          >
+            No encuentro
+            <br />
+            mi talla
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={() => setGuide(true)}
-          className="mt-3 inline-flex h-8 items-center rounded-full bg-[#efeff2] px-3 text-[13px] tracking-[-0.01em] text-[#1d1d1f] transition-colors hover:bg-[#e6e6ea]"
-        >
-          Cómo medir mi talla?
-        </button>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => setGuide(true)}
+            className="inline-flex h-8 items-center rounded-full bg-[#efeff2] px-2.5 text-[13px] tracking-[-0.01em] text-[#1d1d1f] transition-colors hover:bg-[#e6e6ea]"
+          >
+            Cómo medir mi talla?
+          </button>
+          <button
+            type="button"
+            aria-expanded={open}
+            aria-controls="size-equivalence"
+            onClick={() => setEquiv(open ? "closed" : "sizes")}
+            className={`inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[13px] tracking-[-0.01em] text-[#1d1d1f] transition-colors ${
+              open ? "bg-[#e3e3e8]" : "bg-[#efeff2] hover:bg-[#e6e6ea]"
+            }`}
+          >
+            Medidas
+            <Chevron open={open} />
+          </button>
+        </div>
+        {open ? (
+          <SizeEquivalence size={size} noteFirst={equiv === "note"} onGuide={() => setGuide(true)} />
+        ) : null}
       </div>
 
       <div ref={rowRef} className="mt-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">

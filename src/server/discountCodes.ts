@@ -182,7 +182,7 @@ export async function lookupDiscountCode(raw: string): Promise<DiscountLookup> {
  */
 export type CheckoutDiscount =
   | { source: "code"; code: string; kind: CartOfferKind; value: number }
-  | { source: "recovery"; code: string; kind: CartOfferKind; value: number; sessionId: string }
+  | { source: "recovery"; code: string; kind: CartOfferKind; value: number; sessionId: string; expiresAt?: number }
   | { source: null; reason?: string };
 
 export async function resolveCheckoutDiscount(input: {
@@ -216,6 +216,7 @@ export async function resolveCheckoutDiscount(input: {
       kind: cart.offer.kind,
       value: cart.offer.value,
       sessionId: cart.sessionId,
+      expiresAt: cart.offer.expiresAt,
     };
   }
   if (typed) {

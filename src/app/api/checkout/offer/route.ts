@@ -26,6 +26,7 @@ export async function GET(request: Request) {
         kind: discount.kind,
         value: discount.value,
         source: discount.source,
+        expiresAt: discount.source === "recovery" ? discount.expiresAt : undefined,
         discountCop: discountOf(subtotal, offer),
       },
     });

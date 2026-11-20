@@ -24,6 +24,7 @@ import { CartLineVisual } from "@/components/cart/CartLineVisual";
 import { FreeShipping } from "@/components/product/FreeShipping";
 import { AddiMark } from "@/components/payments/AddiMark";
 import { CheckoutNotice } from "./CheckoutNotice";
+import { OfferBar } from "./OfferBar";
 import {
   addiPhoneIssue,
   noticeForValidation,
@@ -93,6 +94,8 @@ type AppliedOffer = {
   value: number;
   /** `code` = código del super admin; `recovery` = oferta de carrito abandonado. */
   source?: "code" | "recovery";
+  /** Solo ofertas de carrito con vigencia. */
+  expiresAt?: number;
 };
 
 export function CheckoutFlow() {
@@ -143,6 +146,8 @@ export function CheckoutFlow() {
   const [offerError, setOfferError] = useState("");
   const [offerChecking, setOfferChecking] = useState(false);
   const [offerTick, setOfferTick] = useState(0);
+  // Llegó por el enlace de su descuento (correo o WhatsApp): solo así sale la franja con la cuenta regresiva.
+  const [cameByOfferLink] = useState(() => Boolean(new URLSearchParams(window.location.search).get("oferta")));
   // Tras «Quitar», no volvemos a aplicar sola la oferta de la sesión.
   const [autoOfferOff, setAutoOfferOff] = useState(false);
   const [bagOpen, setBagOpen] = useState(false);
@@ -661,6 +666,17 @@ export function CheckoutFlow() {
 
   return (
     <form onSubmit={onContinue} className="check-flow">
+      {cameByOfferLink && appliedOffer?.source === "recovery" ? (
+        <OfferBar
+          label={
+            appliedOffer.kind === "percent"
+              ? `${appliedOffer.value}% de descuento`
+              : `${formatMoney(discount)} de descuento`
+          }
+          expiresAt={appliedOffer.expiresAt}
+          onExpire={() => setOfferTick((tick) => tick + 1)}
+        />
+      ) : null}
       <div className="check-top sm:pt-3">
         <Link
           href="/#coleccion"

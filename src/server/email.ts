@@ -310,6 +310,9 @@ function shell(opts: {
               <a href="https://moraring.com" style="color:${ACCENT};text-decoration:none">moraring.com</a>
             </td>
           </tr>
+          <tr>
+            <td align="center" style="padding:6px 24px 0;font-family:${FONT};font-size:10px;line-height:1.4;color:${MIST}">${Date.now().toString(36)}</td>
+          </tr>
         </table>
       </td>
     </tr>

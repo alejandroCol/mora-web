@@ -593,7 +593,7 @@ function couponCopyUrl(code: string, sessionId: string) {
 }
 
 const HERO_DEEP = "#5a4da6";
-const HERO_SOFT = "#e9e5fa";
+const HERO_SOFT = "#f1eff8";
 
 /** Tarjeta protagonista: el descuento en grande, el botón dentro y el código pequeño debajo. */
 function offerHero(opts: { figure: string; caption: string; saving: string; href: string; code: string; copyUrl: string }) {
@@ -640,8 +640,8 @@ export async function renderAbandonedOfferEmail(cart: AbandonedCart) {
   const headline = percent ? `${offer.value} % de descuento` : `${saving} de descuento`;
   const href = abandonedCheckoutUrl(offer.code, cart.sessionId);
   const figure = percent
-    ? `<span style="font-size:92px;line-height:1;font-weight:300;letter-spacing:-0.04em">${offer.value}</span><span style="font-size:44px;line-height:1;font-weight:300;vertical-align:top;position:relative;top:10px;padding-left:4px">%</span>`
-    : `<span style="font-size:52px;line-height:1.05;font-weight:300;letter-spacing:-0.03em;white-space:nowrap">−${escapeHtml(saving)}</span>`;
+    ? `<span style="font-size:92px;line-height:1;font-weight:300;letter-spacing:-0.04em;color:${WHITE}">${offer.value}</span><span style="font-size:44px;line-height:1;font-weight:300;vertical-align:top;position:relative;top:10px;padding-left:4px;color:${WHITE}">%</span>`
+    : `<span style="font-size:52px;line-height:1.05;font-weight:300;letter-spacing:-0.03em;white-space:nowrap;color:${WHITE}">−${escapeHtml(saving)}</span>`;
   const hero = offerHero({
     figure,
     caption: percent ? "de descuento en tu pedido" : "menos en tu pedido",
@@ -660,7 +660,7 @@ export async function renderAbandonedOfferEmail(cart: AbandonedCart) {
     preheader: `Guardamos tu pedido con ${headline}.`,
     kicker: "Te lo guardamos",
     kickerTone: "plain",
-    title: "Tu anillo te está esperando.",
+    title: `Te regalamos ${percent ? `${offer.value}%` : saving} de descuento en tu ${ring ? "Mora Ring" : "pedido"}`,
     intro: `${name ? `Hola, ${escapeHtml(name)}. ` : "Hola. "}Dejaste tu pedido a medio camino, así que lo guardamos y le pusimos un descuento para que lo termines cuando quieras.`,
     body: `${hero}
       <div style="margin:32px 0 4px;font-family:${FONT};font-size:15px;font-weight:500;color:${INK}">Tu pedido</div>

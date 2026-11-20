@@ -10,6 +10,10 @@ import { siteUrl } from "@/lib/site";
 import { useAdminAuth } from "./AdminAuth";
 
 type Filter = "all" | "open" | "offered";
+type CartAction = "offer" | "dismiss" | "remind";
+
+/** Mismo tope que el servidor: un recordatorio cada 12 h. */
+const REMINDER_GAP_MS = 12 * 60 * 60 * 1000;
 
 function ago(at: number) {
   const diff = Math.max(0, Date.now() - at);
@@ -84,7 +88,7 @@ export function AbandonedCartsModule() {
     [carts, selected],
   );
 
-  async function act(id: string, action: "offer" | "dismiss", kind?: CartOfferKind, value?: number) {
+  async function act(id: string, action: CartAction, kind?: CartOfferKind, value?: number) {
     setBusy(true);
     setNote("");
     try {
@@ -105,6 +109,7 @@ export function AbandonedCartsModule() {
         const sent = data.emailed ? "Correo enviado." : "Oferta lista. Copia el enlace si no hay correo.";
         setNote(data.checkoutUrl ? `${sent} ${data.checkoutUrl}` : sent);
       }
+      if (action === "remind") setNote("Recordatorio enviado.");
       await load();
     } catch (error) {
       setNote(error instanceof Error ? error.message : "No se pudo aplicar.");
@@ -195,6 +200,7 @@ export function AbandonedCartsModule() {
                     </p>
                     <p className="mt-2 text-[11px] uppercase tracking-[0.08em] text-[var(--admin-muted)]">
                       {cart.status === "offered" ? "Con oferta" : "Abierto"} · {ago(cart.updatedAt)}
+                      {cart.reminder ? " · Recordado" : ""}
                       {cart.items.length ? ` · ${cart.items.length} anillo(s)` : ""}
                     </p>
                   </div>
@@ -253,9 +259,12 @@ function CartDrawer({
   busy: boolean;
   note: string;
   onClose: () => void;
-  onAct: (id: string, action: "offer" | "dismiss", kind?: CartOfferKind, value?: number) => void;
+  onAct: (id: string, action: CartAction, kind?: CartOfferKind, value?: number) => void;
 }) {
   const phone = (cart.customer.phone ?? "").replace(/\D/g, "");
+  const reminder = cart.reminder;
+  const [now] = useState(() => Date.now());
+  const remindedRecently = Boolean(reminder && now - reminder.sentAt < REMINDER_GAP_MS);
   const crmHref = phone ? `/superadmin/crm?c=${phone.startsWith("57") ? phone : `57${phone}`}` : null;
 
   return (
@@ -294,6 +303,24 @@ function CartDrawer({
           <p className="mt-1 text-right text-[12px] text-[var(--admin-muted)]">
             {cart.offer.code} · −{formatMoney(cart.offer.discountCop)}
           </p>
+        ) : null}
+
+        {cart.customer.email ? (
+          <div className="mt-6">
+            <button
+              type="button"
+              disabled={busy || remindedRecently}
+              onClick={() => void onAct(cart.id, "remind")}
+              className="flex h-11 w-full items-center justify-center rounded-full border border-[var(--admin-line)] text-[13px] disabled:opacity-40"
+            >
+              Enviar recordatorio por correo
+            </button>
+            <p className="mt-2 text-[12px] leading-5 text-[var(--admin-muted)]">
+              {reminder
+                ? `Último recordatorio ${ago(reminder.sentAt)}${reminder.count > 1 ? ` · ${reminder.count} enviados` : ""}.${remindedRecently ? " Puedes enviar otro 12 h después." : ""}`
+                : "Correo amable, sin descuento, con su pedido y un botón para retomarlo."}
+            </p>
+          </div>
         ) : null}
 
         <p className="mt-6 text-[13px] leading-6 text-[var(--admin-muted)]">

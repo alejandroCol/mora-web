@@ -3,8 +3,9 @@ import { jsonError, requirePermission } from "@/server/adminAuth";
 import {
   dismissAbandonedCart,
   offerAbandonedDiscount,
+  remindAbandonedCart,
 } from "@/server/abandonedCarts";
-import { abandonedCheckoutUrl } from "@/server/email";
+import { abandonedCheckoutUrl, abandonedResumeUrl } from "@/server/email";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -13,7 +14,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
     const staff = await requirePermission(request, "sales");
     const { id } = await ctx.params;
     const body = (await request.json()) as {
-      action?: "offer" | "dismiss";
+      action?: "offer" | "dismiss" | "remind";
       kind?: CartOfferKind;
       value?: number;
     };
@@ -21,6 +22,11 @@ export async function PATCH(request: Request, ctx: Ctx) {
     if (body.action === "dismiss") {
       const cart = await dismissAbandonedCart(id);
       return Response.json({ ok: true, cart });
+    }
+
+    if (body.action === "remind") {
+      const cart = await remindAbandonedCart(id, staff.uid);
+      return Response.json({ ok: true, cart, emailed: true, checkoutUrl: abandonedResumeUrl(cart.sessionId) });
     }
 
     if (body.action !== "offer" || !body.kind || body.value == null) {

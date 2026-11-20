@@ -1,5 +1,5 @@
 import { BRAND } from "@/brand";
-import { isCaseLine, lineFinishTitle, lineName } from "@/commerce/lines";
+import { cartHasRing, isCaseLine, lineFinishTitle, lineName } from "@/commerce/lines";
 import { orderNeedsSize, sizeCopy, tallaPath } from "@/commerce/sizing";
 import { caseColor } from "@/lib/cases";
 import { finishPhoto, formatMoney, isFinishId, isModelId } from "@/lib/catalog";
@@ -622,6 +622,46 @@ export async function sendAbandonedOfferEmail(cart: AbandonedCart) {
     `Tu anillo te espera con ${formatMoney(offer.discountCop)} de descuento · ${EMAIL_BRAND}`,
     html,
   );
+}
+
+/** Rearma el carrito en el checkout aunque lo abran en otro dispositivo. */
+export function abandonedResumeUrl(sessionId: string) {
+  return `${siteUrl()}/checkout?carrito=${encodeURIComponent(sessionId)}`;
+}
+
+/** Recordatorio sin descuento: el mismo carrito, tal como lo dejaron. */
+export async function sendAbandonedReminderEmail(cart: AbandonedCart) {
+  const email = cart.customer.email?.trim();
+  if (!email || cart.items.length === 0) return { ok: false as const, error: "missing_email" };
+
+  const name = cart.customer.firstName?.trim();
+  const photos = await linePhotos(cart.items);
+  const perks = [
+    cartHasRing(cart.items) ? "Envío gratis a toda Colombia." : "",
+    "Paga con tarjeta, PSE, Nequi o a cuotas con Addi.",
+    cartHasRing(cart.items) ? "¿Dudas con la talla? Te enviamos el medidor primero." : "",
+  ]
+    .filter(Boolean)
+    .map(
+      (line) =>
+        `<tr><td style="padding:4px 0;font-family:${FONT};font-size:14px;line-height:1.55;color:${SOFT}">· ${escapeHtml(line)}</td></tr>`,
+    )
+    .join("");
+  const html = shell({
+    preheader: "Guardamos tu pedido tal como lo dejaste.",
+    kicker: "Te lo guardamos",
+    kickerTone: "plain",
+    title: "Tu Mora sigue aquí.",
+    intro: `${name ? `Hola, ${escapeHtml(name)}. ` : "Hola. "}Vimos que empezaste tu pedido y no alcanzaste a terminarlo. Lo dejamos guardado tal como lo elegiste, por si quieres retomarlo.`,
+    body: `<div style="margin:8px 0 4px;font-family:${FONT};font-size:15px;font-weight:500;color:${INK}">Tu pedido</div>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">${itemRows(cart.items, photos, false)}</table>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:6px;border-top:1px solid ${LINE}">
+        ${totalRow("Subtotal", formatMoney(cart.subtotal), true)}
+      </table>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:22px">${perks}</table>`,
+    cta: button(abandonedResumeUrl(cart.sessionId), "Retomar mi pedido"),
+  });
+  return sendResend(email, `Guardamos tu pedido · ${EMAIL_BRAND}`, html);
 }
 
 const CREATOR_LILAC = "#6f61b8";

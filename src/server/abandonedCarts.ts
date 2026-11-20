@@ -16,7 +16,7 @@ import { isCaseColorId } from "@/lib/cases";
 import { isModelId, products } from "@/lib/catalog";
 import { isCaseLine } from "@/commerce/lines";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { sendAbandonedOfferEmail } from "./email";
+import { sendAbandonedOfferEmail, sendAbandonedReminderEmail } from "./email";
 import { upsertLead } from "./leads";
 
 const SESSION_RE =
@@ -135,6 +135,7 @@ export async function upsertAbandonedCart(input: {
     subtotal,
     offer,
     offerCode: offer?.code,
+    reminder: existing?.reminder,
     recoveredOrderId: existing?.recoveredOrderId,
     recoveredOrderNumber: existing?.recoveredOrderNumber,
     createdAt: existing?.createdAt ?? now,
@@ -223,6 +224,32 @@ export async function offerAbandonedDiscount(input: {
     emailed = sent.ok;
   }
   return { cart: next, emailed };
+}
+
+/** Un recordatorio cada 12 h como mucho: dos seguidos se sienten insistentes. */
+const REMINDER_GAP_MS = 12 * 60 * 60 * 1000;
+
+export async function remindAbandonedCart(sessionId: string, sentBy: string) {
+  const cart = await getAbandonedCart(sessionId);
+  if (!cart) throw new Error("Carrito no encontrado.");
+  if (cart.status === "recovered") throw new Error("Ese carrito ya se convirtió en pedido.");
+  if (cart.status === "dismissed") throw new Error("Ese carrito está archivado.");
+  if (!cart.customer.email) throw new Error("Este carrito no tiene correo.");
+  if (cart.reminder && Date.now() - cart.reminder.sentAt < REMINDER_GAP_MS) {
+    throw new Error("Ya le enviaste un recordatorio hace poco. Espera al menos 12 horas.");
+  }
+  const sent = await sendAbandonedReminderEmail(cart);
+  if (!sent.ok) throw new Error("No se pudo enviar el correo. Inténtalo de nuevo.");
+  const reminder = { sentAt: Date.now(), sentBy, count: (cart.reminder?.count ?? 0) + 1 };
+  await carts().doc(cart.id).set({ reminder }, { merge: true });
+  return { ...cart, reminder };
+}
+
+/** Lo que el checkout necesita para rearmar el carrito desde el enlace del correo: solo los productos. */
+export async function resumableCartItems(sessionId: string) {
+  const cart = await getAbandonedCart(sessionId);
+  if (!cart || cart.status === "recovered" || cart.status === "dismissed") return null;
+  return sanitizeItems(cart.items);
 }
 
 export async function dismissAbandonedCart(sessionId: string) {

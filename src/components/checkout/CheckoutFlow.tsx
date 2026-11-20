@@ -109,7 +109,30 @@ export function CheckoutFlow() {
     offerCode,
     ensureCartSession,
     setOfferCode,
+    restoreCart,
   } = useMoraStore();
+  // Enlace «Retomar mi pedido» del correo: si aquí no hay carrito (otro dispositivo), se rearma el guardado.
+  // CheckoutPage lo monta solo en el navegador y ya con el carrito local cargado.
+  const [restoring, setRestoring] = useState(
+    () => Boolean(new URLSearchParams(window.location.search).get("carrito")) && cart.length === 0,
+  );
+  useEffect(() => {
+    const saved = new URLSearchParams(window.location.search).get("carrito");
+    if (!saved || useMoraStore.getState().cart.length > 0) return;
+    let alive = true;
+    fetch(`/api/checkout/cart?session=${encodeURIComponent(saved)}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { items?: CartLine[] } | null) => {
+        if (alive && data?.items?.length && useMoraStore.getState().cart.length === 0) {
+          restoreCart(saved, data.items);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => alive && setRestoring(false));
+    return () => {
+      alive = false;
+    };
+  }, [restoreCart]);
   const [step, setStep] = useState(0);
   const [stepReady, setStepReady] = useState(false);
   const [notice, setNotice] = useState<CheckoutNoticeModel | null>(null);
@@ -609,6 +632,14 @@ export function CheckoutFlow() {
 
   if (awaiting) {
     return <PaymentAwaiting pending={awaiting} onPending={setAwaiting} />;
+  }
+
+  if (cart.length === 0 && restoring) {
+    return (
+      <div className="check-card px-6 py-10 text-center sm:px-10" role="status">
+        <p className="text-[15px] leading-6 text-[#6e6e73]">Recuperando tu pedido…</p>
+      </div>
+    );
   }
 
   if (cart.length === 0) {

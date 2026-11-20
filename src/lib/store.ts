@@ -52,6 +52,8 @@ type Store = {
   removeLine: (key: string) => void;
   clearCart: () => void;
   ensureCartSession: () => string;
+  /** Carrito guardado que vuelve por el enlace del correo: mismo id, así el checkout sigue el mismo registro. */
+  restoreCart: (sessionId: string, lines: CartLine[]) => void;
   setOfferCode: (code: string) => void;
   openCart: () => void;
   closeCart: () => void;
@@ -229,6 +231,7 @@ export const useMoraStore = create<Store>()(
         set({ cartSessionId: next });
         return next;
       },
+      restoreCart: (sessionId, lines) => set({ cart: lines, cartSessionId: sessionId }),
       setOfferCode: (code) => set({ offerCode: code.trim().toUpperCase() }),
       openCart: () => set({ cartOpen: true }),
       closeCart: () => set({ cartOpen: false }),

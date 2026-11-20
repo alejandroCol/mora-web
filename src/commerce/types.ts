@@ -146,6 +146,8 @@ export type AbandonedCart = {
   subtotal: number;
   offer?: CartOffer;
   offerCode?: string;
+  /** Último correo de recordatorio sin descuento. */
+  reminder?: { sentAt: number; sentBy: string; count: number };
   recoveredOrderId?: string;
   recoveredOrderNumber?: string;
   createdAt: number;

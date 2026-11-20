@@ -16,6 +16,7 @@ export default function robots(): MetadataRoute.Robots {
           "/checkout",
           "/pedido",
           "/talla",
+          "/medidor",
           "/anim",
           "/vincular",
           "/encuesta",

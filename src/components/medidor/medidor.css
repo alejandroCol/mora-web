@@ -1,0 +1,286 @@
+/* Medidor virtual de talla. Todo con prefijo mdr- para no tocar el resto de la tienda.
+   Lenguaje: blanco, tinta y líneas finas; el lila solo aparece en lo que mide. */
+
+.mdr-root {
+  --mdr-ink: #1d1d1f;
+  --mdr-gray: #6e6e73;
+  --mdr-faint: #a1a1a6;
+  --mdr-hair: rgba(29, 29, 31, 0.1);
+  --mdr-accent: var(--lilac-action, #6f61b8);
+  background: linear-gradient(180deg, #ffffff 0%, #f8f8fa 100%);
+  color: var(--mdr-ink);
+  touch-action: none;
+  overscroll-behavior: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mdr-rise {
+  animation: mdr-rise 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes mdr-rise {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Rótulo pequeño: el mismo «kicker» de la tienda. */
+.mdr-caps {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--mdr-gray);
+}
+
+/* Títulos y cifras: los del detalle de producto (`title-name`). */
+.mdr-title {
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+.mdr-numeral {
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.mdr-hair-t {
+  border-top: 1px solid var(--mdr-hair);
+}
+
+.mdr-in {
+  animation: mdr-in 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes mdr-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.mdr-pop {
+  animation: mdr-pop 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes mdr-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+}
+
+.mdr-fade {
+  animation: mdr-fade 0.3s ease both;
+}
+
+@keyframes mdr-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Onda al coincidir con una talla. */
+.mdr-ripple {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mdr-ripple 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes mdr-ripple {
+  from {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.55);
+  }
+}
+
+/* Guía del aro antes de tocar nada. */
+.mdr-ghost {
+  animation: mdr-ghost 2.4s ease-in-out infinite;
+}
+
+@keyframes mdr-ghost {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.mdr-bob {
+  animation: mdr-bob 1.8s ease-in-out infinite;
+}
+
+@keyframes mdr-bob {
+  0%,
+  100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, 5px);
+  }
+}
+
+.mdr-dial {
+  touch-action: none;
+  cursor: grab;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 22%, #000 78%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 22%, #000 78%, transparent);
+}
+
+.mdr-dial:active {
+  cursor: grabbing;
+}
+
+.mdr-dial:focus-visible {
+  outline: 1.5px solid var(--mdr-ink);
+  outline-offset: 2px;
+  border-radius: 12px;
+}
+
+.mdr-btn {
+  display: flex;
+  height: 52px;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--mdr-ink);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  transition:
+    background 0.2s ease,
+    transform 0.15s ease,
+    opacity 0.25s ease;
+}
+
+.mdr-btn:active {
+  background: #3a3a3c;
+  transform: scale(0.985);
+}
+
+.mdr-btn:disabled {
+  background: #e8e8ed;
+  color: var(--mdr-faint);
+}
+
+.mdr-round {
+  display: flex;
+  height: 38px;
+  width: 38px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid rgba(29, 29, 31, 0.14);
+  color: var(--mdr-ink);
+  transition:
+    transform 0.12s ease,
+    background 0.2s ease;
+}
+
+.mdr-round:active {
+  transform: scale(0.9);
+  background: #f5f5f7;
+}
+
+.mdr-ghost-btn {
+  display: flex;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  color: var(--mdr-gray);
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+.mdr-dim {
+  background: rgba(29, 29, 31, 0.22);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+
+.mdr-sheet {
+  background: #fff;
+  box-shadow:
+    0 40px 80px -40px rgba(29, 29, 31, 0.45),
+    0 0 0 1px rgba(29, 29, 31, 0.04);
+  animation: mdr-sheet 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes mdr-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Aro que se dibuja en el resultado. */
+.mdr-draw {
+  /* Un pelo más de 1 para que el aro cierre sin costura. */
+  stroke-dasharray: 1.02 1;
+  stroke-dashoffset: 1.02;
+  animation: mdr-draw 1.1s 0.15s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes mdr-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mdr-rise,
+  .mdr-in,
+  .mdr-pop,
+  .mdr-fade,
+  .mdr-ripple,
+  .mdr-ghost,
+  .mdr-bob,
+  .mdr-sheet {
+    animation: none;
+  }
+
+  .mdr-draw {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

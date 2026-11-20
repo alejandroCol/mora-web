@@ -37,7 +37,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
     );
   }
 
-  if (isDownload || isAnim) {
+  if (isDownload || isAnim || pathname.startsWith("/medidor")) {
     return <>{children}</>;
   }
 

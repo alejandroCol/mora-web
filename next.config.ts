@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   devIndicators: false,
+  // Solo `next dev`: deja abrir el sitio desde el celular por la IP del Mac en la wifi de casa.
+  allowedDevOrigins: ["192.168.*.*"],
   output: "standalone",
   transpilePackages: ["three"],
   // Decoder Opus (notas de voz del CRM): solo corre en el navegador; en SSR su

@@ -1,11 +1,19 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { SizingMethod } from "@/commerce/types";
 import { useSales } from "@/components/sales/SalesProvider";
+import { resolveKnownPxPerMm } from "@/lib/screenScale";
 import { RING_SIZES, aroundLabel, diameterLabel, ringSize } from "@/lib/ringSizes";
 import { SizeGuideFilm } from "./SizeGuideFilm";
 import { SizerHologram } from "./SizerHologram";
+
+// El medidor virtual solo se descarga cuando alguien lo abre.
+const RingSizer = dynamic(() => import("@/components/medidor/RingSizer").then((mod) => mod.RingSizer), {
+  ssr: false,
+});
 
 function SizeChart({ active }: { active: number }) {
   return (
@@ -131,6 +139,19 @@ export function SizeChoice({
   const sales = useSales();
   const [info, setInfo] = useState(false);
   const [guide, setGuide] = useState(false);
+  const [virtual, setVirtual] = useState(false);
+  // El medidor virtual solo se ofrece si la pantalla se reconoce (iPhone y Android de la tabla):
+  // ahí mide sin calibrar. En PC y en equipos sin reconocer el botón no aparece.
+  const [canMeasure, setCanMeasure] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void resolveKnownPxPerMm().then((scale) => {
+      if (alive) setCanMeasure(scale !== null);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
   const [equiv, setEquiv] = useState<"closed" | "sizes" | "note">("closed");
   const open = equiv !== "closed";
   const rowRef = useRef<HTMLDivElement>(null);
@@ -183,11 +204,23 @@ export function SizeChoice({
             </button>
           </div>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        {/* En celular (puntero táctil) la fila es de una sola línea: lo que no cabe baja de renglón y
+            queda recortado, así que «Medidas», que va de último, desaparece solo en pantallas angostas.
+            En PC la fila envuelve normal. */}
+        <div className="mt-3 flex flex-wrap items-center gap-1.5 [@media(pointer:coarse)]:h-8 [@media(pointer:coarse)]:gap-1 [@media(pointer:coarse)]:overflow-hidden">
+          {canMeasure ? (
+            <button
+              type="button"
+              onClick={() => setVirtual(true)}
+              className="inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-full bg-[#1d1d1f] px-2.5 text-[13px] [@media(pointer:coarse)]:text-[12.5px] tracking-[-0.01em] text-white transition-colors hover:bg-[#3a3a3c]"
+            >
+              Medidor virtual
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => setGuide(true)}
-            className="inline-flex h-8 items-center rounded-full bg-[#efeff2] px-2.5 text-[13px] tracking-[-0.01em] text-[#1d1d1f] transition-colors hover:bg-[#e6e6ea]"
+            className="inline-flex h-8 shrink-0 items-center whitespace-nowrap rounded-full bg-[#efeff2] px-2.5 text-[13px] [@media(pointer:coarse)]:text-[12.5px] [@media(pointer:coarse)]:px-2 tracking-[-0.01em] text-[#1d1d1f] transition-colors hover:bg-[#e6e6ea]"
           >
             Cómo medir mi talla?
           </button>
@@ -196,7 +229,7 @@ export function SizeChoice({
             aria-expanded={open}
             aria-controls="size-equivalence"
             onClick={() => setEquiv(open ? "closed" : "sizes")}
-            className={`inline-flex h-8 items-center gap-1 rounded-full px-2.5 text-[13px] tracking-[-0.01em] text-[#1d1d1f] transition-colors ${
+            className={`inline-flex h-8 shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 text-[13px] [@media(pointer:coarse)]:text-[12.5px] [@media(pointer:coarse)]:px-2 tracking-[-0.01em] text-[#1d1d1f] transition-colors ${
               open ? "bg-[#e3e3e8]" : "bg-[#efeff2] hover:bg-[#e6e6ea]"
             }`}
           >
@@ -291,6 +324,19 @@ export function SizeChoice({
           </div>
         </div>
       ) : null}
+
+      {virtual
+        ? createPortal(
+            <RingSizer
+              onClose={() => setVirtual(false)}
+              onPick={(picked) => {
+                if (sizes.includes(picked)) onSize(picked);
+                setVirtual(false);
+              }}
+            />,
+            document.body,
+          )
+        : null}
 
       {guide ? (
         <div className="size-sheet size-sheet-mid" role="dialog" aria-modal="true" aria-label="Cómo medir mi talla">

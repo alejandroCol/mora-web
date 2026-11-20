@@ -228,7 +228,10 @@ function shell(opts: {
   cta?: string;
   after?: string;
   help?: boolean;
+  /** Margen lateral de la tarjeta. Por defecto 40; en móvil sin `<style>` conviene 24. */
+  pad?: number;
 }) {
+  const pad = opts.pad ?? 40;
   const kicker =
     opts.kickerTone === "plain"
       ? `<div style="font-family:${FONT};font-size:14px;line-height:1.4;font-weight:500;color:${ACCENT}">${escapeHtml(opts.kicker)}</div>`
@@ -274,14 +277,14 @@ function shell(opts: {
             <td style="background:${WHITE};border:1px solid ${LINE};border-radius:24px">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td class="mora-pad" style="padding:40px 40px 0;font-family:${FONT}">
+                  <td class="mora-pad" style="padding:${pad === 40 ? 40 : 30}px ${pad}px 0;font-family:${FONT}">
                     ${kicker}
                     <h1 class="mora-title" style="margin:${opts.kickerTone === "plain" ? "10px" : "18px"} 0 0;font-family:${FONT};font-size:30px;line-height:1.15;font-weight:400;letter-spacing:-0.02em;color:${INK}">${escapeHtml(opts.title)}</h1>
                     <p style="margin:14px 0 0;font-family:${FONT};font-size:16px;line-height:1.6;font-weight:300;color:${SOFT}">${opts.intro}</p>
                   </td>
                 </tr>
                 <tr>
-                  <td class="mora-pad" style="padding:28px 40px 40px;font-family:${FONT};font-size:15px;line-height:1.6;color:${INK}">
+                  <td class="mora-pad" style="padding:${pad === 40 ? 28 : 22}px ${pad}px ${pad === 40 ? 40 : 30}px;font-family:${FONT};font-size:15px;line-height:1.6;color:${INK}">
                     ${opts.body}
                     ${opts.cta ? `<div style="margin-top:34px;text-align:center">${opts.cta}</div>` : ""}
                     ${opts.after ?? ""}
@@ -598,7 +601,7 @@ const HERO_SOFT = "#f1eff8";
 /** Tarjeta protagonista: el descuento en grande, el botón dentro y el código pequeño debajo. */
 function offerHero(opts: { figure: string; caption: string; saving: string; href: string; code: string; copyUrl: string }) {
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="${ACCENT}" style="background:${ACCENT};background-image:linear-gradient(140deg,${HERO_DEEP} 0%,${ACCENT} 48%,#a394e4 100%);border-radius:22px">
-    <tr><td align="center" style="padding:34px 22px 28px;font-family:${FONT}">
+    <tr><td align="center" style="padding:30px 16px 26px;font-family:${FONT}">
       <div style="font-size:12px;line-height:1.3;letter-spacing:0.16em;text-transform:uppercase;font-weight:500;color:${HERO_SOFT}">Solo para ti</div>
       <div style="margin-top:12px;color:${WHITE}">${opts.figure}</div>
       <div style="margin-top:8px;font-size:18px;line-height:1.3;font-weight:400;color:${WHITE}">${escapeHtml(opts.caption)}</div>
@@ -610,10 +613,8 @@ function offerHero(opts: { figure: string; caption: string; saving: string; href
           </td>
         </tr>
       </table>
-      <div style="margin-top:20px;font-size:12px;line-height:1.8;color:${HERO_SOFT}">
-        <span style="white-space:nowrap">Código <span style="font-weight:500;letter-spacing:0.1em;color:${WHITE}">${escapeHtml(opts.code)}</span></span>
-        &nbsp;·&nbsp; <a href="${escapeHtml(opts.copyUrl)}" style="color:${WHITE};text-decoration:underline;white-space:nowrap">Copiar código</a>
-      </div>
+      <div style="margin-top:20px;font-size:12px;line-height:1.5;color:${HERO_SOFT}">Código <span style="font-weight:500;letter-spacing:0.1em;color:${WHITE}">${escapeHtml(opts.code)}</span></div>
+      <div style="margin-top:4px;font-size:12px;line-height:1.5"><a href="${escapeHtml(opts.copyUrl)}" style="color:${WHITE};text-decoration:underline">Copiar código</a></div>
     </td></tr>
   </table>`;
 }
@@ -640,8 +641,8 @@ export async function renderAbandonedOfferEmail(cart: AbandonedCart) {
   const headline = percent ? `${offer.value} % de descuento` : `${saving} de descuento`;
   const href = abandonedCheckoutUrl(offer.code, cart.sessionId);
   const figure = percent
-    ? `<span style="font-size:92px;line-height:1;font-weight:300;letter-spacing:-0.04em;color:${WHITE}">${offer.value}</span><span style="font-size:44px;line-height:1;font-weight:300;vertical-align:top;position:relative;top:10px;padding-left:4px;color:${WHITE}">%</span>`
-    : `<span style="font-size:52px;line-height:1.05;font-weight:300;letter-spacing:-0.03em;white-space:nowrap;color:${WHITE}">−${escapeHtml(saving)}</span>`;
+    ? `<span style="font-size:80px;line-height:84px;font-weight:300;letter-spacing:-0.03em;color:${WHITE}">${offer.value}</span><span style="font-size:38px;line-height:84px;font-weight:300;vertical-align:top;color:${WHITE}">&#8201;%</span>`
+    : `<span style="font-size:40px;line-height:1.15;font-weight:300;letter-spacing:-0.02em;color:${WHITE}">−${escapeHtml(saving)}</span>`;
   const hero = offerHero({
     figure,
     caption: percent ? "de descuento en tu pedido" : "menos en tu pedido",
@@ -656,11 +657,13 @@ export async function renderAbandonedOfferEmail(cart: AbandonedCart) {
     "Paga con tarjeta, PSE, Nequi o a cuotas con Addi.",
     ring ? "¿Dudas con la talla? Te enviamos el medidor primero." : "",
   ]);
+  const title = `Te regalamos ${percent ? `${offer.value}%` : saving} de descuento en tu ${ring ? "Mora Ring" : "pedido"}`;
   const html = shell({
-    preheader: `Guardamos tu pedido con ${headline}.`,
+    preheader: `Guardamos tu pedido con ${headline}. Ya viene aplicado en el botón.`,
     kicker: "Te lo guardamos",
     kickerTone: "plain",
-    title: `Te regalamos ${percent ? `${offer.value}%` : saving} de descuento en tu ${ring ? "Mora Ring" : "pedido"}`,
+    title,
+    pad: 24,
     intro: `${name ? `Hola, ${escapeHtml(name)}. ` : "Hola. "}Dejaste tu pedido a medio camino, así que lo guardamos y le pusimos un descuento para que lo termines cuando quieras.`,
     body: `${hero}
       <div style="margin:32px 0 4px;font-family:${FONT};font-size:15px;font-weight:500;color:${INK}">Tu pedido</div>
@@ -677,7 +680,7 @@ export async function renderAbandonedOfferEmail(cart: AbandonedCart) {
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:22px">${perks}</table>`,
     cta: button(href, "Terminar mi pedido"),
   });
-  return { html, subject: `Tu ${headline} te espera · ${EMAIL_BRAND}` };
+  return { html, subject: title };
 }
 
 export async function sendAbandonedOfferEmail(cart: AbandonedCart) {

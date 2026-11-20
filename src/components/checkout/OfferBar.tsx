@@ -63,7 +63,7 @@ export function OfferBar({
       role="status"
       className="fixed inset-x-0 top-0 z-50 bg-[#0b0b0d] pt-[env(safe-area-inset-top)] text-white"
     >
-      <div className="flex h-10 items-center justify-center gap-2.5 px-4 text-[13px] leading-none tracking-[-0.01em]">
+      <div className="flex h-10 items-center justify-center gap-2.5 whitespace-nowrap px-3 text-[13px] leading-none tracking-[-0.01em]">
         {expired ? (
           <span className="text-white/80">Tu descuento ya venció</span>
         ) : (
@@ -72,7 +72,7 @@ export function OfferBar({
             {clock ? (
               <>
                 <span aria-hidden className="h-3 w-px bg-white/25" />
-                <span className="text-white/65">Termina en</span>
+                <span className="text-white/65 max-[339px]:hidden">Termina en</span>
                 <span className="font-medium tabular-nums">{clock}</span>
               </>
             ) : (

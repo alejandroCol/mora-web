@@ -2,7 +2,15 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CART_OFFER_HOURS, type AbandonedCart, type CartOffer, type CartOfferKind } from "@/commerce/types";
+import {
+  CART_OFFER_DEFAULT_HOURS,
+  CART_OFFER_HOURS,
+  CART_OFFER_MAX_HOURS,
+  cleanCartOfferHours,
+  type AbandonedCart,
+  type CartOffer,
+  type CartOfferKind,
+} from "@/commerce/types";
 import { lineUnitPrice } from "@/commerce/lines";
 import { commerceLineLabel } from "@/commerce/sizing";
 import { formatMoney } from "@/lib/catalog";
@@ -27,7 +35,7 @@ function ago(at: number) {
 }
 
 function validityLabel(hours: number) {
-  return hours === 24 ? "24 horas" : `${hours / 24} días`;
+  return hours < 48 ? `${hours} h` : `${hours / 24} días`;
 }
 
 /** «vence en 1 d 3 h», «venció hace 2 h» o nada si la oferta no tiene fecha. */
@@ -291,7 +299,9 @@ function CartDrawer({
     validHours?: number,
   ) => void;
 }) {
-  const [validHours, setValidHours] = useState<number>(CART_OFFER_HOURS[0]);
+  const [presetHours, setPresetHours] = useState<number>(CART_OFFER_DEFAULT_HOURS);
+  const [customHours, setCustomHours] = useState("");
+  const validHours = customHours ? cleanCartOfferHours(customHours) : presetHours;
   const phone = (cart.customer.phone ?? "").replace(/\D/g, "");
   const reminder = cart.reminder;
   const [now] = useState(() => Date.now());
@@ -361,23 +371,45 @@ function CartDrawer({
         </p>
 
         <p className="mt-5 text-[12px] text-[var(--admin-muted)]">Vigencia del código</p>
-        <div className="mt-2 grid grid-cols-4 gap-1 rounded-full bg-[var(--admin-field)] p-1">
-          {CART_OFFER_HOURS.map((hours) => (
-            <button
-              key={hours}
-              type="button"
-              aria-pressed={validHours === hours}
-              onClick={() => setValidHours(hours)}
-              className={`h-9 rounded-full text-[12px] ${
-                validHours === hours ? "bg-white font-medium shadow-sm" : "text-[var(--admin-muted)]"
-              }`}
-            >
-              {validityLabel(hours)}
-            </button>
-          ))}
+        <div className="mt-2 grid grid-cols-5 gap-1 rounded-full bg-[var(--admin-field)] p-1">
+          {CART_OFFER_HOURS.map((hours) => {
+            const on = !customHours && presetHours === hours;
+            return (
+              <button
+                key={hours}
+                type="button"
+                aria-pressed={on}
+                onClick={() => {
+                  setPresetHours(hours);
+                  setCustomHours("");
+                }}
+                className={`h-9 rounded-full text-[12px] ${
+                  on ? "bg-white font-medium shadow-sm" : "text-[var(--admin-muted)]"
+                }`}
+              >
+                {validityLabel(hours)}
+              </button>
+            );
+          })}
         </div>
+        <label className="mt-2 flex items-center gap-2 text-[12px] text-[var(--admin-muted)]">
+          <span className="shrink-0">Otra vigencia</span>
+          <input
+            value={customHours}
+            onChange={(event) =>
+              setCustomHours(event.target.value.replace(/\D/g, "").replace(/^0+/, "").slice(0, 3))
+            }
+            inputMode="numeric"
+            placeholder="Horas"
+            aria-label="Vigencia en horas"
+            className="h-9 w-24 rounded-2xl bg-[var(--admin-field)] px-3 text-[13px] text-[var(--admin-ink,inherit)] outline-none"
+          />
+          <span>horas</span>
+        </label>
         <p className="mt-2 text-[12px] leading-5 text-[var(--admin-muted)]">
-          El correo muestra cuánto falta. Al vencer, el código deja de aplicar.
+          {customHours && Number(customHours) > CART_OFFER_MAX_HOURS
+            ? `Máximo ${CART_OFFER_MAX_HOURS} horas (30 días): se guardará con ese tope.`
+            : `El código vale ${validHours} h desde que lo envías. El correo muestra cuánto falta y al vencer deja de aplicar.`}
         </p>
 
         <div className="mt-4 grid grid-cols-2 gap-2">

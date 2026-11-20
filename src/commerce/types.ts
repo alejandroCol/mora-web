@@ -139,7 +139,17 @@ export type CartOffer = {
 };
 
 /** Vigencias que el panel puede dar a una oferta de carrito, en horas. */
-export const CART_OFFER_HOURS = [24, 48, 120, 168] as const;
+export const CART_OFFER_HOURS = [12, 24, 48, 120, 168] as const;
+
+/** También se puede escribir un número de horas: entre 1 y 720 (30 días). */
+export const CART_OFFER_MAX_HOURS = 720;
+export const CART_OFFER_DEFAULT_HOURS = 24;
+
+export function cleanCartOfferHours(raw: unknown) {
+  const hours = Math.round(Number(raw));
+  if (!Number.isFinite(hours) || hours < 1) return CART_OFFER_DEFAULT_HOURS;
+  return Math.min(CART_OFFER_MAX_HOURS, hours);
+}
 
 export function cartOfferExpired(offer: Pick<CartOffer, "expiresAt"> | undefined, now = Date.now()) {
   return Boolean(offer?.expiresAt && offer.expiresAt <= now);

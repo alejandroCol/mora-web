@@ -12,7 +12,7 @@ import type {
   CustomerSnapshot,
   ShippingSnapshot,
 } from "@/commerce/types";
-import { CART_OFFER_HOURS, cartOfferExpired } from "@/commerce/types";
+import { cartOfferExpired, cleanCartOfferHours } from "@/commerce/types";
 import { isCaseColorId } from "@/lib/cases";
 import { isModelId, products } from "@/lib/catalog";
 import { isCaseLine } from "@/commerce/lines";
@@ -176,7 +176,7 @@ export async function offerAbandonedDiscount(input: {
   sessionId: string;
   kind: CartOfferKind;
   value: number;
-  /** Vigencia en horas: 24, 48, 120 o 168. */
+  /** Vigencia en horas, de 1 a 720. Sin dato: 24. */
   validHours?: number;
   offeredBy: string;
 }) {
@@ -202,7 +202,7 @@ export async function offerAbandonedDiscount(input: {
   }
 
   const now = Date.now();
-  const validHours = CART_OFFER_HOURS.find((hours) => hours === input.validHours) ?? CART_OFFER_HOURS[0];
+  const validHours = cleanCartOfferHours(input.validHours);
   const offer: CartOffer = {
     kind: input.kind,
     value,

@@ -84,7 +84,7 @@ export function OfferBar({
             <span className="flex items-baseline gap-1.5">
               <span className="text-[24px] font-medium leading-none tracking-[-0.03em]">{figure}</span>
               <span className="text-[13px] leading-none text-white/75">
-                de descuento<span className="max-[379px]:hidden"> en tu pedido</span>
+                de descuento<span className="max-[479px]:hidden"> en tu pedido</span>
               </span>
             </span>
             {left ? (

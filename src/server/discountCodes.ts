@@ -13,7 +13,8 @@ import {
 import { COLLECTIONS } from "@/commerce/paths";
 import type { CartOfferKind } from "@/commerce/types";
 import { adminDb } from "@/lib/firebaseAdmin";
-import { resolveCheckoutOffer } from "./abandonedCarts";
+import { cartOfferExpired } from "@/commerce/types";
+import { findAbandonedCartByOffer, resolveCheckoutOffer } from "./abandonedCarts";
 
 function col() {
   return adminDb().collection(COLLECTIONS.discountCodes);
@@ -217,7 +218,11 @@ export async function resolveCheckoutDiscount(input: {
       sessionId: cart.sessionId,
     };
   }
-  if (typed) return { source: null, reason: "Ese código ya no está disponible." };
+  if (typed) {
+    const stale = await findAbandonedCartByOffer(typed).catch(() => null);
+    if (cartOfferExpired(stale?.offer)) return { source: null, reason: "Ese código ya venció." };
+    return { source: null, reason: "Ese código ya no está disponible." };
+  }
   return { source: null };
 }
 

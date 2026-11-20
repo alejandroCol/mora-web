@@ -12,6 +12,7 @@ import type {
   CustomerSnapshot,
   ShippingSnapshot,
 } from "@/commerce/types";
+import { CART_OFFER_HOURS, cartOfferExpired } from "@/commerce/types";
 import { isCaseColorId } from "@/lib/cases";
 import { isModelId, products } from "@/lib/catalog";
 import { isCaseLine } from "@/commerce/lines";
@@ -175,6 +176,8 @@ export async function offerAbandonedDiscount(input: {
   sessionId: string;
   kind: CartOfferKind;
   value: number;
+  /** Vigencia en horas: 24, 48, 120 o 168. */
+  validHours?: number;
   offeredBy: string;
 }) {
   const cart = await getAbandonedCart(input.sessionId);
@@ -199,6 +202,7 @@ export async function offerAbandonedDiscount(input: {
   }
 
   const now = Date.now();
+  const validHours = CART_OFFER_HOURS.find((hours) => hours === input.validHours) ?? CART_OFFER_HOURS[0];
   const offer: CartOffer = {
     kind: input.kind,
     value,
@@ -206,6 +210,7 @@ export async function offerAbandonedDiscount(input: {
     discountCop,
     offeredAt: now,
     offeredBy: input.offeredBy,
+    expiresAt: now + validHours * 60 * 60 * 1000,
   };
   const next: AbandonedCart = {
     ...cart,
@@ -278,6 +283,7 @@ export async function resolveCheckoutOffer(input: {
   if (!cart && input.sessionId) cart = await getAbandonedCart(input.sessionId);
   if (!cart?.offer) return null;
   if (cart.status === "recovered" || cart.status === "dismissed") return null;
+  if (cartOfferExpired(cart.offer)) return null;
 
   const email = input.email?.trim().toLowerCase();
   if (code && email && cart.customer.email && cart.customer.email !== email) {

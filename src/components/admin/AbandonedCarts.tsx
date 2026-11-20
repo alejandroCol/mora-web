@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { AbandonedCart, CartOfferKind } from "@/commerce/types";
+import { CART_OFFER_HOURS, type AbandonedCart, type CartOffer, type CartOfferKind } from "@/commerce/types";
 import { lineUnitPrice } from "@/commerce/lines";
 import { commerceLineLabel } from "@/commerce/sizing";
 import { formatMoney } from "@/lib/catalog";
@@ -24,6 +24,22 @@ function ago(at: number) {
   if (hours < 24) return `hace ${hours} h`;
   const days = Math.round(hours / 24);
   return `hace ${days} d`;
+}
+
+function validityLabel(hours: number) {
+  return hours === 24 ? "24 horas" : `${hours / 24} días`;
+}
+
+/** «vence en 1 d 3 h», «venció hace 2 h» o nada si la oferta no tiene fecha. */
+function expiryLabel(offer: CartOffer, now: number) {
+  if (!offer.expiresAt) return "";
+  if (offer.expiresAt <= now) return `venció ${ago(offer.expiresAt)}`;
+  const mins = Math.ceil((offer.expiresAt - now) / 60_000);
+  const days = Math.floor(mins / 1440);
+  const hours = Math.floor((mins % 1440) / 60);
+  if (days > 0) return `vence en ${days} d${hours ? ` ${hours} h` : ""}`;
+  if (hours > 0) return `vence en ${hours} h`;
+  return `vence en ${mins} min`;
 }
 
 function contact(cart: AbandonedCart) {
@@ -51,6 +67,7 @@ export function AbandonedCartsModule() {
   const [note, setNote] = useState("");
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [listNow] = useState(() => Date.now());
 
   const load = useCallback(async () => {
     const res = await authorizedFetch("/api/admin/carts");
@@ -88,13 +105,19 @@ export function AbandonedCartsModule() {
     [carts, selected],
   );
 
-  async function act(id: string, action: CartAction, kind?: CartOfferKind, value?: number) {
+  async function act(
+    id: string,
+    action: CartAction,
+    kind?: CartOfferKind,
+    value?: number,
+    validHours?: number,
+  ) {
     setBusy(true);
     setNote("");
     try {
       const res = await authorizedFetch(`/api/admin/carts/${id}`, {
         method: "PATCH",
-        body: JSON.stringify({ action, kind, value }),
+        body: JSON.stringify({ action, kind, value, validHours }),
       });
       const data = (await res.json()) as {
         ok: boolean;
@@ -209,6 +232,7 @@ export function AbandonedCartsModule() {
                     {cart.offer ? (
                       <p className="mt-1 text-[12px] text-[var(--admin-muted)]">
                         {cart.offer.code} −{formatMoney(cart.offer.discountCop)}
+                        {cart.offer.expiresAt && cart.offer.expiresAt <= listNow ? " · Venció" : ""}
                       </p>
                     ) : null}
                   </div>
@@ -259,8 +283,15 @@ function CartDrawer({
   busy: boolean;
   note: string;
   onClose: () => void;
-  onAct: (id: string, action: CartAction, kind?: CartOfferKind, value?: number) => void;
+  onAct: (
+    id: string,
+    action: CartAction,
+    kind?: CartOfferKind,
+    value?: number,
+    validHours?: number,
+  ) => void;
 }) {
+  const [validHours, setValidHours] = useState<number>(CART_OFFER_HOURS[0]);
   const phone = (cart.customer.phone ?? "").replace(/\D/g, "");
   const reminder = cart.reminder;
   const [now] = useState(() => Date.now());
@@ -302,6 +333,7 @@ function CartDrawer({
         {cart.offer ? (
           <p className="mt-1 text-right text-[12px] text-[var(--admin-muted)]">
             {cart.offer.code} · −{formatMoney(cart.offer.discountCop)}
+            {expiryLabel(cart.offer, now) ? ` · ${expiryLabel(cart.offer, now)}` : ""}
           </p>
         ) : null}
 
@@ -328,11 +360,31 @@ function CartDrawer({
           crear la oferta.
         </p>
 
+        <p className="mt-5 text-[12px] text-[var(--admin-muted)]">Vigencia del código</p>
+        <div className="mt-2 grid grid-cols-4 gap-1 rounded-full bg-[var(--admin-field)] p-1">
+          {CART_OFFER_HOURS.map((hours) => (
+            <button
+              key={hours}
+              type="button"
+              aria-pressed={validHours === hours}
+              onClick={() => setValidHours(hours)}
+              className={`h-9 rounded-full text-[12px] ${
+                validHours === hours ? "bg-white font-medium shadow-sm" : "text-[var(--admin-muted)]"
+              }`}
+            >
+              {validityLabel(hours)}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[12px] leading-5 text-[var(--admin-muted)]">
+          El correo muestra cuánto falta. Al vencer, el código deja de aplicar.
+        </p>
+
         <div className="mt-4 grid grid-cols-2 gap-2">
           <button
             type="button"
             disabled={busy}
-            onClick={() => void onAct(cart.id, "offer", "percent", 10)}
+            onClick={() => void onAct(cart.id, "offer", "percent", 10, validHours)}
             className="admin-cta h-11 disabled:opacity-40"
           >
             Oferta 10%
@@ -340,7 +392,7 @@ function CartDrawer({
           <button
             type="button"
             disabled={busy}
-            onClick={() => void onAct(cart.id, "offer", "percent", 15)}
+            onClick={() => void onAct(cart.id, "offer", "percent", 15, validHours)}
             className="admin-cta h-11 disabled:opacity-40"
           >
             Oferta 15%
@@ -356,7 +408,7 @@ function CartDrawer({
           <button
             type="button"
             disabled={busy || !amount}
-            onClick={() => void onAct(cart.id, "offer", "amount", Number(amount))}
+            onClick={() => void onAct(cart.id, "offer", "amount", Number(amount), validHours)}
             className="admin-cta h-11 shrink-0 px-4 disabled:opacity-40"
           >
             Aplicar

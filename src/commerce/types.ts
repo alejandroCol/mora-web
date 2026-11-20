@@ -134,7 +134,16 @@ export type CartOffer = {
   discountCop: number;
   offeredAt: number;
   offeredBy?: string;
+  /** Hasta cuándo aplica. Sin fecha (ofertas viejas) no vence. */
+  expiresAt?: number;
 };
+
+/** Vigencias que el panel puede dar a una oferta de carrito, en horas. */
+export const CART_OFFER_HOURS = [24, 48, 120, 168] as const;
+
+export function cartOfferExpired(offer: Pick<CartOffer, "expiresAt"> | undefined, now = Date.now()) {
+  return Boolean(offer?.expiresAt && offer.expiresAt <= now);
+}
 
 export type AbandonedCart = {
   id: string;

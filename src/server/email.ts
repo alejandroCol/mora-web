@@ -599,13 +599,34 @@ const HERO_DEEP = "#5a4da6";
 const HERO_SOFT = "#f1eff8";
 
 /** Tarjeta protagonista: el descuento en grande, el botón dentro y el código pequeño debajo. */
-function offerHero(opts: { figure: string; caption: string; saving: string; href: string; code: string; copyUrl: string }) {
+/** «sábado 21 de noviembre, 9:51 p. m.» en hora de Colombia. */
+function offerDeadline(at: number) {
+  const day = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", weekday: "long", day: "numeric", month: "long" }).format(at);
+  const time = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", hour: "numeric", minute: "2-digit", hour12: true })
+    .format(at)
+    .replace(/\s+/g, " ");
+  return `${day.replace(",", "")}, ${time}`;
+}
+
+/** Imagen que se dibuja al abrir el correo con lo que falta; si el correo bloquea imágenes queda la fecha. */
+function offerCountdown(expiresAt: number) {
+  const deadline = offerDeadline(expiresAt);
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:22px">
+        <tr><td style="height:1px;line-height:1px;font-size:0;background:#8f83d0">&nbsp;</td></tr>
+      </table>
+      <div style="margin-top:20px;font-size:12px;line-height:1.3;letter-spacing:0.16em;text-transform:uppercase;font-weight:500;color:${HERO_SOFT}">Termina en</div>
+      <img src="${siteUrl()}/api/countdown?t=${expiresAt}" alt="Hasta el ${escapeHtml(deadline)}" width="250" height="63" style="display:block;margin:12px auto 0;border:0;outline:none;width:250px;max-width:100%;height:auto;font-family:${FONT};font-size:15px;line-height:1.4;color:${WHITE}" />
+      <div style="margin-top:10px;font-size:12px;line-height:1.5;font-weight:300;color:${HERO_SOFT}">Hasta el ${escapeHtml(deadline)}</div>`;
+}
+
+function offerHero(opts: { figure: string; caption: string; saving: string; href: string; code: string; copyUrl: string; expiresAt?: number }) {
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="${ACCENT}" style="background:${ACCENT};background-image:linear-gradient(140deg,${HERO_DEEP} 0%,${ACCENT} 48%,#a394e4 100%);border-radius:22px">
     <tr><td align="center" style="padding:30px 16px 26px;font-family:${FONT}">
       <div style="font-size:12px;line-height:1.3;letter-spacing:0.16em;text-transform:uppercase;font-weight:500;color:${HERO_SOFT}">Solo para ti</div>
       <div style="margin-top:12px;color:${WHITE}">${opts.figure}</div>
       <div style="margin-top:8px;font-size:18px;line-height:1.3;font-weight:400;color:${WHITE}">${escapeHtml(opts.caption)}</div>
       ${opts.saving ? `<div style="margin-top:6px;font-size:14px;line-height:1.4;font-weight:300;color:${HERO_SOFT}">${escapeHtml(opts.saving)}</div>` : ""}
+      ${opts.expiresAt ? offerCountdown(opts.expiresAt) : ""}
       <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:24px auto 0">
         <tr>
           <td bgcolor="${WHITE}" style="border-radius:999px;background:${WHITE}">
@@ -650,6 +671,7 @@ export async function renderAbandonedOfferEmail(cart: AbandonedCart) {
     href,
     code: offer.code,
     copyUrl: couponCopyUrl(offer.code, cart.sessionId),
+    expiresAt: offer.expiresAt,
   });
   const ring = cartHasRing(cart.items);
   const perks = perkRows([
@@ -659,7 +681,7 @@ export async function renderAbandonedOfferEmail(cart: AbandonedCart) {
   ]);
   const title = `Te regalamos ${percent ? `${offer.value}%` : saving} de descuento en tu ${ring ? "Mora Ring" : "pedido"}`;
   const html = shell({
-    preheader: `Guardamos tu pedido con ${headline}. Ya viene aplicado en el botón.`,
+    preheader: `Guardamos tu pedido con ${headline}.${offer.expiresAt ? ` Hasta el ${offerDeadline(offer.expiresAt)}.` : " Ya viene aplicado en el botón."}`,
     kicker: "Te lo guardamos",
     kickerTone: "plain",
     title,

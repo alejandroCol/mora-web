@@ -17,6 +17,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
       action?: "offer" | "dismiss" | "remind";
       kind?: CartOfferKind;
       value?: number;
+      validHours?: number;
     };
 
     if (body.action === "dismiss") {
@@ -37,6 +38,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
       sessionId: id,
       kind: body.kind,
       value: body.value,
+      validHours: body.validHours,
       offeredBy: staff.uid,
     });
     return Response.json({

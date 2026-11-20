@@ -2,6 +2,7 @@ import { BRAND } from "@/brand";
 import { cartHasRing, isCaseLine, lineFinishTitle, lineName } from "@/commerce/lines";
 import { orderNeedsSize, sizeCopy, tallaPath } from "@/commerce/sizing";
 import { caseColor } from "@/lib/cases";
+import { offerDeadline } from "@/lib/offerDeadline";
 import { finishPhoto, formatMoney, isFinishId, isModelId } from "@/lib/catalog";
 import { PAYMENT_METHOD_LABEL } from "@/commerce/labels";
 import { getSalesPresentation } from "./salesPolicy";
@@ -599,48 +600,24 @@ function couponCopyUrl(code: string, sessionId: string) {
 }
 
 const HERO_DEEP = "#5a4da6";
-const HERO_SOFT = "#f1eff8";
 
-/** Tarjeta protagonista: el descuento en grande, el botón dentro y el código pequeño debajo. */
-/** «sábado 21 de noviembre, 9:51 p. m.» en hora de Colombia. */
-function offerDeadline(at: number) {
-  const day = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", weekday: "long", day: "numeric", month: "long" }).format(at);
-  const time = new Intl.DateTimeFormat("es-CO", { timeZone: "America/Bogota", hour: "numeric", minute: "2-digit", hour12: true })
-    .format(at)
-    .replace(/\s+/g, " ");
-  return `${day.replace(",", "")}, ${time}`;
-}
-
-/** Imagen que se dibuja al abrir el correo con lo que falta; si el correo bloquea imágenes queda la fecha. */
-function offerCountdown(expiresAt: number) {
-  const deadline = offerDeadline(expiresAt);
-  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:22px">
-        <tr><td style="height:1px;line-height:1px;font-size:0;background:#8f83d0">&nbsp;</td></tr>
-      </table>
-      <div style="margin-top:20px;font-size:12px;line-height:1.3;letter-spacing:0.16em;text-transform:uppercase;font-weight:500;color:${HERO_SOFT}">Termina en</div>
-      <img src="${siteUrl()}/api/countdown?t=${expiresAt}" alt="Hasta el ${escapeHtml(deadline)}" width="250" height="63" style="display:block;margin:12px auto 0;border:0;outline:none;width:250px;max-width:100%;height:auto;font-family:${FONT};font-size:15px;line-height:1.4;color:${WHITE}" />
-      <div style="margin-top:10px;font-size:12px;line-height:1.5;font-weight:300;color:${HERO_SOFT}">Hasta el ${escapeHtml(deadline)}</div>`;
-}
-
-function offerHero(opts: { figure: string; caption: string; saving: string; href: string; code: string; copyUrl: string; expiresAt?: number }) {
+/**
+ * Tarjeta protagonista. Todo el texto va en una imagen (`/api/countdown`) sobre el fondo lila:
+ * Gmail en modo oscuro vuelve negro el texto blanco, y una imagen no la toca. La imagen entera
+ * es el enlace al checkout; debajo de la tarjeta queda el código en texto normal.
+ */
+function offerHero(opts: { image: string; alt: string; href: string; code: string; copyUrl: string }) {
   return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="${ACCENT}" style="background:${ACCENT};background-image:linear-gradient(140deg,${HERO_DEEP} 0%,${ACCENT} 48%,#a394e4 100%);border-radius:22px">
-    <tr><td align="center" style="padding:30px 16px 26px;font-family:${FONT}">
-      <div style="font-size:12px;line-height:1.3;letter-spacing:0.16em;text-transform:uppercase;font-weight:500;color:${HERO_SOFT}">Solo para ti</div>
-      <div style="margin-top:12px;color:${WHITE}">${opts.figure}</div>
-      <div style="margin-top:8px;font-size:18px;line-height:1.3;font-weight:400;color:${WHITE}">${escapeHtml(opts.caption)}</div>
-      ${opts.saving ? `<div style="margin-top:6px;font-size:14px;line-height:1.4;font-weight:300;color:${HERO_SOFT}">${escapeHtml(opts.saving)}</div>` : ""}
-      ${opts.expiresAt ? offerCountdown(opts.expiresAt) : ""}
-      <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:24px auto 0">
-        <tr>
-          <td bgcolor="${WHITE}" style="border-radius:999px;background:${WHITE}">
-            <a href="${escapeHtml(opts.href)}" style="display:inline-block;padding:16px 30px;font-family:${FONT};font-size:15px;font-weight:500;line-height:1;color:${HERO_DEEP};text-decoration:none;border-radius:999px;white-space:nowrap">Usar mi descuento</a>
-          </td>
-        </tr>
-      </table>
-      <div style="margin-top:20px;font-size:12px;line-height:1.5;color:${HERO_SOFT}">Código <span style="font-weight:500;letter-spacing:0.1em;color:${WHITE}">${escapeHtml(opts.code)}</span></div>
-      <div style="margin-top:4px;font-size:12px;line-height:1.5"><a href="${escapeHtml(opts.copyUrl)}" style="color:${WHITE};text-decoration:underline">Copiar código</a></div>
+    <tr><td align="center" style="padding:32px 14px 30px;font-family:${FONT}">
+      <a href="${escapeHtml(opts.href)}" style="display:block;text-decoration:none;color:${WHITE}">
+        <img src="${escapeHtml(opts.image)}" alt="${escapeHtml(opts.alt)}" width="300" style="display:block;margin:0 auto;border:0;outline:none;width:300px;max-width:100%;height:auto;font-family:${FONT};font-size:17px;line-height:1.5;color:${WHITE}" />
+      </a>
     </td></tr>
-  </table>`;
+  </table>
+  <div style="margin-top:14px;text-align:center;font-family:${FONT};font-size:13px;line-height:1.6;color:${SOFT}">
+    Código <span style="font-weight:500;letter-spacing:0.08em;color:${INK}">${escapeHtml(opts.code)}</span>
+    &nbsp;·&nbsp; <a href="${escapeHtml(opts.copyUrl)}" style="color:${ACCENT};text-decoration:underline">Copiar código</a>
+  </div>`;
 }
 
 function perkRows(lines: string[]) {
@@ -664,17 +641,16 @@ export async function renderAbandonedOfferEmail(cart: AbandonedCart) {
   const percent = offer.kind === "percent";
   const headline = percent ? `${offer.value} % de descuento` : `${saving} de descuento`;
   const href = abandonedCheckoutUrl(offer.code, cart.sessionId);
-  const figure = percent
-    ? `<span style="font-size:80px;line-height:84px;font-weight:300;letter-spacing:-0.03em;color:${WHITE}">${offer.value}</span><span style="font-size:38px;line-height:84px;font-weight:300;vertical-align:top;color:${WHITE}">&#8201;%</span>`
-    : `<span style="font-size:40px;line-height:1.15;font-weight:300;letter-spacing:-0.02em;color:${WHITE}">−${escapeHtml(saving)}</span>`;
+  const query = new URLSearchParams(
+    percent ? { p: String(offer.value), s: String(offer.discountCop) } : { a: String(offer.discountCop) },
+  );
+  if (offer.expiresAt) query.set("t", String(offer.expiresAt));
   const hero = offerHero({
-    figure,
-    caption: percent ? "de descuento en tu pedido" : "menos en tu pedido",
-    saving: percent ? `Ahorras ${saving}` : "",
+    image: `${siteUrl()}/api/countdown?${query.toString()}`,
+    alt: `${headline} en tu pedido.${offer.expiresAt ? ` Hasta el ${offerDeadline(offer.expiresAt)}.` : ""} Usar mi descuento`,
     href,
     code: offer.code,
     copyUrl: couponCopyUrl(offer.code, cart.sessionId),
-    expiresAt: offer.expiresAt,
   });
   const ring = cartHasRing(cart.items);
   const perks = perkRows([

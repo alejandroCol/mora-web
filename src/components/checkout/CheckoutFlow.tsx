@@ -668,11 +668,7 @@ export function CheckoutFlow() {
     <form onSubmit={onContinue} className="check-flow">
       {cameByOfferLink && appliedOffer?.source === "recovery" ? (
         <OfferBar
-          label={
-            appliedOffer.kind === "percent"
-              ? `${appliedOffer.value}% de descuento`
-              : `${formatMoney(discount)} de descuento`
-          }
+          figure={appliedOffer.kind === "percent" ? `${appliedOffer.value}%` : formatMoney(discount)}
           expiresAt={appliedOffer.expiresAt}
           onExpire={() => setOfferTick((tick) => tick + 1)}
         />

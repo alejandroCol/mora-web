@@ -581,47 +581,110 @@ export async function sendPaidStaffEmail(order: MoraOrder) {
   );
 }
 
-export function abandonedCheckoutUrl(code: string) {
-  return `${siteUrl()}/checkout?oferta=${encodeURIComponent(code)}`;
+/** Con `sessionId` el enlace además rearma el carrito si lo abren en otro dispositivo. */
+export function abandonedCheckoutUrl(code: string, sessionId?: string) {
+  const session = sessionId ? `&carrito=${encodeURIComponent(sessionId)}` : "";
+  return `${siteUrl()}/checkout?oferta=${encodeURIComponent(code)}${session}`;
 }
 
-export async function sendAbandonedOfferEmail(cart: AbandonedCart) {
-  const email = cart.customer.email?.trim();
+/** Página con el botón «Copiar código»: un correo no puede copiar al portapapeles. */
+function couponCopyUrl(code: string, sessionId: string) {
+  return `${siteUrl()}/cupon?c=${encodeURIComponent(code)}&p=${encodeURIComponent(sessionId)}`;
+}
+
+const HERO_DEEP = "#5a4da6";
+const HERO_SOFT = "#e9e5fa";
+
+/** Tarjeta protagonista: el descuento en grande, el botón dentro y el código pequeño debajo. */
+function offerHero(opts: { figure: string; caption: string; saving: string; href: string; code: string; copyUrl: string }) {
+  return `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" bgcolor="${ACCENT}" style="background:${ACCENT};background-image:linear-gradient(140deg,${HERO_DEEP} 0%,${ACCENT} 48%,#a394e4 100%);border-radius:22px">
+    <tr><td align="center" style="padding:34px 22px 28px;font-family:${FONT}">
+      <div style="font-size:12px;line-height:1.3;letter-spacing:0.16em;text-transform:uppercase;font-weight:500;color:${HERO_SOFT}">Solo para ti</div>
+      <div style="margin-top:12px;color:${WHITE}">${opts.figure}</div>
+      <div style="margin-top:8px;font-size:18px;line-height:1.3;font-weight:400;color:${WHITE}">${escapeHtml(opts.caption)}</div>
+      ${opts.saving ? `<div style="margin-top:6px;font-size:14px;line-height:1.4;font-weight:300;color:${HERO_SOFT}">${escapeHtml(opts.saving)}</div>` : ""}
+      <table role="presentation" cellspacing="0" cellpadding="0" border="0" align="center" style="margin:24px auto 0">
+        <tr>
+          <td bgcolor="${WHITE}" style="border-radius:999px;background:${WHITE}">
+            <a href="${escapeHtml(opts.href)}" style="display:inline-block;padding:16px 30px;font-family:${FONT};font-size:15px;font-weight:500;line-height:1;color:${HERO_DEEP};text-decoration:none;border-radius:999px;white-space:nowrap">Usar mi descuento</a>
+          </td>
+        </tr>
+      </table>
+      <div style="margin-top:20px;font-size:12px;line-height:1.8;color:${HERO_SOFT}">
+        <span style="white-space:nowrap">Código <span style="font-weight:500;letter-spacing:0.1em;color:${WHITE}">${escapeHtml(opts.code)}</span></span>
+        &nbsp;·&nbsp; <a href="${escapeHtml(opts.copyUrl)}" style="color:${WHITE};text-decoration:underline;white-space:nowrap">Copiar código</a>
+      </div>
+    </td></tr>
+  </table>`;
+}
+
+function perkRows(lines: string[]) {
+  return lines
+    .filter(Boolean)
+    .map(
+      (line) =>
+        `<tr><td style="padding:4px 0;font-family:${FONT};font-size:14px;line-height:1.55;color:${SOFT}">· ${escapeHtml(line)}</td></tr>`,
+    )
+    .join("");
+}
+
+export async function renderAbandonedOfferEmail(cart: AbandonedCart) {
   const offer = cart.offer;
-  if (!email || !offer) return { ok: false as const, error: "missing_offer" };
+  if (!offer) return null;
 
   const name = cart.customer.firstName?.trim();
   const photos = await linePhotos(cart.items);
   const discounted = Math.max(0, cart.subtotal - offer.discountCop);
-  const coupon = `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:${PAPER};border:1px dashed #cfc8ea;border-radius:16px">
-      <tr><td align="center" style="padding:24px 20px;font-family:${FONT}">
-        <div style="font-size:13px;line-height:1.4;color:${SOFT}">Tu código de descuento</div>
-        <div style="margin-top:10px;font-size:28px;line-height:1.1;font-weight:500;letter-spacing:0.14em;color:${INK}">${escapeHtml(offer.code)}</div>
-        <div style="margin-top:10px;font-size:13px;line-height:1.5;color:${SOFT}"><span style="color:${ACCENT};font-weight:500">−${escapeHtml(formatMoney(offer.discountCop))}</span> en tu pedido · ya viene aplicado en el botón</div>
-      </td></tr>
-    </table>`;
+  const saving = formatMoney(offer.discountCop);
+  const percent = offer.kind === "percent";
+  const headline = percent ? `${offer.value} % de descuento` : `${saving} de descuento`;
+  const href = abandonedCheckoutUrl(offer.code, cart.sessionId);
+  const figure = percent
+    ? `<span style="font-size:92px;line-height:1;font-weight:300;letter-spacing:-0.04em">${offer.value}</span><span style="font-size:44px;line-height:1;font-weight:300;vertical-align:top;position:relative;top:10px;padding-left:4px">%</span>`
+    : `<span style="font-size:52px;line-height:1.05;font-weight:300;letter-spacing:-0.03em;white-space:nowrap">−${escapeHtml(saving)}</span>`;
+  const hero = offerHero({
+    figure,
+    caption: percent ? "de descuento en tu pedido" : "menos en tu pedido",
+    saving: percent ? `Ahorras ${saving}` : "",
+    href,
+    code: offer.code,
+    copyUrl: couponCopyUrl(offer.code, cart.sessionId),
+  });
+  const ring = cartHasRing(cart.items);
+  const perks = perkRows([
+    ring ? "Envío gratis a toda Colombia." : "",
+    "Paga con tarjeta, PSE, Nequi o a cuotas con Addi.",
+    ring ? "¿Dudas con la talla? Te enviamos el medidor primero." : "",
+  ]);
   const html = shell({
-    preheader: `Guardamos tu carrito con ${formatMoney(offer.discountCop)} de descuento.`,
+    preheader: `Guardamos tu pedido con ${headline}.`,
     kicker: "Te lo guardamos",
     kickerTone: "plain",
     title: "Tu anillo te está esperando.",
-    intro: `${name ? `Hola, ${escapeHtml(name)}. ` : ""}Vimos que dejaste tu pedido a medio camino, así que lo guardamos para ti con ${escapeHtml(formatMoney(offer.discountCop))} de descuento. Termínalo cuando quieras.`,
-    body: `${coupon}
+    intro: `${name ? `Hola, ${escapeHtml(name)}. ` : "Hola. "}Dejaste tu pedido a medio camino, así que lo guardamos y le pusimos un descuento para que lo termines cuando quieras.`,
+    body: `${hero}
       <div style="margin:32px 0 4px;font-family:${FONT};font-size:15px;font-weight:500;color:${INK}">Tu pedido</div>
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0">${itemRows(cart.items, photos, false)}</table>
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:6px;border-top:1px solid ${LINE}">
-        ${totalRow("Subtotal", formatMoney(cart.subtotal))}
-        ${totalRow("Descuento", `−${formatMoney(offer.discountCop)}`)}
+        ${totalRow("Antes", `<span style="text-decoration:line-through">${formatMoney(cart.subtotal)}</span>`)}
+        ${totalRow(percent ? `Tu descuento · ${offer.value} %` : "Tu descuento", `<span style="color:${ACCENT};font-weight:500">−${saving}</span>`)}
         <tr><td colspan="2" style="height:10px;line-height:10px;font-size:0">&nbsp;</td></tr>
-        ${totalRow("Con tu descuento", formatMoney(discounted), true)}
-      </table>`,
-    cta: button(abandonedCheckoutUrl(offer.code), "Terminar mi pedido"),
+        <tr>
+          <td style="padding-top:14px;border-top:1px solid ${LINE};font-family:${FONT};font-size:16px;font-weight:500;color:${INK}">Pagas</td>
+          <td align="right" style="padding-top:14px;border-top:1px solid ${LINE};font-family:${FONT};font-size:24px;line-height:1.1;font-weight:500;letter-spacing:-0.01em;color:${INK};white-space:nowrap">${formatMoney(discounted)}</td>
+        </tr>
+      </table>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:22px">${perks}</table>`,
+    cta: button(href, "Terminar mi pedido"),
   });
-  return sendResend(
-    email,
-    `Tu anillo te espera con ${formatMoney(offer.discountCop)} de descuento · ${EMAIL_BRAND}`,
-    html,
-  );
+  return { html, subject: `Tu ${headline} te espera · ${EMAIL_BRAND}` };
+}
+
+export async function sendAbandonedOfferEmail(cart: AbandonedCart) {
+  const email = cart.customer.email?.trim();
+  const mail = email ? await renderAbandonedOfferEmail(cart) : null;
+  if (!email || !mail) return { ok: false as const, error: "missing_offer" };
+  return sendResend(email, mail.subject, mail.html);
 }
 
 /** Rearma el carrito en el checkout aunque lo abran en otro dispositivo. */
@@ -636,17 +699,12 @@ export async function sendAbandonedReminderEmail(cart: AbandonedCart) {
 
   const name = cart.customer.firstName?.trim();
   const photos = await linePhotos(cart.items);
-  const perks = [
-    cartHasRing(cart.items) ? "Envío gratis a toda Colombia." : "",
+  const ring = cartHasRing(cart.items);
+  const perks = perkRows([
+    ring ? "Envío gratis a toda Colombia." : "",
     "Paga con tarjeta, PSE, Nequi o a cuotas con Addi.",
-    cartHasRing(cart.items) ? "¿Dudas con la talla? Te enviamos el medidor primero." : "",
-  ]
-    .filter(Boolean)
-    .map(
-      (line) =>
-        `<tr><td style="padding:4px 0;font-family:${FONT};font-size:14px;line-height:1.55;color:${SOFT}">· ${escapeHtml(line)}</td></tr>`,
-    )
-    .join("");
+    ring ? "¿Dudas con la talla? Te enviamos el medidor primero." : "",
+  ]);
   const html = shell({
     preheader: "Guardamos tu pedido tal como lo dejaste.",
     kicker: "Te lo guardamos",

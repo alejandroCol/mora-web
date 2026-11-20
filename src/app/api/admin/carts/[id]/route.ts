@@ -43,7 +43,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
       ok: true,
       cart,
       emailed,
-      checkoutUrl: cart.offer ? abandonedCheckoutUrl(cart.offer.code) : undefined,
+      checkoutUrl: cart.offer ? abandonedCheckoutUrl(cart.offer.code, cart.sessionId) : undefined,
     });
   } catch (error) {
     return jsonError(error);

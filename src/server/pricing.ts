@@ -2,7 +2,10 @@ import { cache } from "react";
 import { DOCS } from "@/commerce/paths";
 import {
   applyPricing,
+  cleanCaseName,
   DEFAULT_PRICING,
+  factoryCaseName,
+  isCaseNameKey,
   normalizePricing,
   parsePriceCop,
   PRICE_MAX_COP,
@@ -62,19 +65,27 @@ function strictPrice(key: PricingKey, value: unknown) {
 }
 
 export async function savePricing(
-  patch: Partial<Record<PricingKey, unknown>>,
+  patch: Partial<Record<PricingKey, unknown>> & { caseNames?: unknown },
   by?: string,
 ): Promise<Pricing> {
   const current = await fetchFreshPricing();
-  const next: Pricing = { ...current, updatedAt: Date.now() };
+  const next: Pricing = { ...current, caseNames: { ...current.caseNames }, updatedAt: Date.now() };
   let touched = false;
+  if (patch.caseNames && typeof patch.caseNames === "object") {
+    for (const [id, value] of Object.entries(patch.caseNames as Record<string, unknown>)) {
+      if (!isCaseNameKey(id)) continue;
+      // Vacío vuelve al nombre de fábrica.
+      next.caseNames[id] = cleanCaseName(value) ?? factoryCaseName(id);
+      touched = true;
+    }
+  }
   for (const key of PRICING_KEYS) {
     if (patch[key] === undefined) continue;
     next[key] = strictPrice(key, patch[key]);
     touched = true;
   }
   if (!touched) {
-    throw Object.assign(new Error("Indica el precio a cambiar."), { status: 400 });
+    throw Object.assign(new Error("Indica qué cambiar."), { status: 400 });
   }
   await adminDb()
     .doc(DOCS.pricing)

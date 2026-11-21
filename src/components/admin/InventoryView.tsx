@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
+  CASE_NAME_MAX,
   DEFAULT_PRICING,
+  factoryCaseName,
   factoryPrice,
   normalizePricing,
   parsePriceCop,
@@ -13,7 +15,7 @@ import {
 } from "@/commerce/pricing";
 import { availableUnits, caseSku, inventorySku } from "@/commerce/sku";
 import type { InventoryDoc } from "@/commerce/types";
-import { CASE_COLOR_LIST } from "@/lib/cases";
+import { CASE_COLOR_LIST, type CaseColorId } from "@/lib/cases";
 import { catalog, formatMoney, productTitle, resolveFinish } from "@/lib/catalog";
 import { useAdminAuth } from "./AdminAuth";
 
@@ -121,6 +123,26 @@ export function InventoryView() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo guardar.");
       return false;
+    } finally {
+      setSaving(null);
+    }
+  }
+
+  async function saveCaseName(id: CaseColorId, name: string) {
+    setSaving(`name:${id}`);
+    setError("");
+    try {
+      const res = await authorizedFetch("/api/admin/pricing", {
+        method: "PUT",
+        body: JSON.stringify({ caseNames: { [id]: name } }),
+      });
+      const data = (await res.json()) as PricingResponse;
+      if (!res.ok || data.ok === false) throw new Error(data.error || "No se pudo guardar.");
+      const next = normalizePricing(data.pricing);
+      setPricing(next);
+      flash(`El color ahora se llama ${next.caseNames[id]}.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar.");
     } finally {
       setSaving(null);
     }
@@ -248,6 +270,9 @@ export function InventoryView() {
               {PRICING_LABEL.case.line} · {pricing ? formatMoney(pricing.case) : "…"} · talla única,
               para Pro y Ultra
             </p>
+            <p className="mt-0.5 text-[12px] text-[var(--admin-muted)]">
+              Toca el nombre de un color para cambiarlo. Así lo verán los clientes.
+            </p>
           </div>
           <StockPill {...totalsFor(CASE_COLOR_LIST.map((color) => caseSku(color.id)))} />
         </div>
@@ -257,6 +282,7 @@ export function InventoryView() {
             const row = bySku.get(sku);
             const units = row?.units ?? 0;
             const reserved = row?.reserved ?? 0;
+            const name = pricing?.caseNames[color.id] ?? color.title;
             return (
               <li
                 key={color.id}
@@ -268,8 +294,24 @@ export function InventoryView() {
                     style={{ backgroundImage: `url(${color.src})` }}
                     aria-hidden
                   />
-                  <span className="flex flex-col leading-tight">
-                    <span className="text-[13px]">{color.title}</span>
+                  <span className="flex min-w-0 flex-col leading-tight">
+                    <input
+                      key={`${color.id}-${name}`}
+                      defaultValue={name}
+                      maxLength={CASE_NAME_MAX}
+                      disabled={!pricing || saving === `name:${color.id}`}
+                      aria-label={`Nombre del color ${name}`}
+                      title={`De fábrica: ${factoryCaseName(color.id)}. Déjalo vacío para volver a ese nombre.`}
+                      onBlur={(event) => {
+                        const next = event.target.value.replace(/\s+/g, " ").trim();
+                        if (!next && name === factoryCaseName(color.id)) event.target.value = name;
+                        else if (next !== name) void saveCaseName(color.id, next);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") (event.target as HTMLInputElement).blur();
+                      }}
+                      className="-ml-1.5 h-7 w-full min-w-0 rounded-lg bg-transparent px-1.5 text-[13px] outline-none hover:bg-white focus:bg-white focus:shadow-[inset_0_0_0_2px_#1d1d1f]"
+                    />
                     <span className="text-[11px] text-[var(--admin-muted)]">
                       {availableUnits(units, reserved)} disponibles
                     </span>
@@ -280,7 +322,7 @@ export function InventoryView() {
                   units={units}
                   reserved={reserved}
                   busy={saving === sku}
-                  label={`Mora Case ${color.title}`}
+                  label={`Mora Case ${name}`}
                   onSave={saveUnits}
                   wide
                 />

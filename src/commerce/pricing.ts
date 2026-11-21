@@ -1,4 +1,4 @@
-import { CASE_PRODUCT } from "@/lib/cases";
+import { CASE_PRODUCT, caseColors, isCaseColorId, type CaseColorId } from "@/lib/cases";
 import { products, type ModelId } from "@/lib/catalog";
 
 /**
@@ -9,7 +9,12 @@ import { products, type ModelId } from "@/lib/catalog";
  */
 export type PricingKey = ModelId | "case";
 
-export type Pricing = Record<PricingKey, number> & { updatedAt: number };
+/** Nombre que ve el cliente para cada color de Case. Siempre completo: lo que no se cambió trae el de fábrica. */
+export type CaseNames = Record<CaseColorId, string>;
+
+export type Pricing = Record<PricingKey, number> & { updatedAt: number; caseNames: CaseNames };
+
+export const CASE_NAME_MAX = 24;
 
 export const PRICING_KEYS: PricingKey[] = ["aero", "titan", "case"];
 
@@ -22,7 +27,34 @@ const FACTORY: Record<PricingKey, number> = {
   case: CASE_PRODUCT.price,
 };
 
-export const DEFAULT_PRICING: Pricing = { ...FACTORY, updatedAt: 0 };
+const CASE_IDS = Object.keys(caseColors) as CaseColorId[];
+
+/** Nombres de fábrica, copiados al cargar: `applyPricing` luego escribe encima del catálogo. */
+const FACTORY_CASE_NAMES = Object.fromEntries(CASE_IDS.map((id) => [id, caseColors[id].title])) as CaseNames;
+
+export function factoryCaseName(id: CaseColorId) {
+  return FACTORY_CASE_NAMES[id];
+}
+
+/** Limpia un nombre tecleado. Vacío = volver al de fábrica (null). */
+export function cleanCaseName(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const text = value.replace(/\s+/g, " ").trim().slice(0, CASE_NAME_MAX).trim();
+  return text || null;
+}
+
+export function normalizeCaseNames(raw: unknown): CaseNames {
+  const source = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
+  return Object.fromEntries(
+    CASE_IDS.map((id) => [id, cleanCaseName(source[id]) ?? FACTORY_CASE_NAMES[id]]),
+  ) as CaseNames;
+}
+
+export function isCaseNameKey(value: unknown): value is CaseColorId {
+  return isCaseColorId(value);
+}
+
+export const DEFAULT_PRICING: Pricing = { ...FACTORY, updatedAt: 0, caseNames: { ...FACTORY_CASE_NAMES } };
 
 export const PRICING_LABEL: Record<PricingKey, { name: string; line: string }> = {
   aero: { name: "Mora Pro", line: products.aero.line },
@@ -50,6 +82,7 @@ export function normalizePricing(raw: Record<string, unknown> | undefined | null
     titan: parsePriceCop(raw?.titan) ?? FACTORY.titan,
     case: parsePriceCop(raw?.case) ?? FACTORY.case,
     updatedAt: typeof raw?.updatedAt === "number" ? raw.updatedAt : 0,
+    caseNames: normalizeCaseNames(raw?.caseNames),
   };
 }
 
@@ -58,6 +91,8 @@ export function applyPricing(pricing: Pricing) {
   products.aero.price = pricing.aero;
   products.titan.price = pricing.titan;
   CASE_PRODUCT.price = pricing.case;
+  // Mismo truco para el nombre del color: todo lo que lee `caseColor(id).title` ve el vivo.
+  for (const id of CASE_IDS) caseColors[id].title = pricing.caseNames?.[id] || FACTORY_CASE_NAMES[id];
 }
 
 export function currentPricing(updatedAt = 0): Pricing {
@@ -66,6 +101,7 @@ export function currentPricing(updatedAt = 0): Pricing {
     titan: products.titan.price,
     case: CASE_PRODUCT.price,
     updatedAt,
+    caseNames: Object.fromEntries(CASE_IDS.map((id) => [id, caseColors[id].title])) as CaseNames,
   };
 }
 

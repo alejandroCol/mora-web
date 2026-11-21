@@ -15,9 +15,9 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   try {
     const staff = await requirePermission(request, "inventory");
-    const body = (await request.json()) as Partial<Record<PricingKey, unknown>>;
+    const body = (await request.json()) as Partial<Record<PricingKey, unknown>> & { caseNames?: unknown };
     const pricing = await savePricing(
-      { aero: body.aero, titan: body.titan, case: body.case },
+      { aero: body.aero, titan: body.titan, case: body.case, caseNames: body.caseNames },
       staff.uid,
     );
     return Response.json({ ok: true, pricing });

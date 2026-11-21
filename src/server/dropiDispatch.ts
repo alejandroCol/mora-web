@@ -12,7 +12,7 @@ import {
   resolveDropiCity,
 } from "./dropiClient";
 import { guideTarget } from "./hekaDispatch";
-import { attachShippingGuide, getOrder, transitionOrder } from "./orders";
+import { attachShippingGuide, getOrder, notifyGuideReady, transitionOrder } from "./orders";
 
 /** Los anillos salen por Dropi cuando hay token. El medidor sigue por Heka. */
 export function orderGuideGoesByDropi(order: MoraOrder) {
@@ -185,6 +185,7 @@ export async function dispatchOrderWithDropi(
       carrier ? dropiCarrierLabel(carrier) : carrierLabel || "Dropi"
     } · Dropi`,
   });
+  await notifyGuideReady(orderId, kind);
 
   return (await getOrder(orderId)) ?? order;
 }

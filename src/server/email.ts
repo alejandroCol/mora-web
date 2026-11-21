@@ -513,6 +513,48 @@ export async function sendCancelledCustomerEmail(order: MoraOrder) {
   );
 }
 
+/** Sale al crear la guía: el paquete ya está listo y la transportadora lo recoge. */
+export async function sendGuideReadyCustomerEmail(order: MoraOrder, kind: "sizer" | "rings" = "rings") {
+  const leg = order.shipments?.[kind];
+  const guia = leg?.trackingNumber?.trim() || "";
+  const carrier = leg?.carrierLabel || order.shipping.carrierLabel;
+  const photos = await linePhotos(order.items);
+  const name = firstNameOf(order);
+  const city = escapeHtml(order.shipping.ciudad);
+  const sizer = kind === "sizer";
+  const what = sizer ? "Tu medidor" : "Tu pedido";
+  const html = shell({
+    preheader: sizer
+      ? "Tu medidor de tallas ya tiene guía y sale muy pronto."
+      : "Tu pedido ya está empacado y tiene guía.",
+    kicker: "Listo para salir",
+    title: sizer ? "Tu medidor ya tiene guía." : "Tu anillo está listo para salir.",
+    intro: `${name ? `Hola, ${name}. ` : ""}${
+      sizer
+        ? "Ya alistamos tu medidor de tallas"
+        : "Ya empacamos tu pedido con mucho cariño"
+    } y le asignamos su guía${carrier ? ` con ${escapeHtml(carrier)}` : ""}. La transportadora lo recoge y sale hacia ${city}.`,
+    body: `${guia ? guideBox(sizer ? "Guía del medidor" : "Tu guía", guia, carrier) : ""}
+      ${sectionTitle("Lo que sigue")}
+      ${nextSteps([
+        `${carrier || "La transportadora"} recoge el paquete. El rastreo puede tardar unas horas en mostrar movimiento.`,
+        "Te escribimos de nuevo apenas vaya en camino.",
+        sizer
+          ? "Cuando te llegue, te lo pruebas con calma y nos cuentas tu talla."
+          : "Lo recibes en la dirección que nos diste.",
+      ])}
+      ${sectionTitle(what)}
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">${itemRows(order.items, photos, false)}</table>
+      ${shippingBlock(order)}`,
+    cta: button(orderTrackingUrl(order.orderNumber), "Seguir mi pedido"),
+  });
+  return sendResend(
+    order.customer.email,
+    `${what} está listo para salir · ${order.orderNumber}${guia ? ` · guía ${guia}` : ""} · ${EMAIL_BRAND}`,
+    html,
+  );
+}
+
 export async function sendDispatchedCustomerEmail(order: MoraOrder) {
   const guia = order.shipments?.rings?.trackingNumber?.trim() || "";
   const carrier = order.shipments?.rings?.carrierLabel || order.shipping.carrierLabel;

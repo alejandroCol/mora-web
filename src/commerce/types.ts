@@ -211,6 +211,9 @@ export type MoraOrder = {
     paidSentAt?: number;
     dispatchedSentAt?: number;
     sizerDispatchedSentAt?: number;
+    /** Correo «listo para salir», al crear la guía de cada tramo. */
+    guideReadySentAt?: number;
+    sizerGuideReadySentAt?: number;
     deliveredSentAt?: number;
     cancelledSentAt?: number;
   };

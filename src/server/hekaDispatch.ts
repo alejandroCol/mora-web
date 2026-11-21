@@ -13,7 +13,7 @@ import {
   quoteHeka,
   refreshHekaGuide,
 } from "./hekaClient";
-import { attachShippingGuide, getOrder, transitionOrder } from "./orders";
+import { attachShippingGuide, getOrder, notifyGuideReady, transitionOrder } from "./orders";
 import { loadCommerceSettings } from "./quoteShipping";
 
 function phoneDigits(raw: string) {
@@ -208,6 +208,7 @@ export async function dispatchOrderWithHeka(
       note: `Guía ${kind === "sizer" ? "del medidor" : "de los anillos"} ${guideNumber} · ${chosen.carrierLabel}${pickup ? " · con recogida" : ""}`,
       kind,
     });
+    await notifyGuideReady(orderId, kind);
   }
 
   if (guideId && status !== "progress" && status !== "finished" && status !== "in_office") {

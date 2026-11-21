@@ -37,6 +37,7 @@ import {
   sendCancelledCustomerEmail,
   sendDeliveredCustomerEmail,
   sendDispatchedCustomerEmail,
+  sendGuideReadyCustomerEmail,
   sendSizerDispatchedEmail,
   sendPaidCustomerEmail,
   sendPaidStaffEmail,
@@ -784,6 +785,26 @@ export async function transitionOrder(input: {
   }
 
   return next;
+}
+
+/** Avisa al cliente que su envío ya tiene guía. Una sola vez por tramo; no tumba la guía si falla. */
+export async function notifyGuideReady(orderId: string, kind: "sizer" | "rings") {
+  try {
+    const db = adminDb();
+    const ref = orderRef(db, orderId);
+    const snap = await ref.get();
+    if (!snap.exists) return;
+    const order = serializeOrder(snap.id, snap.data()!);
+    const flag = kind === "sizer" ? "sizerGuideReadySentAt" : "guideReadySentAt";
+    const dispatched = kind === "sizer" ? order.emails?.sizerDispatchedSentAt : order.emails?.dispatchedSentAt;
+    if (order.emails?.[flag] || dispatched) return;
+    if (!order.shipments?.[kind]?.trackingNumber?.trim()) return;
+    const sent = await sendGuideReadyCustomerEmail(order, kind);
+    if (!sent.ok) return;
+    await ref.set({ emails: { ...(order.emails ?? {}), [flag]: Date.now() } }, { merge: true });
+  } catch (error) {
+    console.error("[email guide ready]", error);
+  }
 }
 
 export async function attachShippingGuide(input: {

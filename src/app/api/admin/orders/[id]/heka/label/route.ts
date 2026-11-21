@@ -1,4 +1,5 @@
 import { jsonError, requirePermission } from "@/server/adminAuth";
+import { fetchDropiSticker } from "@/server/dropiClient";
 import { fetchHekaSticker } from "@/server/hekaClient";
 import { getOrder } from "@/server/orders";
 
@@ -27,7 +28,11 @@ export async function GET(request: Request, ctx: Ctx) {
     if (!guideId) {
       return Response.json({ ok: false, error: "Esta venta no tiene guía." }, { status: 404 });
     }
-    const pdf = await fetchHekaSticker(guideId);
+    const byDropi =
+      leg !== "sizer" &&
+      order.shipments?.rings?.guideProvider === "dropi" &&
+      order.shipments.rings.hekaGuideId?.trim() === guideId;
+    const pdf = byDropi ? await fetchDropiSticker(guideId) : await fetchHekaSticker(guideId);
     return new Response(new Uint8Array(pdf), {
       headers: {
         "Content-Type": "application/pdf",

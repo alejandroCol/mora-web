@@ -7,7 +7,7 @@ import {
   ORDER_STATUS_LABEL,
   PAYMENT_METHOD_LABEL,
 } from "@/commerce/labels";
-import type { CommerceSettings, MoraOrder, OrderStatus } from "@/commerce/types";
+import type { CommerceSettings, MoraOrder, OrderStatus, ShippingQuoteOption } from "@/commerce/types";
 import { commerceLineLabel, orderHasSizer, orderNeedsSize } from "@/commerce/sizing";
 import { enCaminoTarget, guideKindFor } from "@/commerce/shipments";
 import { orderJourney } from "@/commerce/orderJourney";
@@ -17,6 +17,15 @@ import { useAdminAuth } from "./AdminAuth";
 import { ManualSaleForm } from "./ManualSaleForm";
 
 type Tab = "pipeline" | "awaiting_payment" | "delivered" | "cancelled" | "all";
+
+type GuideQuote = {
+  kind: "sizer" | "rings";
+  options: ShippingQuoteOption[];
+  suggested: string;
+  origin: string;
+  sandbox: boolean;
+  provider?: "heka" | "dropi";
+};
 
 const PIPELINE: { id: "ready" | "transit"; hint: string; statuses: OrderStatus[] }[] = [
   { id: "ready", hint: "Pagados, listos para salir", statuses: ["paid"] },
@@ -88,7 +97,8 @@ export function VentasBoard() {
   const [tracking, setTracking] = useState("");
   const [busy, setBusy] = useState("");
   const [hekaError, setHekaError] = useState("");
-  const [sandbox, setSandbox] = useState(true);
+  const [sandbox, setSandbox] = useState(false);
+  const [picker, setPicker] = useState<{ order: MoraOrder; quote: GuideQuote } | null>(null);
   const [settings, setSettings] = useState<CommerceSettings | null>(null);
 
   const load = useCallback(async () => {
@@ -104,7 +114,7 @@ export function VentasBoard() {
       .then((data: { ok?: boolean; settings?: CommerceSettings }) => {
         if (data.ok && data.settings) {
           setSettings(data.settings);
-          setSandbox(data.settings.hekaSandbox !== false);
+          setSandbox(data.settings.hekaSandbox === true);
         }
       })
       .catch(() => undefined);
@@ -178,21 +188,45 @@ export function VentasBoard() {
     [orders, selected],
   );
 
-  async function runHeka(order: MoraOrder, action: "create" | "refresh") {
+  /** Cotiza el envío y abre la elección de transportadora; la guía se crea al confirmar. */
+  async function pickCarrier(order: MoraOrder) {
+    setBusy(`${order.id}:heka:create`);
+    setHekaError("");
+    try {
+      const res = await authorizedFetch(`/api/admin/orders/${order.id}/heka`, {
+        method: "POST",
+        body: JSON.stringify({ action: "quote" }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string; quote?: GuideQuote };
+      if (!data.ok || !data.quote) throw new Error(data.error);
+      setPicker({ order, quote: data.quote });
+    } catch (error) {
+      setHekaError(error instanceof Error && error.message ? error.message : "No se pudo cotizar el envío.");
+    } finally {
+      setBusy("");
+    }
+  }
+
+  async function runHeka(
+    order: MoraOrder,
+    action: "create" | "refresh",
+    choice?: { carrier: string; pickup: boolean },
+  ) {
     setBusy(`${order.id}:heka:${action}`);
     setHekaError("");
     try {
       const res = await authorizedFetch(`/api/admin/orders/${order.id}/heka`, {
         method: "POST",
-        body: JSON.stringify({ action }),
+        body: JSON.stringify({ action, ...choice }),
       });
       const data = (await res.json()) as { ok: boolean; error?: string; order?: MoraOrder };
       if (!data.ok) throw new Error(data.error);
+      setPicker(null);
       setSelected(data.order ?? null);
       if (data.order?.shipping.trackingNumber) setTracking(data.order.shipping.trackingNumber);
       await load();
     } catch (error) {
-      setHekaError(error instanceof Error ? error.message : "Heka no pudo crear la guía.");
+      setHekaError(error instanceof Error ? error.message : "No se pudo crear la guía.");
     } finally {
       setBusy("");
     }
@@ -349,7 +383,7 @@ export function VentasBoard() {
                           setTracking(pendingGuideFor(order));
                           setHekaError("");
                         }}
-                        onCreate={() => void runHeka(order, "create")}
+                        onCreate={() => void pickCarrier(order)}
                         onView={(leg) => void viewGuide(order, leg)}
                         onEnCamino={() => {
                           const target = enCaminoTarget(order);
@@ -381,7 +415,7 @@ export function VentasBoard() {
                   setTracking(pendingGuideFor(order));
                   setHekaError("");
                 }}
-                onCreate={() => void runHeka(order, "create")}
+                onCreate={() => void pickCarrier(order)}
                 onView={(leg) => void viewGuide(order, leg)}
                 onEnCamino={() => {
                   const target = enCaminoTarget(order);
@@ -404,13 +438,30 @@ export function VentasBoard() {
           hekaError={hekaError}
           onClose={() => setSelected(null)}
           onStatus={(status) => void changeStatus(selectedFresh, status)}
-          onHeka={(action) => void runHeka(selectedFresh, action)}
+          onHeka={(action) =>
+            void (action === "create" ? pickCarrier(selectedFresh) : runHeka(selectedFresh, action))
+          }
           onView={(leg) => void viewGuide(selectedFresh, leg)}
           onEnCamino={() => {
             const target = enCaminoTarget(selectedFresh);
             if (!target) return;
             void changeStatus(selectedFresh, target.to, guideNumberFor(selectedFresh, target.kind, tracking));
           }}
+        />
+      ) : null}
+
+      {picker ? (
+        <CarrierPicker
+          key={picker.order.id}
+          order={picker.order}
+          quote={picker.quote}
+          creating={busy === `${picker.order.id}:heka:create`}
+          error={hekaError}
+          onClose={() => {
+            setPicker(null);
+            setHekaError("");
+          }}
+          onConfirm={(choice) => void runHeka(picker.order, "create", choice)}
         />
       ) : null}
 
@@ -421,6 +472,136 @@ export function VentasBoard() {
           onCreated={() => void load()}
         />
       ) : null}
+    </div>
+  );
+}
+
+function CarrierPicker({
+  order,
+  quote,
+  creating,
+  error,
+  onClose,
+  onConfirm,
+}: {
+  order: MoraOrder;
+  quote: GuideQuote;
+  creating: boolean;
+  error: string;
+  onClose: () => void;
+  onConfirm: (choice: { carrier: string; pickup: boolean }) => void;
+}) {
+  const [carrier, setCarrier] = useState(quote.suggested || quote.options[0]?.carrier || "");
+  const [pickup, setPickup] = useState(true);
+  const dropi = quote.provider === "dropi";
+  const chosen = quote.options.find((option) => option.carrier === carrier);
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-end bg-black/40 sm:place-items-center sm:p-6"
+      onClick={creating ? undefined : onClose}
+    >
+      <div
+        className="w-full max-w-md rounded-t-3xl bg-white p-5 pb-[calc(1.25rem+env(safe-area-inset-bottom))] text-[#1d1d1f] sm:rounded-3xl sm:pb-5"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--admin-muted)]">
+          {order.orderNumber} · {quote.kind === "sizer" ? "Medidor" : "Anillos"}
+        </p>
+        <h2 className="mt-2 text-[20px] font-semibold tracking-[-0.03em]">¿Con quién lo envías?</h2>
+        <p className="mt-1 text-[13px] text-[var(--admin-muted)]">
+          {quote.origin ? `${quote.origin} → ` : ""}
+          {order.shipping.ciudad}
+          {quote.sandbox ? " · ambiente demo, no cobra" : ""}
+          {dropi ? " · con Dropi, se descuenta de tu cartera" : ""}
+        </p>
+
+        <ul className="mt-4 space-y-2">
+          {quote.options.map((option) => {
+            const active = option.carrier === carrier;
+            return (
+              <li key={option.carrier}>
+                <button
+                  type="button"
+                  disabled={creating}
+                  onClick={() => setCarrier(option.carrier)}
+                  aria-pressed={active}
+                  className={`flex w-full items-center justify-between gap-3 rounded-2xl border px-4 py-3 text-left ${
+                    active
+                      ? "border-[#1d1d1f] bg-[var(--admin-field)]"
+                      : "border-[var(--admin-line)] bg-white"
+                  }`}
+                >
+                  <span>
+                    <span className="block text-[15px] font-medium">{option.carrierLabel}</span>
+                    <span className="block text-[12px] text-[var(--admin-muted)]">
+                      {[option.deliveryEstimate || (dropi ? "" : "Tiempo sin confirmar"), option.serviceDescription]
+                        .filter(Boolean)
+                        .join(" · ") || "Tiempo sin confirmar"}
+                    </span>
+                  </span>
+                  <span className="text-[15px] font-medium">{formatMoney(option.totalPriceCop)}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+
+        {dropi ? (
+          <p className="mt-4 rounded-2xl bg-[var(--admin-field)] px-4 py-3 text-[12px] leading-5 text-[var(--admin-muted)]">
+            Dropi no deja pedir la recogida desde aquí. Con recolección fija, la transportadora pasa
+            sola. Si no la tienes, pídela en{" "}
+            <a
+              href="https://app.dropi.co/"
+              target="_blank"
+              rel="noreferrer"
+              className="underline text-[#1d1d1f]"
+            >
+              Dropi › Logistic › Recolecciones
+            </a>{" "}
+            o lleva el paquete a una oficina.
+          </p>
+        ) : (
+          <label className="mt-4 flex items-start gap-3 text-[13px]">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={pickup}
+              disabled={creating}
+              onChange={(event) => setPickup(event.target.checked)}
+            />
+            <span>
+              Pedir que lo recojan en la bodega
+              <span className="mt-0.5 block text-[12px] text-[var(--admin-muted)]">
+                Sin marcar, lo llevas tú a una oficina de la transportadora.
+              </span>
+            </span>
+          </label>
+        )}
+
+        {error ? <p className="order-error">{error}</p> : null}
+
+        <button
+          type="button"
+          disabled={creating || !chosen}
+          onClick={() => chosen && onConfirm({ carrier: chosen.carrier, pickup })}
+          className="admin-cta mt-5 h-11 w-full disabled:opacity-40"
+        >
+          <Spin on={creating} />
+          {creating
+            ? "Creando la guía…"
+            : chosen
+              ? `Crear guía · ${formatMoney(chosen.totalPriceCop)}`
+              : "Elige una transportadora"}
+        </button>
+        <button
+          type="button"
+          disabled={creating}
+          onClick={onClose}
+          className="mt-2 h-10 w-full text-[13px] text-[var(--admin-muted)] disabled:opacity-40"
+        >
+          Cancelar
+        </button>
+      </div>
     </div>
   );
 }
@@ -710,7 +891,7 @@ function OrderDrawer({
               className="admin-cta mt-4 h-11 w-full disabled:opacity-40"
             >
               <Spin on={busy === `${order.id}:heka:create`} />
-              {busy === `${order.id}:heka:create` ? "Creando la guía en Heka…" : next.actionLabel}
+              {busy === `${order.id}:heka:create` ? "Creando la guía…" : next.actionLabel}
             </button>
           ) : null}
 
@@ -799,7 +980,7 @@ function OrderDrawer({
             className="order-soft-btn mt-6"
           >
             <Spin on={busy === `${order.id}:heka:refresh`} />
-            {busy === `${order.id}:heka:refresh` ? "Consultando Heka…" : "Actualizar estado en Heka"}
+            {busy === `${order.id}:heka:refresh` ? "Consultando la guía…" : "Actualizar estado de la guía"}
           </button>
         ) : null}
 

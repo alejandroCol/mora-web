@@ -8,7 +8,14 @@ import {
   selectQuoteOption,
   type EnviaPackage,
 } from "./enviaClient";
-import { hekaPreferredWarehouseId, hekaQuoteConfigured, listHekaWarehouses, quoteHeka } from "./hekaClient";
+import {
+  forgetHekaSandbox,
+  hekaGuideConfigured,
+  hekaPreferredWarehouseId,
+  hekaQuoteConfigured,
+  listHekaWarehouses,
+  quoteHeka,
+} from "./hekaClient";
 
 const DEFAULT_PACKAGE = {
   pesoKg: 0.35,
@@ -27,7 +34,7 @@ export const DEFAULT_SETTINGS: CommerceSettings = {
   },
   package: DEFAULT_PACKAGE,
   quoteAutomatic: true,
-  hekaSandbox: true,
+  hekaSandbox: false,
   fallbackShippingCop: 16000,
   cityRates: [],
   updatedAt: 0,
@@ -44,7 +51,7 @@ export async function loadCommerceSettings(): Promise<CommerceSettings> {
       origin: { ...DEFAULT_SETTINGS.origin, ...data.origin },
       package: { ...DEFAULT_SETTINGS.package, ...data.package },
       cityRates: Array.isArray(data.cityRates) ? data.cityRates : [],
-      hekaSandbox: true,
+      hekaSandbox: data.hekaSandbox === true,
     };
   } catch (error) {
     console.error("[commerce settings]", error);
@@ -65,6 +72,7 @@ export async function saveCommerceSettings(
     updatedAt: Date.now(),
   };
   await adminDb().doc(DOCS.commerce).set(next, { merge: true });
+  forgetHekaSandbox();
   return next;
 }
 
@@ -130,6 +138,25 @@ export type QuoteResult = {
 };
 
 const quoteCache = new Map<string, { expiresAt: number; result: QuoteResult }>();
+const originCache = new Map<boolean, { expiresAt: number; dane: string }>();
+
+/** El envío sale de la bodega de Heka; se guarda 10 min para no pedirla en cada cotización. */
+async function warehouseOriginDane(sandbox: boolean) {
+  const cached = originCache.get(sandbox);
+  if (cached && cached.expiresAt > Date.now()) return cached.dane;
+  if (!(await hekaGuideConfigured())) return "";
+  try {
+    const warehouses = await listHekaWarehouses();
+    const preferred = await hekaPreferredWarehouseId();
+    const warehouse = warehouses.find((row) => row.id === preferred) ?? warehouses[0];
+    const dane = warehouse?.dane ?? "";
+    if (dane) originCache.set(sandbox, { expiresAt: Date.now() + 10 * 60 * 1000, dane });
+    return dane;
+  } catch (error) {
+    console.error("[heka warehouse]", error);
+    return cached?.dane ?? "";
+  }
+}
 
 export async function quoteShipping(input: QuoteInput): Promise<QuoteResult> {
   const settings = await loadCommerceSettings();
@@ -148,13 +175,9 @@ export async function quoteShipping(input: QuoteInput): Promise<QuoteResult> {
   const originReady = Boolean(
     settings.origin.departamento.trim() && settings.origin.ciudad.trim(),
   );
-  let cityOriginDane = "";
-  if (settings.hekaSandbox && settings.quoteAutomatic) {
-    const warehouses = await listHekaWarehouses().catch(() => []);
-    const preferred = await hekaPreferredWarehouseId();
-    const warehouse = warehouses.find((row) => row.id === preferred) ?? warehouses[0];
-    cityOriginDane = warehouse?.dane ?? "";
-  }
+  const cityOriginDane = settings.quoteAutomatic
+    ? await warehouseOriginDane(settings.hekaSandbox)
+    : "";
   if (hekaQuoteConfigured() && (originReady || cityOriginDane) && settings.quoteAutomatic) {
     const piezas = Math.max(1, input.piezas);
     const hekaKey = [

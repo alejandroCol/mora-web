@@ -155,6 +155,11 @@ env:
     secret: HEKA_DEMO_WAREHOUSE_ID
     availability:
       - RUNTIME
+  # Dropi: guías de los anillos. El token vive en Secret Manager, no en este archivo.
+  - variable: DROPI_INTEGRATION_KEY
+    secret: DROPI_INTEGRATION_KEY
+    availability:
+      - RUNTIME
   # MATIAS. Email y password viven en Secret Manager, no en este archivo.
   - variable: MATIAS_API_BASE_URL
     value: https://api-v2.matias-api.com/api/ubl2.1

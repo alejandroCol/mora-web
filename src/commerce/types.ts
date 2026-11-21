@@ -72,10 +72,17 @@ export type ShippingSnapshot = {
   service?: string;
   deliveryEstimate?: string;
   trackingNumber?: string;
+  /** Id de la guía en quien la creó: guía de Heka u orden de Dropi (ver `guideProvider`). */
   hekaGuideId?: string;
   hekaStatus?: string;
   hekaStatusLabel?: string;
+  guideProvider?: GuideProvider;
+  /** Orden ya creada (y cobrada) en Dropi; puede existir antes de que salga la guía. */
+  dropiOrderId?: string;
 };
+
+/** Quién creó la guía. Sin valor = Heka (pedidos anteriores a Dropi). */
+export type GuideProvider = "heka" | "dropi";
 
 export type ShipmentKind = "sizer" | "rings";
 export type ShipmentLegStatus = "pending" | "in_transit" | "delivered";
@@ -87,6 +94,8 @@ export type ShipmentLeg = {
   hekaGuideId?: string;
   hekaStatus?: string;
   hekaStatusLabel?: string;
+  guideProvider?: GuideProvider;
+  dropiOrderId?: string;
   carrier?: string;
   carrierLabel?: string;
   dispatchedAt?: number;

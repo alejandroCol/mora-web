@@ -809,6 +809,8 @@ export async function attachShippingGuide(input: {
         hekaGuideId: input.shipping.hekaGuideId ?? order.shipments?.[input.kind]?.hekaGuideId,
         hekaStatus: input.shipping.hekaStatus ?? order.shipments?.[input.kind]?.hekaStatus,
         hekaStatusLabel: input.shipping.hekaStatusLabel ?? order.shipments?.[input.kind]?.hekaStatusLabel,
+        guideProvider: input.shipping.guideProvider ?? order.shipments?.[input.kind]?.guideProvider,
+        dropiOrderId: input.shipping.dropiOrderId ?? order.shipments?.[input.kind]?.dropiOrderId,
         carrier: input.shipping.carrier ?? order.shipments?.[input.kind]?.carrier,
         carrierLabel: input.shipping.carrierLabel ?? order.shipments?.[input.kind]?.carrierLabel,
       }

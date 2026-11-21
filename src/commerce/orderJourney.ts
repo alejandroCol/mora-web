@@ -197,8 +197,8 @@ export function orderJourney(order: MoraOrder): OrderJourney {
       : {
           title: hasSizer ? "Enviar los anillos" : "Enviar el pedido",
           body: hasSizer
-            ? "La talla ya está confirmada. Crea la guía con Heka o escribe la guía si ya la tienes."
-            : "Crea la guía con Heka o escribe la guía si ya la tienes.",
+            ? "La talla ya está confirmada. Crea la guía o escribe la guía si ya la tienes."
+            : "Crea la guía o escribe la guía si ya la tienes.",
           action: "heka_create",
           actionLabel: hasSizer ? "Crear guía de los anillos" : "Crear guía",
           manualGuide: true,

@@ -1,5 +1,7 @@
+import { DOCS } from "@/commerce/paths";
 import { codigoDaneEnviaCiudad } from "@/lib/colombiaGeo";
 import type { ShippingQuoteOption } from "@/commerce/types";
+import { adminDb } from "@/lib/firebaseAdmin";
 
 const HEKA_PROD_API = "https://api.hekaentrega.co";
 const HEKA_DEMO_API = "https://apidev.hekaentrega.co";
@@ -48,8 +50,29 @@ type HekaSession = {
 
 let sessionCache: (HekaSession & { sandbox: boolean }) | null = null;
 
+let sandboxCache: { value: boolean; expiresAt: number } | null = null;
+
+/** Producción salvo que en Origen y envíos se apague el interruptor (`hekaSandbox: true`). */
 async function hekaSandboxEnabled() {
-  return true;
+  if (sandboxCache && sandboxCache.expiresAt > Date.now()) return sandboxCache.value;
+  let value = false;
+  try {
+    const snap = await adminDb().doc(DOCS.commerce).get();
+    value = snap.exists && snap.get("hekaSandbox") === true;
+  } catch (error) {
+    console.error("[heka sandbox]", error);
+    if (sandboxCache) return sandboxCache.value;
+  }
+  sandboxCache = { value, expiresAt: Date.now() + 15_000 };
+  return value;
+}
+
+export async function hekaIsSandbox() {
+  return hekaSandboxEnabled();
+}
+
+export function forgetHekaSandbox() {
+  sandboxCache = null;
 }
 
 async function resolveEnv(): Promise<HekaEnv> {

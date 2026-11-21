@@ -1,10 +1,11 @@
 import { codigoDaneEnviaCiudad } from "@/lib/colombiaGeo";
-import type { MoraOrder } from "@/commerce/types";
+import type { MoraOrder, ShipmentKind } from "@/commerce/types";
 import { orderNeedsSize, orderHasSizer } from "@/commerce/sizing";
 import { guideKindFor } from "@/commerce/shipments";
 import {
   createHekaGuide,
   hekaGuideConfigured,
+  hekaIsSandbox,
   hekaPreferredWarehouseId,
   hekaStatusLabel,
   listHekaWarehouses,
@@ -31,12 +32,8 @@ function packageOf(order: MoraOrder, settings: Awaited<ReturnType<typeof loadCom
   };
 }
 
-export async function dispatchOrderWithHeka(orderId: string, by: string) {
-  if (!(await hekaGuideConfigured())) {
-    throw new Error("Faltan las credenciales de Heka para este entorno.");
-  }
-  const order = await getOrder(orderId);
-  if (!order) throw new Error("Pedido no encontrado.");
+/** Qué envío toca guiar y si el pedido tiene lo que la transportadora exige. */
+export function guideTarget(order: MoraOrder) {
   if (order.status !== "paid" && order.status !== "sizer_transit" && order.status !== "in_transit") {
     throw new Error("Solo se guía un pedido pagado.");
   }
@@ -62,11 +59,81 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
     throw new Error("El pedido no tiene dirección de entrega.");
   }
 
-  const settings = await loadCommerceSettings();
   const destinationDane = codigoDaneEnviaCiudad(order.shipping.departamento, order.shipping.ciudad);
   if (!destinationDane) {
     throw new Error("No encontramos el código de la ciudad de destino.");
   }
+  return { kind, phone, destinationDane };
+}
+
+/** Bodega de salida, paquete y lo que cobra cada transportadora por este envío. */
+async function quoteGuide(order: MoraOrder, kind: ShipmentKind) {
+  const settings = await loadCommerceSettings();
+  const warehouses = await listHekaWarehouses();
+  const preferred = await hekaPreferredWarehouseId();
+  const warehouse = warehouses.find((row) => row.id === preferred) ?? warehouses[0];
+  if (!warehouse) {
+    throw new Error(
+      "En Heka no hay una bodega activa. Si ya la creaste, actívala en el panel: sigue deshabilitada.",
+    );
+  }
+
+  const originDane =
+    warehouse.dane || codigoDaneEnviaCiudad(settings.origin.departamento, settings.origin.ciudad);
+  if (!originDane) {
+    throw new Error("La bodega de Heka no tiene ciudad de origen.");
+  }
+
+  const pack = packageOf(order, settings);
+  const declared = kind === "sizer" ? 25000 : Math.max(25000, Math.round(order.totals.subtotal));
+  const opciones = await quoteHeka({
+    originDepartamento: warehouse.departamento || settings.origin.departamento,
+    originCiudad: warehouse.city || settings.origin.ciudad,
+    cityOriginDane: originDane,
+    departamento: order.shipping.departamento,
+    ciudad: order.shipping.ciudad,
+    declaredValue: declared,
+    ...pack,
+  });
+  const wanted = (order.shipping.carrier || settings.favoriteCarrier || "").toLowerCase();
+  const suggested =
+    opciones.find((option) => option.carrier === wanted) ??
+    opciones.slice().sort((a, b) => a.totalPriceCop - b.totalPriceCop)[0];
+  return { warehouse, originDane, pack, declared, opciones, suggested };
+}
+
+async function requireHeka() {
+  if (!(await hekaGuideConfigured())) {
+    throw new Error("Faltan las credenciales de Heka para este entorno.");
+  }
+}
+
+/** Lo que el super admin ve antes de crear la guía: transportadoras, precio y días. */
+export async function quoteOrderWithHeka(orderId: string) {
+  await requireHeka();
+  const order = await getOrder(orderId);
+  if (!order) throw new Error("Pedido no encontrado.");
+  const { kind } = guideTarget(order);
+  const quote = await quoteGuide(order, kind);
+  if (!quote.opciones.length) throw new Error("Heka no tiene cobertura para esa ciudad.");
+  return {
+    kind,
+    options: quote.opciones,
+    suggested: quote.suggested?.carrier ?? "",
+    origin: quote.warehouse.city,
+    sandbox: await hekaIsSandbox(),
+  };
+}
+
+export async function dispatchOrderWithHeka(
+  orderId: string,
+  by: string,
+  choice: { carrier?: string; pickup?: boolean } = {},
+) {
+  await requireHeka();
+  const order = await getOrder(orderId);
+  if (!order) throw new Error("Pedido no encontrado.");
+  const { kind, phone, destinationDane } = guideTarget(order);
 
   const leg = kind === "sizer" ? order.shipments?.sizer : order.shipments?.rings;
   let guideId = leg?.hekaGuideId?.trim() ?? "";
@@ -74,37 +141,17 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
   let status = leg?.hekaStatus?.trim() ?? "";
 
   if (!guideId) {
-    const warehouses = await listHekaWarehouses();
-    const preferred = await hekaPreferredWarehouseId();
-    const warehouse = warehouses.find((row) => row.id === preferred) ?? warehouses[0];
-    if (!warehouse) {
+    const { warehouse, originDane, pack, declared, opciones, suggested } = await quoteGuide(order, kind);
+    const picked = choice.carrier?.trim().toLowerCase();
+    const chosen = picked ? opciones.find((option) => option.carrier === picked) : suggested;
+    if (!chosen) {
       throw new Error(
-        "En Heka no hay una bodega activa. Si ya la creaste, actívala en el panel: sigue deshabilitada.",
+        picked
+          ? "Esa transportadora no cubre este envío. Elige otra."
+          : "Heka no tiene cobertura para esa ciudad.",
       );
     }
-
-    const originDane =
-      warehouse.dane || codigoDaneEnviaCiudad(settings.origin.departamento, settings.origin.ciudad);
-    if (!originDane) {
-      throw new Error("La bodega de Heka no tiene ciudad de origen.");
-    }
-
-    const pack = packageOf(order, settings);
-    const declared = kind === "sizer" ? 25000 : Math.max(25000, Math.round(order.totals.subtotal));
-    const opciones = await quoteHeka({
-      originDepartamento: warehouse.departamento || settings.origin.departamento,
-      originCiudad: warehouse.city || settings.origin.ciudad,
-      cityOriginDane: originDane,
-      departamento: order.shipping.departamento,
-      ciudad: order.shipping.ciudad,
-      declaredValue: declared,
-      ...pack,
-    });
-    const wanted = (order.shipping.carrier || settings.favoriteCarrier || "").toLowerCase();
-    const chosen =
-      opciones.find((option) => option.carrier === wanted) ??
-      opciones.slice().sort((a, b) => a.totalPriceCop - b.totalPriceCop)[0];
-    if (!chosen) throw new Error("Heka no tiene cobertura para esa ciudad.");
+    const pickup = choice.pickup ?? chosen.carrier === "tcc";
 
     const extra = order.items
       .map((item) => `${item.finishTitle}${item.size ? ` talla ${item.size}` : ""}`)
@@ -130,7 +177,7 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
       warehouse: warehouse.id,
       version: "1",
       in_order_form: false,
-      collection_request: chosen.carrier === "tcc",
+      collection_request: pickup,
       client: {
         name: `${order.customer.firstName} ${order.customer.lastName}`.trim(),
         address: order.shipping.direccion.trim(),
@@ -158,7 +205,7 @@ export async function dispatchOrderWithHeka(orderId: string, by: string) {
         carrierLabel: chosen.carrierLabel,
         fuente: "heka",
       },
-      note: `Guía ${kind === "sizer" ? "del medidor" : "de los anillos"} ${guideNumber} · ${chosen.carrierLabel}`,
+      note: `Guía ${kind === "sizer" ? "del medidor" : "de los anillos"} ${guideNumber} · ${chosen.carrierLabel}${pickup ? " · con recogida" : ""}`,
       kind,
     });
   }

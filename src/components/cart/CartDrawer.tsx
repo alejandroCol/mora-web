@@ -6,9 +6,11 @@ import { useEffect } from "react";
 import { IconCart, IconClose, IconTrash } from "@/components/icons/NavIcons";
 import { cartCountLabel, lineUnitPrice } from "@/commerce/lines";
 import { subtotalOf } from "@/commerce/cartMath";
+import { promoDiscountOf } from "@/commerce/promos";
+import { PromoPrice } from "@/components/promo/PromoPrice";
 import { catalog, formatMoney, PRODUCT_HOME, productPath } from "@/lib/catalog";
 import { useCartCount, useMoraStore } from "@/lib/store";
-import { usePricing, useSales } from "@/components/sales/SalesProvider";
+import { useLivePromo, usePricing, useSales } from "@/components/sales/SalesProvider";
 import { CartLineVisual } from "./CartLineVisual";
 
 export function CartDrawer() {
@@ -19,6 +21,8 @@ export function CartDrawer() {
   const count = useCartCount();
   // Se recalcula con el carrito y con el precio vivo (pricing cambia tras /api/sales).
   const subtotal = subtotalOf(cart);
+  const promo = useLivePromo();
+  const promoCop = promoDiscountOf(subtotal, promo);
   useEffect(() => {
     if (!cartOpen) return;
     const onKey = (event: KeyboardEvent) => {
@@ -90,7 +94,7 @@ export function CartDrawer() {
                         Mora {item.name}
                       </span>
                       <span className="mt-0.5 block text-[14px] text-soft">
-                        {formatMoney(pricing[item.id])}
+                        <PromoPrice value={pricing[item.id]} />
                       </span>
                     </span>
                     <Link
@@ -156,6 +160,22 @@ export function CartDrawer() {
             <span className="text-[13px] text-soft">Subtotal</span>
             <span className="text-[15px] text-ink">{formatMoney(subtotal)}</span>
           </div>
+          {promo && promoCop > 0 ? (
+            <>
+              <div className="mt-1.5 flex items-baseline justify-between">
+                <span className="text-[13px] text-soft">
+                  {promo.label} · −{promo.percent} %
+                </span>
+                <span className="text-[15px] text-ink">−{formatMoney(promoCop)}</span>
+              </div>
+              <div className="mt-2.5 flex items-baseline justify-between border-t border-line pt-2.5">
+                <span className="text-[13px] text-ink">Hoy pagas</span>
+                <span className="text-[17px] tracking-[-0.02em] text-ink">
+                  {formatMoney(subtotal - promoCop)}
+                </span>
+              </div>
+            </>
+          ) : null}
           <button
             type="button"
             disabled={cart.length === 0}

@@ -3,8 +3,8 @@
 import { getAnalytics, isSupported, logEvent } from "firebase/analytics";
 import { useEffect } from "react";
 import { getFirebaseApp } from "@/lib/firebase";
-import type { CaseOfferAction, InsightEvent, InsightImageKind } from "./types";
-import { CASE_OFFER_ACTIONS, FUNNEL_STEPS, type FunnelStep } from "./types";
+import type { CaseOfferAction, InsightEvent, InsightImageKind, PromoAction } from "./types";
+import { CASE_OFFER_ACTIONS, FUNNEL_STEPS, PROMO_ACTIONS, type FunnelStep } from "./types";
 
 const VISITOR_KEY = "mora-insight";
 const QUEUE_FLUSH_MS = 900;
@@ -16,6 +16,11 @@ let queue: InsightEvent[] = [];
 let flushTimer: number | null = null;
 let hooksBound = false;
 const seenSession = new Set<string>();
+/**
+ * La promoción que el visitante tiene en pantalla. Solo etiqueta el espejo de Firebase Analytics:
+ * la analítica de Mora decide en el servidor qué promoción estaba en vivo.
+ */
+let promoTag = { key: "", label: "" };
 
 function visitorId() {
   if (visitorMemo) return visitorMemo;
@@ -97,6 +102,13 @@ function mirrorFirebase(event: InsightEvent) {
       }
       if (event.name === "case_offer") {
         logEvent(analytics, "case_offer", { action: event.action });
+        return;
+      }
+      if (event.name === "promo") {
+        logEvent(analytics, event.action === "cta" ? "select_promotion" : "view_promotion", {
+          promotion_id: promoTag.key,
+          promotion_name: promoTag.label,
+        });
       }
     })
     .catch(() => undefined);
@@ -177,6 +189,13 @@ export function insightProductCheckout(productId: string, productName: string) {
 export function insightCaseOffer(action: CaseOfferAction) {
   if (!CASE_OFFER_ACTIONS.includes(action)) return;
   enqueue({ name: "case_offer", action }, `case_offer:${action}`);
+}
+
+export function insightPromo(action: PromoAction, promo: { key: string; label: string }) {
+  if (!PROMO_ACTIONS.includes(action)) return;
+  promoTag = { key: promo.key, label: promo.label };
+  // `view` una vez por edición y visita; `cta` cada toque.
+  enqueue({ name: "promo", action }, action === "view" ? `promo:${promo.key}:view` : undefined);
 }
 
 export function insightImageView(input: {

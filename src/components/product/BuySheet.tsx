@@ -4,13 +4,13 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   finishLabel,
-  formatMoney,
   products,
   resolveFinish,
   writeProductColor,
   type ModelId,
 } from "@/lib/catalog";
 import { track } from "@/growth/track";
+import { PromoPrice } from "@/components/promo/PromoPrice";
 import { usePricing, useSales } from "@/components/sales/SalesProvider";
 import { insightProductCart } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
@@ -128,8 +128,8 @@ export function BuySheet({
             </p>
             <FreeShipping className="ship-free-sm shrink-0" />
           </div>
-          <p className="shrink-0 text-[17px] tracking-[-0.02em] text-[#1d1d1f]">
-            {formatMoney(price)}
+          <p className="shrink-0 text-right text-[17px] tracking-[-0.02em] text-[#1d1d1f]">
+            <PromoPrice value={price} stacked />
           </p>
         </div>
 

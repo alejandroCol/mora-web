@@ -1,0 +1,539 @@
+/*
+ * Black Friday / Black Week y Hora Loca.
+ * Un solo lenguaje: negro de la franja de ofertas (#09090b), blanco, líneas de un píxel y cifras
+ * delgadas. Sin brillos ni degradados de relleno. El único color es el lila de la casa, en la
+ * línea bajo la franja (la misma de la franja de descuento del checkout).
+ */
+
+/* ── Precio con promoción (fichas, colección, carrito) ── */
+
+.promo-price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.5em;
+  white-space: nowrap;
+}
+
+.promo-price-stacked {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15em;
+}
+
+.promo-was {
+  font-size: 0.86em;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  opacity: 0.46;
+}
+
+.promo-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 1.35rem;
+  padding: 0 0.55rem;
+  border-radius: 999px;
+  background: #09090b;
+  color: #fff;
+  font-size: 11px;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+/* ── Franja sobre el encabezado ── */
+
+.promo-bar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+  padding-top: env(safe-area-inset-top);
+  background: #09090b;
+  color: #fff;
+  transform: translateY(-101%);
+  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.promo-bar[data-on] {
+  transform: none;
+}
+
+.promo-bar-row {
+  display: flex;
+  width: min(100%, 44rem);
+  height: 48px;
+  align-items: center;
+  gap: 0.8rem;
+  margin: 0 auto;
+  padding: 0 1.1rem;
+  white-space: nowrap;
+}
+
+/* La etiqueta cuelga de su ojal: se mece suave y, cada tanto, le pasa un brillo. */
+.promo-bar .promo-hang {
+  --tag-w: 2.7rem;
+  flex: none;
+  transform-origin: 50% 12%;
+  animation: promo-tag-swing 4.8s ease-in-out infinite;
+}
+
+.promo-bar .promo-hang-tag {
+  overflow: hidden;
+}
+
+.promo-bar .promo-hang-tag::after {
+  content: "";
+  position: absolute;
+  inset: -20% auto -20% 0;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgba(255, 255, 255, 0.7), transparent);
+  transform: translateX(-140%) skewX(-12deg);
+  animation: promo-tag-sheen 4.8s ease-in-out infinite;
+}
+
+@keyframes promo-tag-swing {
+  0%,
+  100% {
+    transform: rotate(-6deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+
+@keyframes promo-tag-sheen {
+  0%,
+  62% {
+    transform: translateX(-140%) skewX(-12deg);
+  }
+  88%,
+  100% {
+    transform: translateX(340%) skewX(-12deg);
+  }
+}
+
+.promo-bar-main {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.promo-bar-clock {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.promo-bar-verb {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.promo-bar-time {
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: #cfc4f7;
+}
+
+.promo-bar-short {
+  display: none;
+}
+
+@media (max-width: 639px) {
+  .promo-bar-row {
+    gap: 0.6rem;
+    padding: 0 0.85rem;
+  }
+
+  .promo-bar-main {
+    font-size: 14px;
+  }
+
+  .promo-bar-verb,
+  .promo-bar-long {
+    display: none;
+  }
+
+  .promo-bar-short {
+    display: inline;
+  }
+
+  .promo-bar-time {
+    font-size: 13.5px;
+  }
+}
+
+.promo-bar-line {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(163, 148, 228, 0.9), transparent);
+}
+
+/* El encabezado baja con la franja y se lee en blanco sobre el escenario negro. */
+
+.site-header {
+  transition: top 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.site-header img,
+.site-header a,
+.site-header button {
+  transition:
+    filter 0.3s ease,
+    color 0.3s ease,
+    opacity 0.2s ease;
+}
+
+html[data-promo-dark] .site-header img,
+html:not([data-promo-ready]):has([data-promo-stage="top"]) .site-header img {
+  filter: brightness(0) invert(1);
+}
+
+/* Antes de que cargue el script la página está arriba: si hay escenario, el encabezado va en blanco. */
+html[data-promo-dark] .site-header .text-soft,
+html[data-promo-dark] .site-header .text-ink,
+html:not([data-promo-ready]):has([data-promo-stage="top"]) .site-header .text-soft,
+html:not([data-promo-ready]):has([data-promo-stage="top"]) .site-header .text-ink {
+  color: #fff;
+}
+
+/* ── Escenario del inicio ── */
+
+.promo-stage {
+  position: relative;
+  display: flex;
+  min-height: 100svh;
+  align-items: center;
+  justify-content: center;
+  padding: calc(4.75rem + env(safe-area-inset-top)) 1.5rem max(2.5rem, env(safe-area-inset-bottom));
+  background: #09090b;
+  color: #fff;
+  text-align: center;
+}
+
+.promo-stage[data-phase="teaser"] {
+  min-height: min(100svh, 46rem);
+  padding-top: 5rem;
+  padding-bottom: 5rem;
+}
+
+.promo-stage-body {
+  display: flex;
+  width: 100%;
+  max-width: 72rem;
+  flex-direction: column;
+  align-items: center;
+}
+
+.promo-clock {
+  width: fit-content;
+  max-width: 100%;
+  margin-top: clamp(1.25rem, 3.6svh, 2.5rem);
+}
+
+.promo-count {
+  --groups: 4;
+  display: flex;
+  justify-content: center;
+  /* Cada grupo mide 1,56em: dos cifras de 0,62em y 0,16em de aire a cada lado. */
+  font-size: min(calc(64vw / (var(--groups) * 1.56)), 10.5svh, 6.25rem);
+  line-height: 0.9;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.promo-stage[data-ready] .promo-count {
+  opacity: 1;
+}
+
+.promo-group {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0 0.16em;
+}
+
+.promo-group + .promo-group::before {
+  content: "";
+  position: absolute;
+  top: 0.1em;
+  left: 0;
+  width: 1px;
+  height: 0.62em;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.promo-num {
+  display: inline-flex;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", var(--font-roboto), "Helvetica Neue",
+    "Segoe UI", sans-serif;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums lining-nums;
+  letter-spacing: -0.02em;
+}
+
+.promo-digit {
+  display: inline-block;
+  width: 0.62em;
+  text-align: center;
+  animation: promo-digit-in 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes promo-digit-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.12em);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.promo-unit {
+  margin-top: clamp(0.45rem, 1.1svh, 0.7rem);
+  font-size: 12px;
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Una línea que se vacía con el tiempo que queda. */
+.promo-drain {
+  height: 1px;
+  margin-top: clamp(1.1rem, 2.6svh, 1.75rem);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.promo-drain span {
+  display: block;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.82);
+  transform-origin: left center;
+  transition: transform 1s linear;
+}
+
+.promo-until {
+  margin-top: 1rem;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.52);
+  text-wrap: balance;
+}
+
+.promo-cta {
+  display: inline-flex;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 0.28rem;
+  margin-top: clamp(1.5rem, 4svh, 2.5rem);
+  padding: 0 22px;
+  border-radius: 980px;
+  background: #c6baf4;
+  color: #16141f;
+  font-size: 17px;
+  letter-spacing: -0.022em;
+  transition: background-color 0.2s ease;
+}
+
+.promo-cta:hover {
+  background: #d8cff9;
+}
+
+.promo-cta-arrow {
+  font-size: 1.15em;
+  line-height: 1;
+  opacity: 0.72;
+  transform: translateY(-0.5px);
+  transition: transform 0.25s ease;
+}
+
+.promo-cta:hover .promo-cta-arrow {
+  transform: translate(2px, -0.5px);
+}
+
+.promo-fine {
+  margin-top: 0.9rem;
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  color: rgba(255, 255, 255, 0.42);
+}
+
+.promo-rise {
+  animation: promo-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+
+@keyframes promo-rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (max-width: 519px) {
+  .promo-stage {
+    padding-inline: 1.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .promo-rise,
+  .promo-digit,
+  .promo-hang-swing,
+  .promo-bar .promo-hang,
+  .promo-bar .promo-hang-tag::after {
+    animation: none;
+  }
+
+  .promo-bar,
+  .promo-drain span,
+  .site-header {
+    transition: none;
+  }
+}
+
+/* ── Logotipo y etiqueta colgante ── */
+
+.promo-logo {
+  display: block;
+  background: currentColor;
+  -webkit-mask: var(--logo) center / contain no-repeat;
+  mask: var(--logo) center / contain no-repeat;
+}
+
+.promo-logo-text {
+  background: none;
+  font-size: calc(var(--tag-w) * 0.29);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 0.88;
+  text-align: center;
+}
+
+/* Como la etiqueta de una joya: cartón lila, ojal y un hilo que baja desde arriba. */
+.promo-hang {
+  --tag-w: clamp(10.5rem, 20vw, 15.5rem);
+  position: relative;
+  display: inline-block;
+}
+
+.promo-hang-tag {
+  position: relative;
+  display: block;
+  padding: calc(var(--tag-w) * 0.21) calc(var(--tag-w) * 0.12) calc(var(--tag-w) * 0.1);
+  border-radius: calc(var(--tag-w) * 0.07);
+  background: #c6baf4;
+  color: #09090b;
+}
+
+.promo-hang-tag .promo-logo {
+  width: var(--tag-w);
+}
+
+.promo-hang-eye {
+  position: absolute;
+  top: calc(var(--tag-w) * 0.065);
+  left: 50%;
+  width: calc(var(--tag-w) * 0.062);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: #09090b;
+  box-shadow: 0 0 0 max(1.5px, calc(var(--tag-w) * 0.012)) rgba(9, 9, 11, 0.2);
+  transform: translateX(-50%);
+}
+
+.promo-hang-swing {
+  transform-origin: 50% -70svh;
+  animation:
+    promo-swing 3.6s cubic-bezier(0.36, 0, 0.3, 1) both,
+    promo-sway 7s ease-in-out 3.6s infinite alternate;
+}
+
+.promo-hang-swing::before {
+  content: "";
+  position: absolute;
+  bottom: calc(100% - var(--tag-w) * 0.09);
+  left: 50%;
+  width: 1px;
+  height: 100svh;
+  background: rgba(255, 255, 255, 0.34);
+}
+
+@keyframes promo-swing {
+  0% {
+    transform: rotate(2.6deg);
+  }
+  24% {
+    transform: rotate(-1.7deg);
+  }
+  48% {
+    transform: rotate(1deg);
+  }
+  72% {
+    transform: rotate(-0.5deg);
+  }
+  100% {
+    transform: rotate(0.3deg);
+  }
+}
+
+@keyframes promo-sway {
+  from {
+    transform: rotate(0.3deg);
+  }
+  to {
+    transform: rotate(-0.3deg);
+  }
+}
+
+/* ── «10% de descuento» ardiendo en polvo ── */
+
+.promo-figure-wrap {
+  width: 100%;
+  margin-top: clamp(1rem, 3svh, 2rem);
+}
+
+.promo-figure {
+  position: relative;
+}
+
+.promo-figure-dust {
+  position: absolute;
+  top: -70%;
+  left: 0;
+  width: 100%;
+  height: 170%;
+  pointer-events: none;
+}
+
+.promo-figure-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", "Segoe UI",
+    sans-serif;
+  font-weight: 600;
+}
+
+.promo-figure-number {
+  font-size: min(36vw, 25svh, 17rem);
+  letter-spacing: -0.055em;
+  line-height: 0.84;
+}
+
+.promo-figure-word {
+  margin-top: 0.4em;
+  font-size: clamp(1.3rem, 2.7vw, 2.1rem);
+  letter-spacing: -0.035em;
+  line-height: 1;
+}

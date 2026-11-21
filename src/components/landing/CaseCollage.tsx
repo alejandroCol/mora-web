@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { CASE_COLOR_LIST, CASE_PRODUCT, casePath } from "@/lib/cases";
-import { formatMoney } from "@/lib/catalog";
+import { PromoPrice } from "@/components/promo/PromoPrice";
 import { usePricing } from "@/components/sales/SalesProvider";
 
 export function CaseCollage() {
@@ -48,7 +48,9 @@ export function CaseCollage() {
             </span>
           </p>
           <div className="case-collage-dock">
-            <span className="case-collage-price">{formatMoney(price)}</span>
+            <span className="case-collage-price">
+              <PromoPrice value={price} />
+            </span>
             <span className="elegir-cta">
               Ver
               <span aria-hidden className="elegir-cta-arrow">

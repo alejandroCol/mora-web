@@ -29,6 +29,7 @@ const NAV: NavItem[] = [
   { href: "/superadmin/analitica", label: "Analítica", permission: "insights", icon: <PulseIcon /> },
   { href: "/superadmin/inventario", label: "Inventario", permission: "inventory", icon: <BoxIcon /> },
   { href: "/superadmin/descuentos", label: "Descuentos", permission: "discounts", icon: <TagIcon /> },
+  { href: "/superadmin/promociones", label: "Promociones", permission: "discounts", icon: <ClockIcon /> },
   { href: "/superadmin/galeria", label: "Galería", permission: "gallery", icon: <ImageIcon /> },
   { href: "/superadmin/envios", label: "Origen y envíos", permission: "shipping", icon: <TruckIcon /> },
   { href: "/superadmin/ajustes", label: "Ajustes", permission: "settings", icon: <GearIcon /> },
@@ -39,7 +40,7 @@ const NAV: NavItem[] = [
 const NAV_GROUPS: { label: string; hrefs: string[] }[] = [
   { label: "Casa", hrefs: ["/superadmin/ventas", "/superadmin/carritos", "/superadmin/presupuesto", "/superadmin/anillos"] },
   { label: "Alcance", hrefs: ["/superadmin/crm", "/superadmin/automatizaciones", "/superadmin/anuncios", "/superadmin/campanas", "/superadmin/creadores", "/superadmin/estadisticas", "/superadmin/analitica"] },
-  { label: "Operación", hrefs: ["/superadmin/inventario", "/superadmin/descuentos", "/superadmin/galeria", "/superadmin/envios", "/superadmin/ajustes", "/superadmin/equipo"] },
+  { label: "Operación", hrefs: ["/superadmin/inventario", "/superadmin/descuentos", "/superadmin/promociones", "/superadmin/galeria", "/superadmin/envios", "/superadmin/ajustes", "/superadmin/equipo"] },
   { label: "Apps", hrefs: ["/superadmin/developer"] },
 ];
 
@@ -409,6 +410,15 @@ function CodeIcon() {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
       <path d="m8.5 7.5-5 4.5 5 4.5M15.5 7.5l5 4.5-5 4.5" strokeLinecap="round" strokeLinejoin="round" />
       <path d="m13.4 5-2.8 14" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ClockIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden>
+      <circle cx="12" cy="12" r="8" />
+      <path d="M12 7.5V12l3 2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }

@@ -21,6 +21,9 @@ export const COLLECTIONS = {
   abandonedCarts: "abandonedCarts",
   insightsDaily: "insightsDaily",
   insightsSeen: "insightsSeen",
+  /** Embudo y ventas de cada edición de Black Friday / Hora Loca (`{key}`). Solo Admin SDK. */
+  insightsPromos: "insightsPromos",
+  insightsPromoSeen: "insightsPromoSeen",
   supportTickets: "supportTickets",
   /** Códigos de descuento del super admin. Solo Admin SDK. */
   discountCodes: "discountCodes",
@@ -44,6 +47,8 @@ export const DOCS = {
   rings: `${COLLECTIONS.settings}/rings`,
   /** Precios vivos de Pro, Ultra y Case. */
   pricing: `${COLLECTIONS.settings}/pricing`,
+  /** Black Friday / Black Week y Hora Loca programadas. */
+  promos: `${COLLECTIONS.settings}/promos`,
   orderCounter: `${COLLECTIONS.counters}/orders`,
   matiasInvoice: `${COLLECTIONS.counters}/matiasInvoice`,
 } as const;

@@ -10,11 +10,12 @@ import {
   useState,
 } from "react";
 import { cartCount, discountOf, subtotalOf } from "@/commerce/cartMath";
+import { promoDiscountOf } from "@/commerce/promos";
 import type { CartLine, ShippingQuoteOption } from "@/commerce/types";
 import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
 import { cartCountLabel, cartHasRing, isRingLine, lineUnitPrice } from "@/commerce/lines";
 import { formatMoney, isModelId, products } from "@/lib/catalog";
-import { usePricing, useSales } from "@/components/sales/SalesProvider";
+import { useLivePromo, usePricing, useSales } from "@/components/sales/SalesProvider";
 import { useMoraStore } from "@/lib/store";
 import type { AddiCheckoutSession, BoldCheckoutSession, CheckoutPayMethod } from "@/payments/types";
 import { addiAmountAllowed, checkoutPrefersAddi } from "@/payments/public";
@@ -178,7 +179,15 @@ export function CheckoutFlow() {
   const subtotal = subtotalOf(cart);
   const piezas = cartCount(cart);
   const freeShip = cartHasRing(cart);
-  const discount = appliedOffer ? discountOf(subtotal, appliedOffer) : 0;
+  // Black Friday / Hora Loca se aplica sola. No se suma al código: gana el mayor descuento,
+  // y en empate la promoción (igual que en el servidor, que es quien cobra).
+  const promo = useLivePromo();
+  const codeDiscount = appliedOffer ? discountOf(subtotal, appliedOffer) : 0;
+  const promoDiscount = promoDiscountOf(subtotal, promo);
+  const promoWins = promoDiscount > 0 && promoDiscount >= codeDiscount;
+  const discount = promoWins ? promoDiscount : codeDiscount;
+  const discountLabel = promoWins && promo ? `${promo.label} −${promo.percent} %` : appliedOffer?.code;
+  const promoKey = promoWins && promo ? promo.key : "";
   useEffect(() => {
     const session = ensureCartSession();
     const fromUrl = new URLSearchParams(window.location.search).get("oferta");
@@ -374,7 +383,7 @@ export function CheckoutFlow() {
   const appliedCode = appliedOffer?.code ?? "";
   useEffect(() => {
     pendingPay.current = null;
-  }, [cartKey, destKey, carrier, payMethod, appliedCode]);
+  }, [cartKey, destKey, carrier, payMethod, appliedCode, promoKey]);
 
   useEffect(() => {
     const hinted = checkoutPrefersAddi(window.location.search);
@@ -507,7 +516,7 @@ export function CheckoutFlow() {
         attribution: currentAttribution(),
         sessionId: cartSessionId || ensureCartSession(),
         // Solo el código que el cliente ve aplicado; el servidor lo vuelve a validar.
-        offerCode: appliedOffer?.code,
+        offerCode: promoWins ? undefined : appliedOffer?.code,
         method: payMethod,
       }),
     });
@@ -668,7 +677,7 @@ export function CheckoutFlow() {
     <form onSubmit={onContinue} className="check-flow">
       {cameByOfferLink && appliedOffer?.source === "recovery" ? (
         <OfferBar
-          figure={appliedOffer.kind === "percent" ? `${appliedOffer.value}%` : formatMoney(discount)}
+          figure={appliedOffer.kind === "percent" ? `${appliedOffer.value}%` : formatMoney(codeDiscount)}
           expiresAt={appliedOffer.expiresAt}
           onExpire={() => setOfferTick((tick) => tick + 1)}
         />
@@ -706,7 +715,7 @@ export function CheckoutFlow() {
             envioCop={envioCop}
             quoteError={quoteError}
             discount={discount}
-            offerCode={appliedOffer?.code}
+            offerCode={discountLabel}
             total={shownTotal}
           />
         </div>
@@ -919,7 +928,8 @@ export function CheckoutFlow() {
                 <div className="lg:hidden">
                   <DiscountCodeField
                     applied={appliedOffer}
-                    discount={discount}
+                    discount={codeDiscount}
+                    beatenBy={promoWins && promo ? promo.label : undefined}
                     pendingCode={offerCode}
                     error={offerError}
                     checking={offerChecking}
@@ -932,7 +942,7 @@ export function CheckoutFlow() {
                   envioCop={envioCop}
                   quoteError={quoteError}
                   discount={discount}
-                  offerCode={appliedOffer?.code}
+                  offerCode={discountLabel}
                   total={shownTotal}
                 />
                 {addiReady ? (
@@ -992,7 +1002,8 @@ export function CheckoutFlow() {
             {step === 2 ? (
               <DiscountCodeField
                 applied={appliedOffer}
-                discount={discount}
+                discount={codeDiscount}
+                beatenBy={promoWins && promo ? promo.label : undefined}
                 pendingCode={offerCode}
                 error={offerError}
                 checking={offerChecking}
@@ -1005,7 +1016,7 @@ export function CheckoutFlow() {
               envioCop={envioCop}
               quoteError={quoteError}
               discount={discount}
-              offerCode={appliedOffer?.code}
+              offerCode={discountLabel}
               total={shownTotal}
             />
             {sales.orderNote ? (
@@ -1140,11 +1151,14 @@ function DiscountCodeField({
   pendingCode,
   error,
   checking,
+  beatenBy,
   onApply,
   onRemove,
 }: {
   applied: AppliedOffer | null;
   discount: number;
+  /** Black Friday / Hora Loca descuenta lo mismo o más que el código: se aplica la promoción. */
+  beatenBy?: string;
   /** Código guardado en la sesión aunque aún no aplique (muestra el error). */
   pendingCode: string;
   error: string;
@@ -1188,6 +1202,11 @@ function DiscountCodeField({
             Quitar
           </button>
         </div>
+        {beatenBy ? (
+          <p className="mt-2 text-[12px] leading-5 text-[#6e6e73]">
+Hoy aplica {beatenBy}, que descuenta lo mismo o más. Tu código queda sin usar.
+          </p>
+        ) : null}
       </div>
     );
   }

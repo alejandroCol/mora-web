@@ -191,7 +191,13 @@ function orderSummary(order: MoraOrder, photos: string[]) {
   const carrier = order.shipping.carrierLabel ? ` · ${escapeHtml(order.shipping.carrierLabel)}` : "";
   const discount = order.totals.discount
     ? totalRow(
-        `Descuento${order.meta?.offerCode ? ` · ${escapeHtml(order.meta.offerCode)}` : ""}`,
+        `Descuento${
+          order.meta?.promo?.applied
+            ? ` · ${escapeHtml(order.meta.promo.label)}`
+            : order.meta?.offerCode
+              ? ` · ${escapeHtml(order.meta.offerCode)}`
+              : ""
+        }`,
         `−${formatMoney(order.totals.discount)}`,
       )
     : "";

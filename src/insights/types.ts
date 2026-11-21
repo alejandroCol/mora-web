@@ -30,8 +30,13 @@ export type InsightImageKind = "photo" | "ring";
 export const CASE_OFFER_ACTIONS = ["shown", "add", "dismiss", "pay"] as const;
 export type CaseOfferAction = (typeof CASE_OFFER_ACTIONS)[number];
 
+/** Promoción con reloj: `view` = la vio en vivo, `cta` = tocó «Elegir» desde la franja o el escenario. */
+export const PROMO_ACTIONS = ["view", "cta"] as const;
+export type PromoAction = (typeof PROMO_ACTIONS)[number];
+
 export type InsightEvent =
   | { name: "funnel"; step: FunnelStep }
+  | { name: "promo"; action: PromoAction }
   | { name: "product_view"; productId: string; productName?: string }
   | { name: "product_cart"; productId: string; productName?: string }
   | { name: "product_checkout"; productId: string; productName?: string }

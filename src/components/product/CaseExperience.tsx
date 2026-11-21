@@ -11,7 +11,7 @@ import {
   writeCaseColor,
   type CaseColorId,
 } from "@/lib/cases";
-import { formatMoney } from "@/lib/catalog";
+import { PromoPrice } from "@/components/promo/PromoPrice";
 import { track } from "@/growth/track";
 import { insightCaseOffer, insightProductCart, useInsightProduct } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
@@ -97,7 +97,7 @@ export function CaseExperience({
   }
 
   return (
-    <div className="hero-wash h-dvh overflow-hidden">
+    <div className="hero-wash h-dvh overflow-hidden pt-[var(--offer-bar,0px)] transition-[padding] duration-300">
       <div className="flex h-full flex-col lg:flex-row">
         <section className="relative h-[min(50dvh,36rem)] min-h-[20rem] shrink-0 lg:h-auto lg:min-h-0 lg:min-w-0 lg:flex-1">
           <Image
@@ -134,8 +134,8 @@ export function CaseExperience({
                     {CASE_PRODUCT.line}
                   </p>
                 </div>
-                <p className="shrink-0 text-[17px] tracking-[-0.02em] text-[#1d1d1f]">
-                  {formatMoney(price)}
+                <p className="shrink-0 text-right text-[17px] tracking-[-0.02em] text-[#1d1d1f]">
+                  <PromoPrice value={price} stacked />
                 </p>
               </div>
 

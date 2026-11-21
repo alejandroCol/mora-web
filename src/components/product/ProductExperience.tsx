@@ -66,7 +66,7 @@ export function ProductExperience({
   }, [model.id, model.line, model.name, model.price]);
 
   return (
-    <div className="hero-wash h-dvh overflow-hidden">
+    <div className="hero-wash h-dvh overflow-hidden pt-[var(--offer-bar,0px)] transition-[padding] duration-300">
       <div className="flex h-full flex-col lg:flex-row">
         <section className="relative h-[min(50dvh,36rem)] min-h-[20rem] shrink-0 lg:h-auto lg:min-h-0 lg:min-w-0 lg:flex-1">
           <LookStage modelId={modelId} landing={opened} />

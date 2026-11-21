@@ -6,13 +6,13 @@ import { useEffect, useRef, useState } from "react";
 import {
   catalog,
   finishLabel,
-  formatMoney,
   PRODUCT_HOME,
   productPath,
   resolveFinish,
   type ModelId,
 } from "@/lib/catalog";
 import { AddiCuotasChip } from "@/components/payments/AddiCuotasChip";
+import { PromoPrice } from "@/components/promo/PromoPrice";
 import { usePricing } from "@/components/sales/SalesProvider";
 import { useMoraStore } from "@/lib/store";
 import { loadPayMethods } from "@/payments/methodsClient";
@@ -172,7 +172,9 @@ export function Atelier() {
                   </span>
                 </p>
                 <div className="world-dock">
-                  <span className="world-price">{formatMoney(pricing[item.id])}</span>
+                  <span className="world-price">
+                    <PromoPrice value={pricing[item.id]} />
+                  </span>
                   <div className="world-actions">
                     <span className="elegir-cta">
                       Ver

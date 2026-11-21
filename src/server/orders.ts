@@ -1,6 +1,7 @@
 import type { DocumentData, Firestore } from "firebase-admin/firestore";
 import { COLLECTIONS, DOCS, ORDER_SEQ_START, PENDING_TTL_MS } from "@/commerce/paths";
 import { demandBySku, totalsOf } from "@/commerce/cartMath";
+import type { OrderPromo } from "@/commerce/promos";
 import { canTransition } from "@/commerce/orderMachine";
 import { inventorySku, lineToOrderItem } from "@/commerce/sku";
 import { orderHasSizer, orderNeedsSize } from "@/commerce/sizing";
@@ -132,6 +133,8 @@ export async function createPendingOrder(input: {
   offerCode?: string;
   /** Código de descuento del super admin: aparta un uso hasta que se pague o expire. */
   discountCode?: string;
+  /** Black Friday / Hora Loca en vivo al crear el pedido. */
+  promo?: OrderPromo;
 }): Promise<MoraOrder> {
   await Promise.all([releaseExpiredCheckouts(), ensurePricing()]);
   const db = adminDb();
@@ -178,11 +181,12 @@ export async function createPendingOrder(input: {
     expiresAt: now + PENDING_TTL_MS,
     createdBy: "checkout",
   };
-  if (input.cartSessionId || input.offerCode || input.discountCode) {
+  if (input.cartSessionId || input.offerCode || input.discountCode || input.promo) {
     order.meta = {
       ...(input.cartSessionId ? { cartSessionId: input.cartSessionId } : {}),
       ...(input.offerCode ? { offerCode: input.offerCode } : {}),
       ...(input.discountCode ? { discountCode: input.discountCode } : {}),
+      ...(input.promo ? { promo: input.promo } : {}),
     };
   }
 

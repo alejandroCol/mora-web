@@ -1,6 +1,7 @@
 import type { AccessoryId, CaseColorId } from "@/lib/cases";
 import type { FinishId, ModelId } from "@/lib/catalog";
 import type { InvoiceSnapshot } from "@/invoices/types";
+import type { OrderPromo } from "./promos";
 
 export type CatalogId = ModelId | AccessoryId;
 
@@ -226,6 +227,8 @@ export type MoraOrder = {
     offerCode?: string;
     /** Solo si `offerCode` es un código de descuento del super admin (cuenta usos). */
     discountCode?: string;
+    /** El pedido nació con Black Friday / Hora Loca en vivo. `applied` dice si ese fue su descuento. */
+    promo?: OrderPromo;
     /** La compra ya se le reportó a Meta como venta de un anuncio de WhatsApp. */
     messagingPurchaseSent?: boolean;
     /** Venta manual: el vendedor pidió factura electrónica al quedar pagada. */

@@ -14,7 +14,7 @@ export function SiteHeader({
 }) {
   return (
     <header
-      className={`fixed inset-x-0 top-[var(--offer-bar,0px)] z-40 pt-[env(safe-area-inset-top)] ${
+      className={`site-header fixed inset-x-0 top-[var(--offer-bar,0px)] z-40 pt-[env(safe-area-inset-top)] ${
         solid ? "border-b border-[rgba(22,20,31,0.06)] bg-[#f5f5f7]" : ""
       }`}
     >

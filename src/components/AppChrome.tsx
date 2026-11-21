@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { SiteFooter } from "@/components/SiteFooter";
 import { SiteHeader } from "@/components/SiteHeader";
+import { PromoChrome } from "@/components/promo/PromoChrome";
 import { useInsightHome } from "@/insights/client";
 import { productPath, products, resolveProductSlug } from "@/lib/catalog";
 
@@ -48,6 +49,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   if (isProduct || isCheckout) {
     return (
       <>
+        <PromoChrome />
         <SiteHeader solid={isCheckout} switchTo={otherRing(pathname)} />
         <main className="flex-1">{children}</main>
         <CartDrawer />
@@ -58,6 +60,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   return (
     <>
       {pathname === "/" ? <HomeInsight /> : null}
+      <PromoChrome />
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter />

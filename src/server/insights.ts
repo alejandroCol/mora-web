@@ -1,5 +1,6 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { COLLECTIONS } from "@/commerce/paths";
+import type { PromoWindow } from "@/commerce/promos";
 import type { MoraOrder } from "@/commerce/types";
 import {
   finishLabel,
@@ -12,6 +13,7 @@ import {
   CASE_OFFER_ACTIONS,
   FUNNEL_COPY,
   FUNNEL_STEPS,
+  PROMO_ACTIONS,
   type CaseOfferAction,
   type FunnelStep,
   type InsightAdvice,
@@ -22,7 +24,9 @@ import {
   type InsightImageRow,
   type InsightProductRow,
   type InsightsReport,
+  type PromoAction,
 } from "@/insights/types";
+import { livePromoNow } from "./promos";
 
 const MAX_EVENTS = 24;
 const ID_RE = /^[a-zA-Z0-9:_-]{1,80}$/;
@@ -82,6 +86,10 @@ function isCaseOfferAction(value: unknown): value is CaseOfferAction {
   return CASE_OFFER_ACTIONS.includes(value as CaseOfferAction);
 }
 
+function isPromoAction(value: unknown): value is PromoAction {
+  return PROMO_ACTIONS.includes(value as PromoAction);
+}
+
 function isModelId(value: string): value is ModelId {
   return value === "aero" || value === "titan";
 }
@@ -112,6 +120,9 @@ function normalize(event: InsightEvent | undefined): InsightEvent | null {
     return isCaseOfferAction(event.action)
       ? { name: "case_offer", action: event.action }
       : null;
+  }
+  if (event.name === "promo") {
+    return isPromoAction(event.action) ? { name: "promo", action: event.action } : null;
   }
   const productId = cleanId(event.productId);
   if (!productId) return null;
@@ -147,9 +158,22 @@ function normalize(event: InsightEvent | undefined): InsightEvent | null {
   };
 }
 
+/** La edición de Black Friday / Hora Loca a la que se le anotan los eventos. */
+export type InsightPromo = Pick<
+  PromoWindow,
+  "key" | "kind" | "label" | "percent" | "startsAt" | "endsAt"
+>;
+
 export async function ingestInsights(input: {
   visitorId: string;
   events: InsightEvent[];
+  /**
+   * Sin indicar: la promoción en vivo en este instante (lo decide el servidor, no el navegador).
+   * `null`: no anotar en ninguna. Un pago llega con la promoción con la que nació el pedido.
+   */
+  promo?: InsightPromo | null;
+  /** Solo en el pago: lo que entró y lo que la promoción descontó. */
+  sale?: { revenue: number; discountCop: number };
 }) {
   const visitorId = cleanId(input.visitorId);
   if (!visitorId) return;
@@ -159,14 +183,23 @@ export async function ingestInsights(input: {
     .filter((event): event is InsightEvent => Boolean(event));
   if (!events.length) return;
 
+  const promo =
+    input.promo === undefined ? await livePromoNow().catch(() => null) : input.promo;
+
   const date = bogotaDay();
   const db = adminDb();
   const dailyRef = db.collection(COLLECTIONS.insightsDaily).doc(date);
   const seenRef = db.collection(COLLECTIONS.insightsSeen).doc(`${date}_${visitorId}`);
+  const promoRef = promo ? db.collection(COLLECTIONS.insightsPromos).doc(promo.key) : null;
+  const promoSeenRef = promo
+    ? db.collection(COLLECTIONS.insightsPromoSeen).doc(`${promo.key}_${visitorId}`)
+    : null;
 
   await db.runTransaction(async (tx) => {
     const seenSnap = await tx.get(seenRef);
     const dailySnap = await tx.get(dailyRef);
+    const promoSnap = promoRef ? await tx.get(promoRef) : null;
+    const promoSeenSnap = promoSeenRef ? await tx.get(promoSeenRef) : null;
     const keys = {
       ...((seenSnap.data()?.keys as Record<string, true> | undefined) ?? {}),
     };
@@ -174,6 +207,37 @@ export async function ingestInsights(input: {
       date,
       updatedAt: Date.now(),
     };
+
+    // Mismo embudo, contado aparte para la edición de la promoción: personas distintas
+    // durante toda la edición (no por día), para poder decir cuánto convirtió.
+    const promoKeys = {
+      ...((promoSeenSnap?.data()?.keys as Record<string, true> | undefined) ?? {}),
+    };
+    const promoPatch: Record<string, unknown> = { updatedAt: Date.now() };
+    const promoBump = (key: string, path: string) => {
+      promoPatch[`${path}.events`] = FieldValue.increment(1);
+      if (!promoKeys[key]) {
+        promoKeys[key] = true;
+        promoPatch[`${path}.visitors`] = FieldValue.increment(1);
+      }
+    };
+    if (promo && !promoKeys.visitor) {
+      promoKeys.visitor = true;
+      promoPatch.visitors = FieldValue.increment(1);
+    }
+    if (promo) {
+      for (const event of events) {
+        if (event.name === "funnel") promoBump(`funnel:${event.step}`, `funnel.${event.step}`);
+        if (event.name === "promo") promoBump(`action:${event.action}`, `actions.${event.action}`);
+      }
+      if (input.sale) {
+        promoPatch.orders = FieldValue.increment(1);
+        promoPatch.revenue = FieldValue.increment(Math.max(0, Math.round(input.sale.revenue)));
+        promoPatch.discountCop = FieldValue.increment(
+          Math.max(0, Math.round(input.sale.discountCop)),
+        );
+      }
+    }
 
     const bump = (key: string, eventPath: string, visitorPath?: string) => {
       patch[eventPath] = FieldValue.increment(1);
@@ -205,6 +269,8 @@ export async function ingestInsights(input: {
         );
         continue;
       }
+      // Los toques de la promoción solo viven en el documento de su edición.
+      if (event.name === "promo") continue;
 
       patch[`products.${event.productId}.id`] = event.productId;
       patch[`products.${event.productId}.name`] = productNameOf(
@@ -272,6 +338,25 @@ export async function ingestInsights(input: {
       { date, visitorId, keys, updatedAt: Date.now() },
       { merge: true },
     );
+    if (promo && promoRef && promoSeenRef) {
+      const head = {
+        key: promo.key,
+        kind: promo.kind,
+        label: promo.label,
+        percent: promo.percent,
+        startsAt: promo.startsAt,
+        endsAt: promo.endsAt,
+      };
+      if (!promoSnap?.exists) {
+        tx.set(promoRef, { ...head, visitors: 0, orders: 0, revenue: 0, discountCop: 0, funnel: {}, actions: {} });
+      }
+      tx.update(promoRef, { ...head, ...promoPatch });
+      tx.set(
+        promoSeenRef,
+        { key: promo.key, visitorId, keys: promoKeys, updatedAt: Date.now() },
+        { merge: true },
+      );
+    }
   });
 }
 
@@ -328,9 +413,25 @@ export async function recordInsightsPurchase(order: MoraOrder) {
       productName: productNameOf(item.modelId, item.name),
     });
   }
+  // El pago se anota en la promoción con la que nació el pedido, aunque ya haya terminado
+  // (Bold y Addi confirman minutos después). Un pedido sin promoción no suma en ninguna.
+  const promo = order.meta?.promo;
   await ingestInsights({
     visitorId,
     events: [{ name: "funnel", step: "purchase" }, ...buys],
+    promo: promo
+      ? {
+          key: promo.key,
+          kind: promo.kind,
+          label: promo.label,
+          percent: promo.percent,
+          startsAt: promo.startsAt,
+          endsAt: promo.endsAt,
+        }
+      : null,
+    sale: promo
+      ? { revenue: order.totals.total, discountCop: promo.applied ? order.totals.discount : 0 }
+      : undefined,
   });
 }
 

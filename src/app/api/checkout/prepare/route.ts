@@ -10,7 +10,9 @@ import type {
 import { isCaseColorId } from "@/lib/cases";
 import { isModelId, products } from "@/lib/catalog";
 import { cartHasRing, isCaseLine } from "@/commerce/lines";
+import { PROMO_PAY_GRACE_MS, type OrderPromo } from "@/commerce/promos";
 import { resolveCheckoutDiscount, type CheckoutDiscount } from "@/server/discountCodes";
+import { livePromoNow } from "@/server/promos";
 import { ensurePricing } from "@/server/pricing";
 import { upsertLead } from "@/server/leads";
 import { requestClient, sendMetaEvent } from "@/server/metaCapi";
@@ -163,9 +165,29 @@ export async function POST(request: Request) {
         { status: 400 },
       );
     }
-    const discountCop = discount.source
+    const codeCop = discount.source
       ? discountOf(subtotalOf(items), { kind: discount.kind, value: discount.value })
       : 0;
+    // Black Friday / Hora Loca: se aplica sola. No se suma al código: gana el mayor, y en
+    // empate la promoción (así el código no gasta un uso).
+    const live = await livePromoNow(PROMO_PAY_GRACE_MS).catch(() => null);
+    const promoCop = live
+      ? discountOf(subtotalOf(items), { kind: "percent", value: live.percent })
+      : 0;
+    const promoWins = Boolean(live) && promoCop > 0 && promoCop >= codeCop;
+    const discountCop = promoWins ? promoCop : codeCop;
+    const codeApplies = Boolean(discount.source) && !promoWins;
+    const promo: OrderPromo | undefined = live
+      ? {
+          kind: live.kind,
+          key: live.key,
+          label: live.label,
+          percent: live.percent,
+          startsAt: live.startsAt,
+          endsAt: live.endsAt,
+          applied: promoWins,
+        }
+      : undefined;
 
     const paymentReference = newBoldReference(method === "addi" ? "ADDI" : "MORA");
     const order = await createPendingOrder({
@@ -187,8 +209,9 @@ export async function POST(request: Request) {
       discountCop,
       cartSessionId:
         body.sessionId || (discount.source === "recovery" ? discount.sessionId : undefined),
-      offerCode: discount.source ? discount.code : undefined,
-      discountCode: discount.source === "code" ? discount.code : undefined,
+      offerCode: codeApplies && discount.source ? discount.code : undefined,
+      discountCode: codeApplies && discount.source === "code" ? discount.code : undefined,
+      promo,
     });
 
     const origin = requestOrigin(request);

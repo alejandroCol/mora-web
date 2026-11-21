@@ -895,6 +895,18 @@ function OrderDrawer({
             </button>
           ) : null}
 
+          {next.action === "en_camino" && camino && (camino.kind === "sizer" ? sizerGuide : ringsGuide) ? (
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => onView(camino.kind)}
+              className="admin-cta mt-4 h-11 w-full disabled:opacity-40"
+            >
+              <Spin on={busy === `${order.id}:view:${camino.kind}`} />
+              Imprimir la guía (PDF)
+            </button>
+          ) : null}
+
           {next.manualGuide && camino ? (
             <div className="order-manual">
               <label className="order-manual-label" htmlFor="order-guide">

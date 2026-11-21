@@ -286,15 +286,43 @@ export async function generateDropiGuide(orderId: string): Promise<DropiOrder> {
   return getDropiOrder(orderId);
 }
 
-/** PDF del rótulo. Dropi lo publica en una de estas rutas según la transportadora. */
+function isoDay(at: number) {
+  return new Date(at).toISOString().slice(0, 10);
+}
+
+/**
+ * La ruta del rótulo (`guia_urls3`) solo viene en la lista de órdenes, no en el detalle.
+ * La lista exige un rango de fechas de máximo 90 días.
+ */
+async function findDropiOrderInList(orderId: string): Promise<DropiOrder | null> {
+  const query = new URLSearchParams({
+    result_number: "5",
+    start: "0",
+    filter_date_by: "FECHA DE CREADO",
+    from: isoDay(Date.now() - 85 * 24 * 60 * 60 * 1000),
+    until: isoDay(Date.now() + 2 * 24 * 60 * 60 * 1000),
+    filter_by: "ORDEN ID",
+    value_filter_by: orderId,
+  });
+  const data = await dropiFetch(`orders/myorders?${query.toString()}`);
+  if (!data.isSuccess || !Array.isArray(data.objects)) return null;
+  return (
+    (data.objects as unknown[]).map(readOrder).find((row) => row?.id === orderId) ?? null
+  );
+}
+
+/** PDF del rótulo, tal como lo publica Dropi (verificado con Coordinadora el 2026-11-21). */
 export async function fetchDropiSticker(orderId: string): Promise<Buffer> {
-  const order = await getDropiOrder(orderId);
+  const listed = await findDropiOrderInList(orderId).catch(() => null);
+  const order = listed ?? (await getDropiOrder(orderId));
   const carrier = order.carrier.toLowerCase();
+  const sticker =
+    order.sticker || (order.guide ? `ORDEN-${order.id}-GUIA-${order.guide}.pdf` : "");
   const urls = [
     order.stickerPath ? `${DROPI_FILES}${order.stickerPath.replace(/^\/+/, "")}` : "",
-    order.sticker && carrier ? `${DROPI_GUIDES}${carrier}/${order.sticker}` : "",
-    order.sticker ? `${DROPI_GUIDES}${order.sticker}` : "",
-  ].filter(Boolean);
+    sticker && carrier ? `${DROPI_FILES}colombia/guias/${carrier}/${sticker}` : "",
+    sticker && carrier ? `${DROPI_GUIDES}${carrier}/${sticker}` : "",
+  ].filter((url, index, all) => url && all.indexOf(url) === index);
   for (const url of urls) {
     try {
       const res = await fetch(url, { cache: "no-store" });

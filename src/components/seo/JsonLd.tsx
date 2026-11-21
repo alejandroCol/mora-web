@@ -159,7 +159,7 @@ export function CaseJsonLd({ sales }: { sales: SalesPresentation }) {
     brand: { "@type": "Brand", name: BRAND.siteName },
     sku: CASE_PRODUCT.id,
     material: CASE_PRODUCT.material,
-    image: [`${origin}/cases/ice.jpg`],
+    image: [`${origin}/cases/white.jpg`],
     offers: offer(sales, siteUrl(path), CASE_PRODUCT.price, false),
   });
 }

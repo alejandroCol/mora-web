@@ -17,13 +17,13 @@ export function generateMetadata() {
       url: siteUrl(casePath()),
       title: `Mora ${CASE_PRODUCT.name}`,
       description: `${CASE_PRODUCT.promise} ${sales.promise}`,
-      images: [{ url: "/cases/ice.jpg", alt: "Mora Case en hielo" }],
+      images: [{ url: "/cases/white.jpg", alt: "Mora Case en blanco" }],
     },
     twitter: {
       card: "summary_large_image",
       title: `Mora ${CASE_PRODUCT.name}`,
       description: `${CASE_PRODUCT.promise} ${sales.promise}`,
-      images: ["/cases/ice.jpg"],
+      images: ["/cases/white.jpg"],
     },
   };
 }

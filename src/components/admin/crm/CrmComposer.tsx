@@ -5,6 +5,7 @@ import type { CrmChannel, CrmDesk, CrmQuickReply, CrmSettings } from "@/growth/t
 import { formatClock, formatDay } from "@/crm/labels";
 import { OUTBOUND_ACCEPT, outboundFileError, outboundKindOf, type OutboundMediaKind } from "@/crm/media";
 import { quickSells } from "@/crm/sells";
+import { useColorPitch } from "./CrmColorPitch";
 import { CrmStorePhotos } from "./CrmStorePhotos";
 
 const EMOJI_GROUPS: { label: string; items: string[] }[] = [
@@ -190,7 +191,14 @@ export function CrmComposer({
     });
   }
 
-  const canSend = windowOpen && !busy && (Boolean(attachment) || Boolean(replyMedia) || Boolean(draft.trim()));
+  const pitch = useColorPitch({
+    windowOpen,
+    paused: busy,
+    onSend,
+    onSendFile,
+  });
+  const hold = busy || pitch.busy;
+  const canSend = windowOpen && !hold && (Boolean(attachment) || Boolean(replyMedia) || Boolean(draft.trim()));
 
   async function submit() {
     if (!canSend) return;
@@ -234,6 +242,7 @@ export function CrmComposer({
         <p className="crm-composer-note">{openNote}</p>
       ) : null}
 
+      {pitch.panel}
       <div
         ref={chipRow}
         className="crm-composer-chips"
@@ -265,6 +274,7 @@ export function CrmComposer({
           }
         }}
       >
+        {pitch.chip}
         {chips.map((item) => (
           <button
             key={item.id}
@@ -377,7 +387,7 @@ export function CrmComposer({
         <button
           type="button"
           onClick={() => picker.current?.click()}
-          disabled={!windowOpen || busy}
+          disabled={!windowOpen || hold}
           aria-label="Adjuntar foto o video"
           title={instagram ? "Adjuntar foto (JPG o PNG)" : "Adjuntar foto (JPG o PNG) o video (MP4 hasta 16 MB)"}
           className="crm-composer-tool"
@@ -385,7 +395,7 @@ export function CrmComposer({
           <ClipGlyph />
         </button>
         <CrmStorePhotos
-          disabled={!windowOpen || busy}
+          disabled={!windowOpen || hold}
           onPick={(file, caption) => {
             pickFile(file);
             setDraft((current) => current || caption);

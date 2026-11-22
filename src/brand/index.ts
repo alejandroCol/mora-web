@@ -12,10 +12,10 @@ export const BRAND = {
   name: "Mora",
   /** Nombre en Google, pestañas y redes: la gente busca «Mora Ring». */
   siteName: "Mora Ring",
-  searchTitle: "Mora Ring, el anillo inteligente de lujo en Colombia",
+  searchTitle: "Mora Ring",
   tagline: "Un anillo. Un estado.",
   description:
-    "Anillo inteligente de lujo en Colombia. Mora Pro en cerámica y Mora Ultra en titanio. Pulso, sueño y autonomía de días, sin pantalla que pida atención.",
+    "Un anillo. Un estado. Pulso, sueño y movimiento. Pro en cerámica, Ultra en titanio.",
   assets: {
     mark: "/brand/mark.png",
     wordmark: "/brand/wordmark.png",

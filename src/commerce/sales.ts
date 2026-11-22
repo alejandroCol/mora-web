@@ -78,7 +78,7 @@ const SIZER_NOTE =
   "Te enviamos el medidor a tu casa. Pruébatelo con calma, encuentra el número que mejor te queda, cuéntanos tu talla y te enviamos tu anillo.";
 
 const BRAND_CORE =
-  "Mora Ring es el anillo inteligente de lujo en Colombia. Mora Pro en cerámica y Mora Ultra en titanio. Pulso, sueño y días de batería, sin pantalla.";
+  "Un anillo. Un estado. Pulso, sueño y movimiento. Pro en cerámica, Ultra en titanio.";
 
 export function isSalesMode(value: unknown): value is SalesMode {
   return SALES_MODES.includes(value as SalesMode);

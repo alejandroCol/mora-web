@@ -75,7 +75,7 @@ export function colorPitchClose(modelId: ModelId, price: number, listPrice?: num
     listPrice != null && listPrice > price
       ? `${formatMoney(price)} (antes ${formatMoney(listPrice)})`
       : formatMoney(price);
-  return `${name} queda en ${deal}.\n¿Cuál te gusta?`;
+  return `${name}. El precio es ${deal}.\n¿Cuál te gusta?`;
 }
 
 function jpegName(modelId: ModelId, finishId: FinishId) {

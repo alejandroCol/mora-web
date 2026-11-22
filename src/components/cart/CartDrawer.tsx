@@ -12,6 +12,7 @@ import { catalog, formatMoney, PRODUCT_HOME, productPath } from "@/lib/catalog";
 import { useCartCount, useMoraStore } from "@/lib/store";
 import { useLivePromo, usePricing, useSales } from "@/components/sales/SalesProvider";
 import { CartLineVisual } from "./CartLineVisual";
+import { ShareCart } from "./ShareCart";
 
 export function CartDrawer() {
   const router = useRouter();
@@ -162,9 +163,10 @@ export function CartDrawer() {
           </div>
           {promo && promoCop > 0 ? (
             <>
-              <div className="mt-1.5 flex items-baseline justify-between">
-                <span className="text-[13px] text-soft">
-                  {promo.label} · −{promo.percent} %
+              <div className="mt-2.5 flex items-center justify-between gap-3">
+                <span className="cart-promo-tag">
+                  <span>{promo.label}</span>
+                  <span className="cart-promo-off">−{promo.percent}%</span>
                 </span>
                 <span className="text-[15px] text-ink">−{formatMoney(promoCop)}</span>
               </div>
@@ -176,6 +178,7 @@ export function CartDrawer() {
               </div>
             </>
           ) : null}
+          <ShareCart cart={cart} />
           <button
             type="button"
             disabled={cart.length === 0}

@@ -37,6 +37,8 @@ export const COLLECTIONS = {
   instagramCommentEvents: "instagramCommentEvents",
   /** Piezas regaladas (creadores, cortesías). Descuentan inventario. Solo Admin SDK. */
   gifts: "gifts",
+  /** Pedidos compartidos por enlace (`{código}`). Solo los productos. Solo Admin SDK. */
+  sharedCarts: "sharedCarts",
 } as const;
 
 export const DOCS = {

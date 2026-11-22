@@ -14,6 +14,7 @@ export default function robots(): MetadataRoute.Robots {
           "/api/",
           "/pago",
           "/checkout",
+          "/c/",
           "/pedido",
           "/talla",
           "/medidor",

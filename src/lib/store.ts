@@ -54,6 +54,8 @@ type Store = {
   ensureCartSession: () => string;
   /** Carrito guardado que vuelve por el enlace del correo: mismo id, así el checkout sigue el mismo registro. */
   restoreCart: (sessionId: string, lines: CartLine[]) => void;
+  /** Pedido que alguien compartió. Sesión nueva: no se mezcla con el carrito de quien lo envió. */
+  adoptSharedCart: (lines: CartLine[], mode: "replace" | "add") => void;
   setOfferCode: (code: string) => void;
   openCart: () => void;
   closeCart: () => void;
@@ -232,6 +234,20 @@ export const useMoraStore = create<Store>()(
         return next;
       },
       restoreCart: (sessionId, lines) => set({ cart: lines, cartSessionId: sessionId }),
+      adoptSharedCart: (lines, mode) =>
+        set((state) => {
+          const incoming = lines.map((line) => ({ ...line }));
+          if (mode === "replace") {
+            return { cart: incoming, cartSessionId: "", offerCode: "", cartOpen: true };
+          }
+          const cart = state.cart.map((line) => ({ ...line }));
+          for (const line of incoming) {
+            const found = cart.find((item) => item.key === line.key);
+            if (found) found.qty = Math.min(5, found.qty + line.qty);
+            else cart.push(line);
+          }
+          return { cart, cartOpen: true };
+        }),
       setOfferCode: (code) => set({ offerCode: code.trim().toUpperCase() }),
       openCart: () => set({ cartOpen: true }),
       closeCart: () => set({ cartOpen: false }),

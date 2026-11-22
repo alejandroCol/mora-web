@@ -70,7 +70,9 @@ function buildPreview(now: number): PromoWindow[] | null {
   const hour = 3_600_000;
   const base = { percent: 10 as const };
   if (mode === "black") {
-    return [{ ...base, kind: "black", key: "preview-black", label: "Black Friday", teaserAt: now - 24 * hour, startsAt: now - 24 * hour, endsAt: now + 62.54 * hour }];
+    // En vivo ahora, y el reloj llega al domingo 29 de noviembre de 2026, 23:59 en Colombia.
+    const endsAt = Date.parse("2026-11-29T23:59:00-05:00");
+    return [{ ...base, kind: "black", key: "preview-black", label: "Black Friday", teaserAt: now - 24 * hour, startsAt: now - 24 * hour, endsAt }];
   }
   if (mode === "black-week") {
     return [{ ...base, kind: "black", key: "preview-black", label: "Black Week", teaserAt: now - 24 * hour, startsAt: now - 24 * hour, endsAt: now + 134.21 * hour }];

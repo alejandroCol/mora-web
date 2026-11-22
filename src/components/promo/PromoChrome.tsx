@@ -91,6 +91,16 @@ export function PromoChrome() {
     return () => root.removeAttribute("data-promo-dark");
   }, [headerOnBlack]);
 
+  // La barra del navegador copia este color. Mientras el escenario está arriba, es el mismo negro.
+  useEffect(() => {
+    if (!headerOnBlack) return;
+    const meta = document.createElement("meta");
+    meta.name = "theme-color";
+    meta.content = "#09090b";
+    document.head.appendChild(meta);
+    return () => meta.remove();
+  }, [headerOnBlack]);
+
   useEffect(() => {
     if (!visible) return;
     const root = document.documentElement;

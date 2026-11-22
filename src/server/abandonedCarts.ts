@@ -47,7 +47,7 @@ function compactStrings<T extends Record<string, unknown>>(input: T) {
   return out as Partial<T>;
 }
 
-function sanitizeItems(raw: CartLine[]) {
+export function sanitizeItems(raw: CartLine[]) {
   const items: CartLine[] = [];
   for (const line of raw) {
     if (isCaseLine(line)) {

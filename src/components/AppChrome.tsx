@@ -21,6 +21,7 @@ export function AppChrome({ children }: { children: ReactNode }) {
   const isGallery = pathname.startsWith("/galeria");
   const isProduct = pathname.startsWith("/anillo") || pathname.startsWith("/case");
   const isCheckout = pathname.startsWith("/checkout");
+  const isSharedCart = pathname.startsWith("/c/");
   const isPago = pathname.startsWith("/pago");
   const isDownload = pathname.startsWith("/descargas");
   const isAnim = pathname.startsWith("/anim");
@@ -46,11 +47,11 @@ export function AppChrome({ children }: { children: ReactNode }) {
     return <main className="flex-1">{children}</main>;
   }
 
-  if (isProduct || isCheckout) {
+  if (isProduct || isCheckout || isSharedCart) {
     return (
       <>
         <PromoChrome />
-        <SiteHeader solid={isCheckout} switchTo={otherRing(pathname)} />
+        <SiteHeader solid={isCheckout || isSharedCart} switchTo={otherRing(pathname)} />
         <main className="flex-1">{children}</main>
         <CartDrawer />
       </>

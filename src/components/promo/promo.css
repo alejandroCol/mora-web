@@ -198,6 +198,15 @@ html:not([data-promo-ready]):has([data-promo-stage="top"]) .site-header .text-in
   color: #fff;
 }
 
+/*
+ * El final del escenario, si deja ver el blanco de la página, se mezcla y sale una franja gris.
+ * Detrás va el mismo negro, así esa zona no cambia de color.
+ */
+html:has([data-promo-stage="top"]),
+html:has([data-promo-stage="top"]) body {
+  background-color: #09090b;
+}
+
 /* ── Escenario del inicio ── */
 
 .promo-stage {
@@ -207,9 +216,20 @@ html:not([data-promo-ready]):has([data-promo-stage="top"]) .site-header .text-in
   align-items: center;
   justify-content: center;
   padding: calc(4.75rem + env(safe-area-inset-top)) 1.5rem max(2.5rem, env(safe-area-inset-bottom));
-  background: #09090b;
+  background-color: #09090b;
   color: #fff;
   text-align: center;
+  /* Una sola capa opaca: el final no se mezcla con lo que hay detrás. */
+  transform: translateZ(0);
+}
+
+.promo-stage[data-promo-stage="top"]::before {
+  content: "";
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  background-color: #09090b;
+  pointer-events: none;
 }
 
 .promo-stage[data-phase="teaser"] {
@@ -219,6 +239,8 @@ html:not([data-promo-ready]):has([data-promo-stage="top"]) .site-header .text-in
 }
 
 .promo-stage-body {
+  position: relative;
+  z-index: 1;
   display: flex;
   width: 100%;
   max-width: 72rem;
@@ -333,15 +355,15 @@ html:not([data-promo-ready]):has([data-promo-stage="top"]) .site-header .text-in
   margin-top: clamp(1.5rem, 4svh, 2.5rem);
   padding: 0 22px;
   border-radius: 980px;
-  background: #c6baf4;
-  color: #16141f;
+  background: #6f61b8;
+  color: #fff;
   font-size: 17px;
   letter-spacing: -0.022em;
   transition: background-color 0.2s ease;
 }
 
 .promo-cta:hover {
-  background: #d8cff9;
+  background: #5e52a4;
 }
 
 .promo-cta-arrow {

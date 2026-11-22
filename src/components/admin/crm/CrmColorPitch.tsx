@@ -115,7 +115,7 @@ export function useColorPitch({
   const panel = open ? (
     <div className="crm-pitch" ref={box} role="region" aria-label="Colores y precio">
       <p className="crm-pitch-title">Colores y precio</p>
-      <p>Una foto por color. El precio sale al final.</p>
+      <p>Una foto de alguien con el anillo, por color. El precio sale al final.</p>
       {sending ? <p className="crm-pitch-status">{status}</p> : null}
       {problem ? <p className="crm-pitch-problem">{problem}</p> : null}
       <div className="crm-pitch-actions">
@@ -138,7 +138,7 @@ export function useColorPitch({
       type="button"
       disabled={locked}
       aria-expanded={open}
-      title="Una foto por color y el precio al final"
+      title="Una foto de alguien con el anillo, por color, y el precio al final"
       onClick={() => {
         setProblem("");
         setOpen((value) => !value);

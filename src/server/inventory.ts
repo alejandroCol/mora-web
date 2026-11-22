@@ -26,7 +26,7 @@ export async function listInventory(): Promise<InventoryDoc[]> {
   return snap.docs.map((doc) => doc.data() as InventoryDoc);
 }
 
-async function seedInventoryIfNeeded(db: Firestore) {
+export async function seedInventoryIfNeeded(db: Firestore) {
   const existing = await db.collection(COLLECTIONS.inventory).get();
   const have = new Map(existing.docs.map((doc) => [doc.id, doc.data() as InventoryDoc]));
   const now = Date.now();

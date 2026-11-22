@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ORDER_STATUS_LABEL } from "@/commerce/labels";
+import { commerceLineLabel } from "@/commerce/sizing";
 import type { CrmLostReason } from "@/growth/types";
 import { formatMoney } from "@/lib/catalog";
 import type { CrmSeller, ProductInterest, SupportTopic, WhatsAppConversation } from "@/growth/types";
@@ -43,6 +44,7 @@ export function CrmContactPanel({
   onPatch,
   onNote,
   onSale,
+  onGift,
   onOpenChat,
 }: {
   open: boolean;
@@ -54,6 +56,7 @@ export function CrmContactPanel({
   onPatch: (body: Record<string, unknown>) => void;
   onNote: (text: string) => void;
   onSale: () => void;
+  onGift: () => void;
   onOpenChat: (id: string) => void;
 }) {
   const [note, setNote] = useState("");
@@ -63,6 +66,8 @@ export function CrmContactPanel({
 
   const support = (conversation.desk ?? "sales") === "support";
   const lastOrder = contact?.orders[0];
+  // La ficha llega un instante después que el chat: no mostrar los regalos de la persona anterior.
+  const gifts = contact?.conversation?.id === conversation.id ? (contact.gifts ?? []) : [];
   const instagram = channelOf(conversation) === "instagram";
   const handle = conversationHandle(conversation);
   // La ficha llega un instante después que el chat: no ofrecer el salto de la persona anterior.
@@ -344,6 +349,33 @@ export function CrmContactPanel({
             >
               Registrar venta
             </button>
+          )}
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-white/35">Regalos</p>
+            <button type="button" onClick={onGift} className="text-[11px] text-white/40">
+              Registrar regalo
+            </button>
+          </div>
+          {gifts.length ? (
+            <ul className="mt-2 space-y-2">
+              {gifts.map((gift) => (
+                <li
+                  key={gift.id}
+                  className={`rounded-2xl bg-white/6 px-3 py-2 text-[12px] ${gift.status === "voided" ? "opacity-50" : ""}`}
+                >
+                  <p>{gift.items.map((item) => commerceLineLabel(item)).join(", ")}</p>
+                  <p className="text-white/40">
+                    {gift.status === "voided" ? "Anulado" : "Regalado"} · {formatDay(gift.createdAt)}
+                    {gift.note ? ` · ${gift.note}` : ""}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-[12px] text-white/35">No le hemos regalado piezas.</p>
           )}
         </div>
 

@@ -35,6 +35,8 @@ export const COLLECTIONS = {
   instagramAutomations: "instagramAutomations",
   /** Comentarios que dispararon una regla (`{id del comentario}`): historial y antirrepetición. Solo Admin SDK. */
   instagramCommentEvents: "instagramCommentEvents",
+  /** Piezas regaladas (creadores, cortesías). Descuentan inventario. Solo Admin SDK. */
+  gifts: "gifts",
 } as const;
 
 export const DOCS = {

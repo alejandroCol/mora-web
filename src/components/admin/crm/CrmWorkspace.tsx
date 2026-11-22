@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import type { GiftRecord } from "@/commerce/gifts";
 import type {
   AbandonedCart,
   MoraOrder,
@@ -18,13 +19,14 @@ import type {
   WhatsAppMessage,
   WhatsAppUsageReport,
 } from "@/growth/types";
-import { CHANNEL_LABEL, channelOf } from "@/crm/channel";
+import { CHANNEL_LABEL, channelOf, conversationHandle, conversationTitle } from "@/crm/channel";
 import { playMoraChime, unlockMoraChime } from "@/crm/chime";
 import { DESK_LABEL, isCrmDesk, isSnoozed, needsReply } from "@/crm/labels";
 import { WHATSAPP_CAPTION_MAX } from "@/crm/media";
 import { referralKindLabel } from "@/crm/referral";
 import { uploadReplyMedia } from "@/crm/uploadReplyMedia";
 import { useAdminAuth } from "../AdminAuth";
+import { GiftForm } from "../GiftForm";
 import { ManualSaleForm } from "../ManualSaleForm";
 import { CrmBoard } from "./CrmBoard";
 import { CrmComposer } from "./CrmComposer";
@@ -69,6 +71,8 @@ export type CrmContactState = {
   orders: MoraOrder[];
   carts: AbandonedCart[];
   notes: CrmNote[];
+  /** Piezas regaladas a esta persona desde este chat. */
+  gifts: GiftRecord[];
   /** La misma persona en el otro canal (mismo celular). */
   otherChat: { id: string; channel: CrmChannel } | null;
   windowOpen: boolean;
@@ -107,6 +111,7 @@ export function CrmWorkspace() {
   const [pane, setPane] = useState<Pane>(search.get("c") ? "thread" : "list");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sale, setSale] = useState(false);
+  const [gift, setGift] = useState(false);
   // `?nuevo=<celular>&nombre=<nombre>` (p. ej. desde Creadores) abre «Nuevo chat» ya lleno.
   const [newChat, setNewChat] = useState<{ phone: string; name: string } | null>(() =>
     search.get("nuevo") !== null ? { phone: search.get("nuevo") ?? "", name: search.get("nombre") ?? "" } : null,
@@ -210,6 +215,7 @@ export function CrmWorkspace() {
           orders: dossier.orders ?? [],
           carts: dossier.carts ?? [],
           notes: dossier.notes ?? [],
+          gifts: dossier.gifts ?? [],
           otherChat: dossier.otherChat ?? null,
           windowOpen: Boolean(dossier.windowOpen),
           windowClosesAt: dossier.windowClosesAt ?? null,
@@ -640,6 +646,7 @@ export function CrmWorkspace() {
             onPatch={(body) => (active ? void patch(active.id, body) : undefined)}
             onNote={(text) => void addNote(text)}
             onSale={() => setSale(true)}
+            onGift={() => setGift(true)}
             onOpenChat={openChat}
           />
         </div>
@@ -724,6 +731,22 @@ export function CrmWorkspace() {
                 ? "Pedido desde soporte"
                 : `Venta ${CHANNEL_LABEL[activeChannel]}`,
             conversationId: active.id,
+            channel: activeChannel,
+          }}
+        />
+      ) : null}
+
+      {gift && active ? (
+        <GiftForm
+          authorizedFetch={authorizedFetch}
+          onClose={() => setGift(false)}
+          onCreated={() => {
+            if (activeId) void loadThread(activeId);
+          }}
+          chat={{
+            id: active.id,
+            title: conversationTitle(active),
+            handle: conversationHandle(active),
             channel: activeChannel,
           }}
         />

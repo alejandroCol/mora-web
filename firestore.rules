@@ -45,6 +45,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // Piezas regaladas (Ventas › Regalos). Solo Admin SDK (web).
+    match /gifts/{id} {
+      allow read, write: if false;
+    }
+
     match /financeExpenses/{id} {
       allow read, write: if isFounder();
     }

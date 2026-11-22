@@ -30,6 +30,7 @@ import { listStaff } from "./adminAuth";
 import { deleteReplyMedia, isReplyMediaPath } from "./crmReplyMedia";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { listAbandonedCarts } from "./abandonedCarts";
+import { listGiftsByConversation } from "./gifts";
 import { loadGrowthSettings } from "./growthSettings";
 import { findLeadByInstagram, findLeadByPhone, upsertLead } from "./leads";
 import { normalizePhone } from "./metaCapi";
@@ -438,7 +439,7 @@ export async function getCrmContact(id: string) {
   const conversation = await getConversation(id);
   const instagram = conversation ? channelOf(conversation) === "instagram" : isInstagramConversationId(id);
   const phone = instagram ? (conversation?.phone ?? "") : id;
-  const [lead, orders, carts, notes, otherChat, settings] = await Promise.all([
+  const [lead, orders, carts, notes, otherChat, settings, gifts] = await Promise.all([
     instagram
       ? findLeadByInstagram(conversation?.igUserId ?? "").then((found) => found ?? (phone ? findLeadByPhone(phone) : null))
       : findLeadByPhone(phone),
@@ -447,6 +448,8 @@ export async function getCrmContact(id: string) {
     conversation ? listCrmNotes(id) : Promise.resolve([]),
     phone ? findOtherChat(id, phone).catch(() => null) : Promise.resolve(null),
     instagram ? loadGrowthSettings() : Promise.resolve(null),
+    // La ficha no se cae si los regalos no cargan.
+    listGiftsByConversation(id).catch(() => []),
   ]);
   const lastInboundAt =
     conversation?.lastInboundAt ??
@@ -464,6 +467,7 @@ export async function getCrmContact(id: string) {
     orders,
     carts,
     notes,
+    gifts,
     /** La misma persona en el otro canal (mismo celular), para saltar de un chat al otro. */
     otherChat,
     windowOpen: window.open,

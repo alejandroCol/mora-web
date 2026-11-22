@@ -14,9 +14,12 @@ import { orderJourney } from "@/commerce/orderJourney";
 import { payLinkPath } from "@/commerce/manualSale";
 import { formatMoney } from "@/lib/catalog";
 import { useAdminAuth } from "./AdminAuth";
+import type { GiftRecord } from "@/commerce/gifts";
+import { GiftForm } from "./GiftForm";
+import { GiftsPanel } from "./GiftsPanel";
 import { ManualSaleForm } from "./ManualSaleForm";
 
-type Tab = "pipeline" | "awaiting_payment" | "delivered" | "cancelled" | "all";
+type Tab = "pipeline" | "awaiting_payment" | "delivered" | "cancelled" | "all" | "gifts";
 
 type GuideQuote = {
   kind: "sizer" | "rings";
@@ -92,6 +95,8 @@ export function VentasBoard() {
   const [orders, setOrders] = useState<MoraOrder[]>([]);
   const [selected, setSelected] = useState<MoraOrder | null>(null);
   const [manual, setManual] = useState(false);
+  const [gifts, setGifts] = useState<GiftRecord[] | null>(null);
+  const [giftOpen, setGiftOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [tab, setTab] = useState<Tab>("pipeline");
   const [tracking, setTracking] = useState("");
@@ -107,8 +112,22 @@ export function VentasBoard() {
     if (data.ok) setOrders(data.orders ?? []);
   }, [authorizedFetch]);
 
+  const loadGifts = useCallback(async () => {
+    const res = await authorizedFetch("/api/admin/gifts");
+    const data = (await res.json()) as { ok: boolean; gifts?: GiftRecord[] };
+    if (data.ok) setGifts(data.gifts ?? []);
+  }, [authorizedFetch]);
+
+  async function voidGift(gift: GiftRecord) {
+    const res = await authorizedFetch(`/api/admin/gifts/${gift.id}`, { method: "DELETE" });
+    const data = (await res.json()) as { ok: boolean; error?: string };
+    if (!data.ok) throw new Error(data.error || "No se pudo anular el regalo.");
+    await loadGifts();
+  }
+
   useEffect(() => {
     void load();
+    void loadGifts().catch(() => undefined);
     void authorizedFetch("/api/admin/settings")
       .then((res) => res.json())
       .then((data: { ok?: boolean; settings?: CommerceSettings }) => {
@@ -118,7 +137,7 @@ export function VentasBoard() {
         }
       })
       .catch(() => undefined);
-  }, [authorizedFetch, load]);
+  }, [authorizedFetch, load, loadGifts]);
 
   async function setProduction(on: boolean) {
     if (!settings) return;
@@ -260,6 +279,7 @@ export function VentasBoard() {
     { id: "delivered", label: "Entregados" },
     { id: "cancelled", label: "Cancelados" },
     { id: "all", label: "Todos" },
+    { id: "gifts", label: "Regalos", count: gifts?.filter((gift) => gift.status === "given").length },
   ];
 
   return (
@@ -279,6 +299,13 @@ export function VentasBoard() {
           >
             Carritos abandonados
           </Link>
+          <button
+            type="button"
+            onClick={() => setGiftOpen(true)}
+            className="h-10 rounded-full bg-white/8 px-4 text-[12px] text-white/55"
+          >
+            Regalo
+          </button>
           <button
             type="button"
             onClick={() => setManual(true)}
@@ -348,11 +375,13 @@ export function VentasBoard() {
       <input
         value={query}
         onChange={(event) => setQuery(event.target.value)}
-        placeholder="Buscar pedido, cliente, teléfono o guía"
+        placeholder={tab === "gifts" ? "Buscar persona, pieza o nota" : "Buscar pedido, cliente, teléfono o guía"}
         className="h-11 w-full max-w-lg rounded-full bg-white/8 px-4 text-[13px] outline-none"
       />
 
-      {tab === "pipeline" ? (
+      {tab === "gifts" ? (
+        <GiftsPanel gifts={gifts} query={query} onNew={() => setGiftOpen(true)} onVoid={voidGift} />
+      ) : tab === "pipeline" ? (
         <div className="grid gap-4 xl:grid-cols-2">
           {PIPELINE.map((column) => {
             const list = filtered.filter((order) => column.statuses.includes(order.status));
@@ -470,6 +499,17 @@ export function VentasBoard() {
           authorizedFetch={authorizedFetch}
           onClose={() => setManual(false)}
           onCreated={() => void load()}
+        />
+      ) : null}
+
+      {giftOpen ? (
+        <GiftForm
+          authorizedFetch={authorizedFetch}
+          onClose={() => setGiftOpen(false)}
+          onCreated={() => {
+            setTab("gifts");
+            void loadGifts();
+          }}
         />
       ) : null}
     </div>

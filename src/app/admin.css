@@ -3927,6 +3927,69 @@ a.crm-ad-card.is-compact:hover {
   }
 }
 
+/* Regalo · elegir el chat de quien lo recibe. Usa la hoja de la venta manual. */
+.gift-chats {
+  margin-top: 0.6rem;
+  overflow: hidden;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: var(--admin-shadow);
+}
+
+.gift-chats > li + li {
+  border-top: 1px solid var(--admin-line);
+}
+
+.gift-chats button,
+.gift-picked {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.7rem 0.95rem;
+  text-align: left;
+  font-size: 13.5px;
+  line-height: 1.3;
+  color: #1d1d1f;
+}
+
+.gift-chats span,
+.gift-picked span {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.gift-chats small,
+.gift-picked small {
+  font-size: 12px;
+  color: var(--admin-muted);
+}
+
+.gift-chats b {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--admin-muted);
+}
+
+.gift-picked {
+  margin-top: 0.8rem;
+  border-radius: 1rem;
+  background: #fff;
+  box-shadow: inset 0 0 0 2px #1d1d1f;
+}
+
+.gift-picked > button {
+  flex-shrink: 0;
+  height: 2rem;
+  padding: 0 0.8rem;
+  border-radius: 999px;
+  background: var(--admin-field);
+  font-size: 12px;
+}
+
 /* Pedido · enlace de pago de una venta manual. */
 .order-paylink {
   margin-top: 0.9rem;

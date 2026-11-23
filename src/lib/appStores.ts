@@ -1,6 +1,6 @@
 /**
  * Fichas de Mora Ring en las tiendas.
- * iPhone va por TestFlight: primero la app de Apple, luego la prueba.
+ * iPhone va por TestFlight: primero la app de Apple, luego Mora Ring.
  * Android abre la ficha de Mora en Play Store.
  * Los botones de /descargas leen este archivo.
  */

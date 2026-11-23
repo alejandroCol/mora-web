@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
-import { BrandLogo } from "@/components/brand/BrandLogo";
+import { DownloadStudio } from "@/components/downloads/DownloadStudio";
 import { APP_STORES, type AppStoreId } from "@/lib/appStores";
 
 type Platform = "iphone" | "ipad" | "android" | "other";
@@ -63,93 +63,43 @@ function PlayMark({ className }: { className: string }) {
 
 function StoreButtons({ platform }: { platform: Platform | null }) {
   const recommended = storeFor(platform);
-  const [iosOpen, setIosOpen] = useState(false);
 
   return (
-    <div className="w-full max-w-xl sm:max-w-none">
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <button
-          type="button"
-          aria-label={iosOpen ? "Cerrar los pasos de iPhone" : "Ver los pasos para descargar en iPhone"}
-          aria-expanded={iosOpen}
-          aria-controls="ios-pasos"
-          onClick={() => setIosOpen((open) => !open)}
-          className={storeCardClass(recommended === "ios" || iosOpen)}
-        >
-          {recommended === "ios" ? (
-            <span className="absolute -top-2.5 left-4 rounded-full bg-white px-2.5 py-1 text-[11px] font-medium tracking-[-0.01em] text-[#3d3568] shadow-[0_4px_14px_rgba(40,30,80,0.12)]">
-              {platform === "ipad" ? "Tu iPad" : "Tu iPhone"}
-            </span>
-          ) : null}
-          <AppleMark className="h-8 w-8 shrink-0" />
-          <span className="min-w-0 text-left leading-none">
-            <span className="block text-[12px] font-medium tracking-[-0.01em] text-white/70">
-              Prueba <span className="text-white/55">· iPhone y iPad</span>
-            </span>
-            <span className="mt-1 block text-[1.45rem] font-semibold tracking-[-0.03em]">iPhone</span>
+    <div className="flex w-full max-w-xl flex-col gap-3 sm:max-w-none sm:flex-row">
+      <Link
+        href="/descargas/iphone"
+        aria-label={
+          recommended === "ios"
+            ? "Descargar Mora Ring para iPhone. Recomendada para este teléfono"
+            : "Descargar Mora Ring para iPhone"
+        }
+        className={storeCardClass(recommended === "ios")}
+      >
+        {recommended === "ios" ? (
+          <span className="absolute -top-2.5 left-4 rounded-full bg-white px-2.5 py-1 text-[11px] font-medium tracking-[-0.01em] text-[#3d3568] shadow-[0_4px_14px_rgba(40,30,80,0.12)]">
+            {platform === "ipad" ? "Tu iPad" : "Tu iPhone"}
           </span>
-          <span aria-hidden className="ml-auto text-[1.6rem] font-light leading-none text-white/40">
-            ›
-          </span>
-        </button>
-        <StoreLink
-          id="android"
-          href={APP_STORES.android}
-          recommended={recommended === "android"}
-          chip="Tu Android"
-          kicker="Google Play"
-          title="Android"
-          note=""
-          label="Descargar Mora Ring para Android en Google Play"
-          mark={<PlayMark className="h-8 w-8" />}
-        />
-      </div>
-      {iosOpen ? <IosSteps /> : null}
-    </div>
-  );
-}
-
-function IosSteps() {
-  return (
-    <div
-      id="ios-pasos"
-      className="mt-3 rounded-[1.6rem] bg-white/85 p-4 shadow-[0_16px_40px_rgba(70,50,130,0.1)] ring-1 ring-white"
-    >
-      <p className="px-1 text-[13px] tracking-[-0.01em] text-[#6a6488]">
-        Dos pasos. Primero TestFlight, luego tu Mora.
-      </p>
-      <ol className="mt-3 grid gap-3 sm:grid-cols-2">
-        <li className="flex flex-col rounded-2xl bg-[#f6f4fb] px-4 py-4">
-          <span className="text-[12px] font-medium tracking-[-0.01em] text-[#6f61b8]">Paso 1</span>
-          <p className="mt-1 text-[1.15rem] font-semibold tracking-[-0.03em] text-[#2c2648]">
-            Descarga TestFlight
-          </p>
-          <p className="mt-1 flex-1 text-[13px] leading-5 text-[#6a6488]">
-            Es la app de Apple donde se instala la prueba.
-          </p>
-          <a
-            href={APP_STORES.testflight}
-            className="mt-4 inline-flex h-11 items-center justify-center rounded-full bg-[#0c0c0e] px-4 text-[15px] tracking-[-0.02em] text-white transition-opacity hover:opacity-85"
-          >
-            Descargar TestFlight
-          </a>
-        </li>
-        <li className="flex flex-col rounded-2xl bg-[#f6f4fb] px-4 py-4">
-          <span className="text-[12px] font-medium tracking-[-0.01em] text-[#6f61b8]">Paso 2</span>
-          <p className="mt-1 text-[1.15rem] font-semibold tracking-[-0.03em] text-[#2c2648]">
-            Abre Mora
-          </p>
-          <p className="mt-1 flex-1 text-[13px] leading-5 text-[#6a6488]">
-            Cuando TestFlight ya esté en tu iPhone.
-          </p>
-          <a
-            href={APP_STORES.ios}
-            className="mt-4 inline-flex h-11 items-center justify-center rounded-full bg-[#6f61b8] px-4 text-[15px] tracking-[-0.02em] text-white transition-colors hover:bg-[#5e52a4]"
-          >
-            Entrar a la prueba
-          </a>
-        </li>
-      </ol>
+        ) : null}
+        <AppleMark className="h-8 w-8 shrink-0" />
+        <span className="min-w-0 text-left leading-none">
+          <span className="block text-[12px] font-medium tracking-[-0.01em] text-white/70">iPhone y iPad</span>
+          <span className="mt-1 block text-[1.45rem] font-semibold tracking-[-0.03em]">iPhone</span>
+        </span>
+        <span aria-hidden className="ml-auto text-[1.6rem] font-light leading-none text-white/40">
+          ›
+        </span>
+      </Link>
+      <StoreLink
+        id="android"
+        href={APP_STORES.android}
+        recommended={recommended === "android"}
+        chip="Tu Android"
+        kicker="Google Play"
+        title="Android"
+        note=""
+        label="Descargar Mora Ring para Android en Google Play"
+        mark={<PlayMark className="h-8 w-8" />}
+      />
     </div>
   );
 }
@@ -222,25 +172,7 @@ export function DownloadExperience() {
   }, []);
 
   return (
-    <div className="download-studio relative flex min-h-dvh flex-col text-[#2c2648]">
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <svg className="absolute -right-[22%] -top-[28%] h-[760px] w-[760px] text-[#ddd6f4]" viewBox="0 0 760 760">
-          <circle cx="380" cy="380" r="250" fill="none" stroke="currentColor" strokeWidth="78" />
-        </svg>
-        <div className="absolute left-1/2 top-[12%] h-72 w-72 -translate-x-1/2 rounded-full bg-white/70 blur-3xl" />
-      </div>
-
-      <header className="relative z-10 mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-5 pt-[env(safe-area-inset-top)] sm:h-[4.5rem]">
-        <Link href="/" aria-label="Mora" className="opacity-90 transition-opacity hover:opacity-60">
-          <BrandLogo
-            variant="wordmark"
-            priority
-            className="h-6 w-auto max-w-[6.5rem] object-contain object-left sm:h-7"
-          />
-        </Link>
-        <p className="text-[13px] tracking-[-0.01em] text-[#6a6488]">La app</p>
-      </header>
-
+    <DownloadStudio>
       <main className="relative z-10 mx-auto grid w-full max-w-6xl flex-1 items-center gap-8 px-5 pb-8 pt-4 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:gap-10 lg:pb-10 lg:pt-2">
         <div className="frame-in">
           <img
@@ -284,17 +216,6 @@ export function DownloadExperience() {
         </ul>
       </main>
 
-      <footer className="relative z-10 mx-auto flex w-full max-w-6xl flex-wrap items-center justify-center gap-x-5 gap-y-2 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2 text-center text-[13px] text-[#6a6488]">
-        <p>Mora es bienestar. No es un servicio médico.</p>
-        <nav aria-label="Legal" className="flex items-center gap-4">
-          <Link href="/privacidad" className="text-[#2c2648] underline decoration-[#d9d2ee] underline-offset-4">
-            Privacidad
-          </Link>
-          <Link href="/terminos" className="text-[#2c2648] underline decoration-[#d9d2ee] underline-offset-4">
-            Condiciones
-          </Link>
-        </nav>
-      </footer>
-    </div>
+    </DownloadStudio>
   );
 }

@@ -63,33 +63,107 @@ function PlayMark({ className }: { className: string }) {
 
 function StoreButtons({ platform }: { platform: Platform | null }) {
   const recommended = storeFor(platform);
+  const [iosOpen, setIosOpen] = useState(false);
 
   return (
-    <div className="flex w-full max-w-xl flex-col gap-3 sm:max-w-none sm:flex-row">
-      <StoreLink
-        id="ios"
-        href={APP_STORES.ios}
-        recommended={recommended === "ios"}
-        chip={platform === "ipad" ? "Tu iPad" : "Tu iPhone"}
-        kicker="App Store"
-        title="iPhone"
-        note="y iPad"
-        label="Descargar Mora Ring para iPhone y iPad en el App Store"
-        mark={<AppleMark className="h-8 w-8" />}
-      />
-      <StoreLink
-        id="android"
-        href={APP_STORES.android}
-        recommended={recommended === "android"}
-        chip="Tu Android"
-        kicker="Google Play"
-        title="Android"
-        note=""
-        label="Descargar Mora Ring para Android en Google Play"
-        mark={<PlayMark className="h-8 w-8" />}
-      />
+    <div className="w-full max-w-xl sm:max-w-none">
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          aria-label={iosOpen ? "Cerrar los pasos de iPhone" : "Ver los pasos para descargar en iPhone"}
+          aria-expanded={iosOpen}
+          aria-controls="ios-pasos"
+          onClick={() => setIosOpen((open) => !open)}
+          className={storeCardClass(recommended === "ios" || iosOpen)}
+        >
+          {recommended === "ios" ? (
+            <span className="absolute -top-2.5 left-4 rounded-full bg-white px-2.5 py-1 text-[11px] font-medium tracking-[-0.01em] text-[#3d3568] shadow-[0_4px_14px_rgba(40,30,80,0.12)]">
+              {platform === "ipad" ? "Tu iPad" : "Tu iPhone"}
+            </span>
+          ) : null}
+          <AppleMark className="h-8 w-8 shrink-0" />
+          <span className="min-w-0 text-left leading-none">
+            <span className="block text-[12px] font-medium tracking-[-0.01em] text-white/70">
+              Prueba <span className="text-white/55">· iPhone y iPad</span>
+            </span>
+            <span className="mt-1 block text-[1.45rem] font-semibold tracking-[-0.03em]">iPhone</span>
+          </span>
+          <span aria-hidden className="ml-auto text-[1.6rem] font-light leading-none text-white/40">
+            ›
+          </span>
+        </button>
+        <StoreLink
+          id="android"
+          href={APP_STORES.android}
+          recommended={recommended === "android"}
+          chip="Tu Android"
+          kicker="Google Play"
+          title="Android"
+          note=""
+          label="Descargar Mora Ring para Android en Google Play"
+          mark={<PlayMark className="h-8 w-8" />}
+        />
+      </div>
+      {iosOpen ? <IosSteps /> : null}
     </div>
   );
+}
+
+function IosSteps() {
+  return (
+    <div
+      id="ios-pasos"
+      className="mt-3 rounded-[1.6rem] bg-white/85 p-4 shadow-[0_16px_40px_rgba(70,50,130,0.1)] ring-1 ring-white"
+    >
+      <p className="px-1 text-[13px] tracking-[-0.01em] text-[#6a6488]">
+        Dos pasos. Primero TestFlight, luego tu Mora.
+      </p>
+      <ol className="mt-3 grid gap-3 sm:grid-cols-2">
+        <li className="flex flex-col rounded-2xl bg-[#f6f4fb] px-4 py-4">
+          <span className="text-[12px] font-medium tracking-[-0.01em] text-[#6f61b8]">Paso 1</span>
+          <p className="mt-1 text-[1.15rem] font-semibold tracking-[-0.03em] text-[#2c2648]">
+            Descarga TestFlight
+          </p>
+          <p className="mt-1 flex-1 text-[13px] leading-5 text-[#6a6488]">
+            Es la app de Apple donde se instala la prueba.
+          </p>
+          <a
+            href={APP_STORES.testflight}
+            className="mt-4 inline-flex h-11 items-center justify-center rounded-full bg-[#0c0c0e] px-4 text-[15px] tracking-[-0.02em] text-white transition-opacity hover:opacity-85"
+          >
+            Descargar TestFlight
+          </a>
+        </li>
+        <li className="flex flex-col rounded-2xl bg-[#f6f4fb] px-4 py-4">
+          <span className="text-[12px] font-medium tracking-[-0.01em] text-[#6f61b8]">Paso 2</span>
+          <p className="mt-1 text-[1.15rem] font-semibold tracking-[-0.03em] text-[#2c2648]">
+            Abre Mora
+          </p>
+          <p className="mt-1 flex-1 text-[13px] leading-5 text-[#6a6488]">
+            Cuando TestFlight ya esté en tu iPhone.
+          </p>
+          <a
+            href={APP_STORES.ios}
+            className="mt-4 inline-flex h-11 items-center justify-center rounded-full bg-[#6f61b8] px-4 text-[15px] tracking-[-0.02em] text-white transition-colors hover:bg-[#5e52a4]"
+          >
+            Entrar a la prueba
+          </a>
+        </li>
+      </ol>
+    </div>
+  );
+}
+
+function storeCardClass(highlighted: boolean) {
+  return [
+    "group relative flex h-[4.75rem] w-full items-center gap-4 rounded-2xl bg-[#0c0c0e] px-5 text-left text-white sm:w-[17.5rem]",
+    "transition-[transform,box-shadow] duration-200",
+    "motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0 motion-safe:active:scale-[0.985]",
+    "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#6f61b8]",
+    highlighted
+      ? "shadow-[0_0_0_4px_rgba(138,124,214,0.45),0_16px_36px_rgba(70,50,130,0.22)]"
+      : "shadow-[0_10px_28px_rgba(20,16,40,0.16)]",
+  ].join(" ");
 }
 
 function StoreLink({
@@ -118,15 +192,7 @@ function StoreLink({
       href={href}
       data-store={id}
       aria-label={recommended ? `${label}. Recomendada para este teléfono` : label}
-      className={[
-        "group relative flex h-[4.75rem] w-full items-center gap-4 rounded-2xl bg-[#0c0c0e] px-5 text-white sm:w-[17.5rem]",
-        "transition-[transform,box-shadow] duration-200",
-        "motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0 motion-safe:active:scale-[0.985]",
-        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#6f61b8]",
-        recommended
-          ? "shadow-[0_0_0_4px_rgba(138,124,214,0.45),0_16px_36px_rgba(70,50,130,0.22)]"
-          : "shadow-[0_10px_28px_rgba(20,16,40,0.16)]",
-      ].join(" ")}
+      className={storeCardClass(recommended)}
     >
       {recommended ? (
         <span className="absolute -top-2.5 left-4 rounded-full bg-white px-2.5 py-1 text-[11px] font-medium tracking-[-0.01em] text-[#3d3568] shadow-[0_4px_14px_rgba(40,30,80,0.12)]">
@@ -198,7 +264,7 @@ export function DownloadExperience() {
             <StoreButtons platform={platform} />
           </div>
           <p className="mt-4 max-w-md text-[13px] leading-5 text-[#6a6488]">
-            Al instalarla, busca este icono. Los dos botones abren la tienda de cada teléfono.
+            En iPhone son dos pasos: TestFlight y luego Mora. Android abre Play Store.
           </p>
         </div>
 

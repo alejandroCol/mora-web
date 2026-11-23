@@ -13,10 +13,16 @@ export function ProductExperience({
   modelId,
   description,
   color = null,
+  left = {},
+  out = [],
 }: {
   modelId: ModelId;
   description: string;
   color?: string | null;
+  /** `color:talla` → el aviso, solo si está prendido. */
+  left?: Record<string, number>;
+  /** `color:talla` sin unidades. */
+  out?: string[];
 }) {
   const { selection, setModel, setFinish } = useMoraStore();
   const model = products[modelId];
@@ -78,7 +84,7 @@ export function ProductExperience({
           />
         </section>
         <aside className="product-sheet relative min-h-0 flex-1 bg-white/70 lg:w-[26rem] lg:flex-none lg:border-l lg:border-line lg:bg-transparent xl:w-[28rem]">
-          <BuySheet modelId={modelId} description={copy} />
+          <BuySheet modelId={modelId} description={copy} left={left} out={out} />
         </aside>
       </div>
     </div>

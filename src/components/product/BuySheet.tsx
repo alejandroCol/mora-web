@@ -24,9 +24,13 @@ import { SizeChoice } from "./SizeChoice";
 export function BuySheet({
   modelId,
   description,
+  left = {},
+  out = [],
 }: {
   modelId: ModelId;
   description: string;
+  left?: Record<string, number>;
+  out?: string[];
 }) {
   const router = useRouter();
   const sales = useSales();
@@ -76,6 +80,10 @@ export function BuySheet({
       setNeed(sales.needSize);
       return false;
     }
+    if ((sizing ?? "self") !== "kit" && out.includes(`${finishId}:${selection.size}`)) {
+      setNeed("Esa talla no está.");
+      return false;
+    }
     setNeed("");
     return true;
   }
@@ -106,6 +114,13 @@ export function BuySheet({
     trackAdd();
     router.push(checkoutHref(pay));
   }
+
+  useEffect(() => {
+    if ((sizing ?? "self") === "kit") return;
+    if (!out.includes(`${finishId}:${selection.size}`)) return;
+    const next = model.sizes.find((item) => !out.includes(`${finishId}:${item}`));
+    if (next != null) setSize(next);
+  }, [finishId, model.sizes, out, selection.size, setSize, sizing]);
 
   const offerAddi =
     addiRange != null &&
@@ -178,6 +193,8 @@ export function BuySheet({
                 setNeed("");
                 setSize(size);
               }}
+              left={left[`${finishId}:${selection.size}`] ?? null}
+              out={model.sizes.filter((item) => out.includes(`${finishId}:${item}`))}
             />
           </div>
         ) : null}

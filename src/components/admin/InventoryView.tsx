@@ -14,13 +14,15 @@ import {
   type PricingKey,
 } from "@/commerce/pricing";
 import { availableUnits, caseSku, inventorySku } from "@/commerce/sku";
+import { SCARCITY_MAX, leftLabel, type ScarcityNote } from "@/commerce/scarcity";
 import type { InventoryDoc } from "@/commerce/types";
 import { CASE_COLOR_LIST, type CaseColorId } from "@/lib/cases";
-import { catalog, formatMoney, productTitle, resolveFinish } from "@/lib/catalog";
+import { catalog, finishLabel, formatMoney, productTitle, resolveFinish, type RingProduct } from "@/lib/catalog";
 import { useAdminAuth } from "./AdminAuth";
 
 type PricingResponse = { ok?: boolean; error?: string; pricing?: Record<string, unknown> };
 type InventoryResponse = { ok?: boolean; error?: string; inventory?: InventoryDoc[] };
+type ScarcityResponse = { ok?: boolean; error?: string; notes?: Record<string, ScarcityNote> };
 
 function ago(at: number) {
   if (!at) return "";
@@ -42,6 +44,7 @@ function groupDigits(raw: string) {
 export function InventoryView() {
   const { authorizedFetch } = useAdminAuth();
   const [rows, setRows] = useState<InventoryDoc[]>([]);
+  const [notes, setNotes] = useState<Record<string, ScarcityNote>>({});
   const [pricing, setPricing] = useState<Pricing | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -82,10 +85,18 @@ export function InventoryView() {
     setPricing(normalizePricing(data.pricing));
   }, [authorizedFetch]);
 
+  const loadNotes = useCallback(async () => {
+    const res = await authorizedFetch("/api/admin/scarcity");
+    const data = (await res.json()) as ScarcityResponse;
+    if (!res.ok || data.ok === false) return;
+    setNotes(data.notes ?? {});
+  }, [authorizedFetch]);
+
   useEffect(() => {
     void loadInventory();
     void loadPricing();
-  }, [loadInventory, loadPricing]);
+    void loadNotes();
+  }, [loadInventory, loadNotes, loadPricing]);
 
   const bySku = useMemo(() => new Map(rows.map((row) => [row.sku, row])), [rows]);
 
@@ -105,6 +116,25 @@ export function InventoryView() {
     if (data.inventory) setRows(data.inventory);
     else await loadInventory();
     setSaving(null);
+  }
+
+  async function saveLeft(sku: string, note: ScarcityNote | null) {
+    setSaving(`left:${sku}`);
+    setError("");
+    try {
+      const res = await authorizedFetch("/api/admin/scarcity", {
+        method: "PUT",
+        body: JSON.stringify(note ? { sku, on: note.on, left: note.count } : { sku, left: null }),
+      });
+      const data = (await res.json()) as ScarcityResponse;
+      if (!res.ok || data.ok === false) throw new Error(data.error || "No se pudo guardar.");
+      setNotes(data.notes ?? {});
+      flash(note?.on ? "Aviso prendido." : note ? "Aviso apagado." : "Se quitó el aviso.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo guardar.");
+    } finally {
+      setSaving(null);
+    }
   }
 
   async function savePrice(key: PricingKey, value: number) {
@@ -258,6 +288,13 @@ export function InventoryView() {
                 </tbody>
               </table>
             </div>
+            <ScarcityEditor
+              product={product}
+              bySku={bySku}
+              notes={notes}
+              savingSku={saving}
+              onSave={saveLeft}
+            />
           </section>
         );
       })}
@@ -336,6 +373,145 @@ export function InventoryView() {
         <p className="pointer-events-none fixed bottom-[calc(var(--admin-dock)+1rem)] left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#1d1d1f] px-4 py-2 text-[12px] text-white shadow-lg lg:bottom-6">
           {toast}
         </p>
+      ) : null}
+    </div>
+  );
+}
+
+function ScarcityEditor({
+  product,
+  bySku,
+  notes,
+  savingSku,
+  onSave,
+}: {
+  product: RingProduct;
+  bySku: Map<string, InventoryDoc>;
+  notes: Record<string, ScarcityNote>;
+  savingSku: string | null;
+  onSave: (sku: string, note: ScarcityNote | null) => Promise<void>;
+}) {
+  const [finishId, setFinishId] = useState(product.finishes[0]);
+  const [size, setSize] = useState(product.sizes[0]);
+  const [draft, setDraft] = useState("");
+  const sku = inventorySku(product.id, finishId, size);
+  const note = notes[sku] ?? null;
+
+  useEffect(() => {
+    setDraft(note?.count ? String(note.count) : "");
+  }, [sku, note?.count]);
+  const row = bySku.get(sku);
+  const available = row ? availableUnits(row.units ?? 0, row.reserved ?? 0) : null;
+  const busy = savingSku === `left:${sku}`;
+  const shown = note?.on && available !== 0 ? note.count : null;
+
+  const chips = product.finishes.flatMap((finish) =>
+    product.sizes.flatMap((item) => {
+      const id = inventorySku(product.id, finish, item);
+      const saved = notes[id];
+      if (!saved?.on) return [];
+      return [{ id, finish, item, count: saved.count }];
+    }),
+  );
+
+  function countFromDraft() {
+    const count = Number(draft);
+    if (Number.isInteger(count) && count >= 1 && count <= SCARCITY_MAX) return count;
+    return note?.count ?? null;
+  }
+
+  function toggle() {
+    const count = countFromDraft();
+    if (note?.on) {
+      if (count == null) return;
+      void onSave(sku, { on: false, count });
+      return;
+    }
+    if (count == null) return;
+    void onSave(sku, { on: true, count });
+  }
+
+  return (
+    <div className="border-t border-black/[0.06] px-4 py-3 sm:px-5">
+      <p className="text-[13px] font-medium">En la ficha</p>
+      <p className="mt-0.5 max-w-lg text-[12px] leading-5 text-[var(--admin-muted)]">
+        El aviso empieza apagado. Préndelo para esa talla y ese color. No cambia las unidades. Si quedan 0, la talla se bloquea y el aviso no sale.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <select
+          value={finishId}
+          onChange={(event) => setFinishId(event.target.value as RingProduct["finishes"][number])}
+          aria-label="Color"
+          className="h-10 rounded-xl bg-white px-2 text-[13px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] outline-none"
+        >
+          {product.finishes.map((id) => (
+            <option key={id} value={id}>
+              {finishLabel(product.id, id)}
+            </option>
+          ))}
+        </select>
+        <select
+          value={size}
+          onChange={(event) => setSize(Number(event.target.value))}
+          aria-label="Talla"
+          className="h-10 rounded-xl bg-white px-2 text-[13px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] outline-none"
+        >
+          {product.sizes.map((item) => (
+            <option key={item} value={item}>
+              Talla {item}
+            </option>
+          ))}
+        </select>
+        <input
+          inputMode="numeric"
+          value={draft}
+          placeholder="4"
+          aria-label="Cuántos se muestran"
+          onChange={(event) => setDraft(event.target.value.replace(/[^\d]/g, "").slice(0, 1))}
+          onBlur={() => {
+            const count = Number(draft);
+            if (!note?.on || !Number.isInteger(count) || count < 1 || count > SCARCITY_MAX || count === note.count) return;
+            void onSave(sku, { on: true, count });
+          }}
+          className="h-10 w-14 rounded-xl bg-white text-center text-[13px] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)] outline-none focus:shadow-[inset_0_0_0_2px_#1d1d1f]"
+        />
+        <button
+          type="button"
+          role="switch"
+          aria-checked={note?.on === true}
+          disabled={busy || (!note?.on && countFromDraft() == null)}
+          onClick={toggle}
+          className={`h-10 rounded-full px-4 text-[13px] disabled:opacity-40 ${
+            note?.on
+              ? "bg-[#1d1d1f] text-white"
+              : "bg-white text-[var(--admin-ink)] shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]"
+          }`}
+        >
+          {note?.on ? "Prendido" : "Apagado"}
+        </button>
+      </div>
+      {available === 0 ? (
+        <p className="mt-2 text-[12px] text-[var(--admin-muted)]">En 0. En la ficha esa talla se bloquea.</p>
+      ) : shown ? (
+        <p className="mt-2 text-[12px] text-[var(--admin-muted)]">Se ve {leftLabel(shown)}.</p>
+      ) : (
+        <p className="mt-2 text-[12px] text-[var(--admin-muted)]">Apagado. La ficha no muestra aviso.</p>
+      )}
+      {chips.length > 0 ? (
+        <ul className="mt-2.5 flex flex-wrap gap-1.5">
+          {chips.map((chip) => (
+            <li key={chip.id}>
+              <button
+                type="button"
+                disabled={savingSku === `left:${chip.id}`}
+                onClick={() => void onSave(chip.id, { on: false, count: chip.count })}
+                className="inline-flex h-7 items-center rounded-full bg-[var(--admin-field)] px-2.5 text-[12px] text-[var(--admin-ink)]"
+              >
+                {finishLabel(product.id, chip.finish)} · {chip.item} · {leftLabel(chip.count)} ×
+              </button>
+            </li>
+          ))}
+        </ul>
       ) : null}
     </div>
   );

@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import type { SizingMethod } from "@/commerce/types";
 import { useSales } from "@/components/sales/SalesProvider";
 import { resolveKnownPxPerMm } from "@/lib/screenScale";
+import { leftLabel } from "@/commerce/scarcity";
 import { RING_SIZES, aroundLabel, diameterLabel, ringSize } from "@/lib/ringSizes";
 import { SizeGuideFilm } from "./SizeGuideFilm";
 import { SizerHologram } from "./SizerHologram";
@@ -128,6 +129,8 @@ export function SizeChoice({
   sizes,
   size,
   onSize,
+  left = null,
+  out = [],
 }: {
   prompt?: number;
   sizing: SizingMethod | null;
@@ -135,6 +138,10 @@ export function SizeChoice({
   sizes: number[];
   size: number;
   onSize: (size: number) => void;
+  /** Aviso de la talla elegida, en el color actual. */
+  left?: number | null;
+  /** Tallas sin unidades en el color actual. */
+  out?: number[];
 }) {
   const sales = useSales();
   const [info, setInfo] = useState(false);
@@ -176,17 +183,30 @@ export function SizeChoice({
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2 @min-[19.5rem]:flex-nowrap">
             <div className="flex min-w-0 max-w-[14.5rem] grow flex-wrap items-center gap-[5px]" role="group" aria-label="Talla">
               {sizes.map((item) => {
-                const on = item === size;
+                const blocked = out.includes(item);
+                const on = item === size && !blocked;
                 const row = ringSize(item);
+                const note = on && left ? leftLabel(left) : "";
                 return (
                   <button
                     key={item}
                     type="button"
+                    disabled={blocked}
                     aria-pressed={on}
-                    aria-label={row ? `Talla ${item}, ${diameterLabel(row)} por dentro` : `Talla ${item}`}
+                    aria-label={
+                      blocked
+                        ? `Talla ${item}, agotada`
+                        : row
+                          ? `Talla ${item}, ${diameterLabel(row)} por dentro${note ? `, ${note}` : ""}`
+                          : `Talla ${item}${note ? `, ${note}` : ""}`
+                    }
                     onClick={() => onSize(item)}
                     className={`flex aspect-square max-w-[1.8rem] shrink-0 grow basis-6 items-center justify-center rounded-full text-[12.5px] tracking-[-0.02em] tabular-nums transition-colors ${
-                      on ? "bg-[#1d1d1f] text-white" : "bg-[#ebebef] text-[#1d1d1f] hover:bg-[#e0e0e5]"
+                      blocked
+                        ? "cursor-default bg-[#ebebef] text-[#1d1d1f]/30"
+                        : on
+                          ? "bg-[#1d1d1f] text-white"
+                          : "bg-[#ebebef] text-[#1d1d1f] hover:bg-[#e0e0e5]"
                     }`}
                   >
                     {item}
@@ -204,10 +224,17 @@ export function SizeChoice({
             </button>
           </div>
         </div>
+        {left ? (
+          <p className="mt-1.5">
+            <span className="inline-flex h-[1.35rem] items-center rounded-full bg-[#1d1d1f] px-2 text-[11px] leading-none tracking-[-0.02em] text-white tabular-nums">
+              {leftLabel(left)}
+            </span>
+          </p>
+        ) : null}
         {/* En celular (puntero táctil) la fila es de una sola línea: lo que no cabe baja de renglón y
             queda recortado, así que «Medidas», que va de último, desaparece solo en pantallas angostas.
             En PC la fila envuelve normal. */}
-        <div className="mt-3 flex flex-wrap items-center gap-1.5 [@media(pointer:coarse)]:h-8 [@media(pointer:coarse)]:gap-1 [@media(pointer:coarse)]:overflow-hidden">
+        <div className={`${left ? "mt-2" : "mt-3"} flex flex-wrap items-center gap-1.5 [@media(pointer:coarse)]:h-8 [@media(pointer:coarse)]:gap-1 [@media(pointer:coarse)]:overflow-hidden`}>
           {canMeasure ? (
             <button
               type="button"
@@ -330,7 +357,7 @@ export function SizeChoice({
             <RingSizer
               onClose={() => setVirtual(false)}
               onPick={(picked) => {
-                if (sizes.includes(picked)) onSize(picked);
+                if (sizes.includes(picked) && !out.includes(picked)) onSize(picked);
                 setVirtual(false);
               }}
             />,

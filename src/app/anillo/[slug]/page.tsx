@@ -13,6 +13,7 @@ import { FALLBACK_SALES } from "@/commerce/sales";
 import { siteUrl } from "@/lib/site";
 import { loadPricing } from "@/server/pricing";
 import { getProductDescriptions } from "@/server/productCopy";
+import { sizeShelf } from "@/server/scarcity";
 
 export function generateStaticParams() {
   return catalog.map((item) => ({ slug: item.slug }));
@@ -68,7 +69,11 @@ export default async function AnilloPage({
   if (slug !== products[modelId].slug) {
     redirect(productPath(modelId));
   }
-  const [descriptions] = await Promise.all([getProductDescriptions(), loadPricing()]);
+  const [descriptions, shelf] = await Promise.all([
+    getProductDescriptions(),
+    sizeShelf(modelId),
+    loadPricing(),
+  ]);
   const model = products[modelId];
   return (
     <>
@@ -83,6 +88,8 @@ export default async function AnilloPage({
         modelId={modelId}
         description={descriptions[modelId]}
         color={typeof color === "string" ? color : null}
+        left={shelf.left}
+        out={shelf.out}
       />
     </>
   );

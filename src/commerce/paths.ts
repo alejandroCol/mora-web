@@ -51,6 +51,8 @@ export const DOCS = {
   rings: `${COLLECTIONS.settings}/rings`,
   /** Precios vivos de Pro, Ultra y Case. */
   pricing: `${COLLECTIONS.settings}/pricing`,
+  /** Aviso «quedan N» en la ficha. No mueve unidades. */
+  scarcity: `${COLLECTIONS.settings}/scarcity`,
   /** Black Friday / Black Week y Hora Loca programadas. */
   promos: `${COLLECTIONS.settings}/promos`,
   orderCounter: `${COLLECTIONS.counters}/orders`,

@@ -147,6 +147,8 @@ export type WhatsAppConversation = {
   supportTopic?: SupportTopic;
   pinned?: boolean;
   snoozedUntil?: number;
+  /** Hasta qué mensaje entrante se dejó de mostrar arriba. Uno más nuevo vuelve a subir. */
+  replyIgnoredAt?: number;
   lostReason?: CrmLostReason;
 };
 

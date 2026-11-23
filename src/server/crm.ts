@@ -7,6 +7,7 @@ import {
   conversationWindow,
   endOfDay,
   isCrmDesk,
+  needsReply,
 } from "@/crm/labels";
 import { LEGACY_PAYMENT_REPLY_BODIES, PAYMENT_REPLY_BODY, emptyCrmSettings } from "@/crm/replies";
 import type {
@@ -144,9 +145,7 @@ export function crmCounts(
         (item.desk ?? "sales") === "support" && (item.supportStatus ?? "open") !== "resolved",
     ).length,
     mine: uid ? conversations.filter((item) => item.assignedTo === uid).length : 0,
-    waitingOnUs: conversations.filter(
-      (item) => (item.desk ?? "sales") === "sales" && item.lastDirection === "in" && (item.snoozedUntil ?? 0) <= Date.now(),
-    ).length,
+    waitingOnUs: conversations.filter((item) => (item.desk ?? "sales") === "sales" && needsReply(item)).length,
   };
 }
 
@@ -310,6 +309,8 @@ export type ConversationPatch = {
   supportTopic?: SupportTopic;
   pinned?: boolean;
   snoozedUntil?: number | null;
+  /** null lo devuelve arriba. Un número es el mensaje de ellos que se ignora. */
+  replyIgnoredAt?: number | null;
   lostReason?: CrmLostReason | "";
 };
 
@@ -354,6 +355,11 @@ export async function patchConversation(
   } else if (typeof patch.snoozedUntil === "number") {
     next.snoozedUntil = patch.snoozedUntil;
     next.nextFollowUpAt = patch.snoozedUntil;
+  }
+  if (patch.replyIgnoredAt === null) {
+    next.replyIgnoredAt = 0;
+  } else if (typeof patch.replyIgnoredAt === "number") {
+    next.replyIgnoredAt = patch.replyIgnoredAt;
   }
 
   if (patch.nextFollowUpAt === null) {

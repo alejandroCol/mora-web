@@ -10,6 +10,7 @@ import type {
   CampaignRow,
 } from "@/ads/types";
 import { COLLECTIONS } from "@/commerce/paths";
+import { needsReply } from "@/crm/labels";
 import type { WhatsAppConversation } from "@/growth/types";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { loadGrowthSettings } from "../growthSettings";
@@ -85,8 +86,7 @@ async function loadCrmPulse(now: number): Promise<CrmPulse> {
     if (chat.desk === "creators" || chat.desk === "support") continue;
     if (chat.status === "sold" || chat.status === "closed") continue;
     const fromAd = chat.source === "ad";
-    const snoozed = (chat.snoozedUntil ?? 0) > now;
-    if (chat.lastDirection === "in" && now - chat.lastAt > WAIT_MS && !snoozed) {
+    if (needsReply(chat) && now - chat.lastAt > WAIT_MS) {
       pulse.waiting += 1;
       if (fromAd) pulse.waitingFromAds += 1;
       pulse.oldestAt = pulse.oldestAt ? Math.min(pulse.oldestAt, chat.lastAt) : chat.lastAt;

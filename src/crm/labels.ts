@@ -50,8 +50,28 @@ export function isSnoozed(until?: number, now = Date.now()) {
   return (until ?? 0) > now;
 }
 
-export function needsReply(item: { lastDirection?: "in" | "out"; snoozedUntil?: number }) {
-  return item.lastDirection === "in" && !isSnoozed(item.snoozedUntil);
+type ReplyItem = {
+  lastDirection?: "in" | "out";
+  snoozedUntil?: number;
+  /** El último mensaje de ellos que ya decidimos no contestar. */
+  replyIgnoredAt?: number;
+  lastInboundAt?: number;
+  lastAt?: number;
+};
+
+function inboundAt(item: { lastInboundAt?: number; lastAt?: number }) {
+  return item.lastInboundAt || item.lastAt || 0;
+}
+
+/** Este mensaje de ellos ya se bajó de la cima. Uno nuevo vuelve a subir. */
+export function replyDismissed(item: ReplyItem) {
+  if (item.lastDirection !== "in") return false;
+  const at = inboundAt(item);
+  return at > 0 && (item.replyIgnoredAt ?? 0) >= at;
+}
+
+export function needsReply(item: ReplyItem) {
+  return item.lastDirection === "in" && !isSnoozed(item.snoozedUntil) && !replyDismissed(item);
 }
 
 export const SUPPORT_TOPIC_LABEL: Record<SupportTopic, string> = {

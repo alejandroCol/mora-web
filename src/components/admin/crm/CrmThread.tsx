@@ -10,6 +10,8 @@ import {
   SUPPORT_STATUS_LABEL,
   followUpLabel,
   isSnoozed,
+  needsReply,
+  replyDismissed,
 } from "@/crm/labels";
 import { formatClock } from "@/crm/labels";
 import type { CrmLostReason, WhatsAppConversationStatus } from "@/growth/types";
@@ -104,6 +106,19 @@ export function CrmThread({
       <button type="button" onClick={() => onPatch({ pinned: !conversation.pinned })} className="crm-chat-chip">
         {conversation.pinned ? "Fijo" : "Fijar"}
       </button>
+      {needsReply(conversation) ? (
+        <button
+          type="button"
+          onClick={() => onPatch({ replyIgnoredAt: conversation.lastInboundAt || conversation.lastAt || Date.now() })}
+          className="crm-chat-chip"
+        >
+          Ignorar
+        </button>
+      ) : replyDismissed(conversation) ? (
+        <button type="button" onClick={() => onPatch({ replyIgnoredAt: null })} className="crm-chat-chip">
+          Volver arriba
+        </button>
+      ) : null}
       {isSnoozed(conversation.snoozedUntil) ? (
         <button type="button" onClick={() => onPatch({ snoozedUntil: null })} className="crm-chat-chip">
           Despertar

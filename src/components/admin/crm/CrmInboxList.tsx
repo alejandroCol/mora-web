@@ -31,6 +31,7 @@ export function CrmInboxList({
   onChannel,
   onOpen,
   onClaim,
+  onIgnore,
 }: {
   conversations: WhatsAppConversation[];
   loading: boolean;
@@ -49,6 +50,7 @@ export function CrmInboxList({
   onChannel: (value: ChannelFilter) => void;
   onOpen: (id: string) => void;
   onClaim: (id: string) => void;
+  onIgnore: (id: string) => void;
 }) {
   return (
     <aside className={`crm-list ${hidden ? "" : "is-open"}`}>
@@ -97,7 +99,7 @@ export function CrmInboxList({
           ))}
         </ul>
       ) : (
-        <CrmInboxRows key={pageKey} conversations={conversations} activeId={activeId} onOpen={onOpen} onClaim={onClaim} />
+        <CrmInboxRows key={pageKey} conversations={conversations} activeId={activeId} onOpen={onOpen} onClaim={onClaim} onIgnore={onIgnore} />
       )}
     </aside>
   );
@@ -110,11 +112,13 @@ function CrmInboxRows({
   activeId,
   onOpen,
   onClaim,
+  onIgnore,
 }: {
   conversations: WhatsAppConversation[];
   activeId: string | null;
   onOpen: (id: string) => void;
   onClaim: (id: string) => void;
+  onIgnore: (id: string) => void;
 }) {
   const [limit, setLimit] = useState(PAGE);
   const more = useRef<HTMLLIElement>(null);
@@ -173,6 +177,18 @@ function CrmInboxRows({
                       <span className="rounded-full bg-[#1d1d1f] px-1.5 text-white">{item.unread}</span>
                     ) : null}
                     {needsReply(item) ? <span className="crm-dot">Te toca</span> : null}
+                    {needsReply(item) ? (
+                      <span
+                        role="presentation"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onIgnore(item.id);
+                        }}
+                        className="crm-claim"
+                      >
+                        Ignorar
+                      </span>
+                    ) : null}
                     {isSnoozed(item.snoozedUntil) ? <span>Dormido</span> : null}
                     {cameFromAd(item) ? (
                       <span className="crm-ad-badge" title={item.referral ? referralTitle(item.referral) : "Entró por anuncio"}>

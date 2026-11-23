@@ -590,6 +590,15 @@ export function CrmWorkspace() {
             onChannel={setChannel}
             onOpen={openChat}
             onClaim={(id) => void patch(id, { assignedTo: me?.uid })}
+            onIgnore={(id) => {
+              const item = conversations.find((chat) => chat.id === id);
+              if (!item) return;
+              const replyIgnoredAt = item.lastInboundAt || item.lastAt || Date.now();
+              setConversations((current) =>
+                current.map((chat) => (chat.id === id ? { ...chat, replyIgnoredAt } : chat)),
+              );
+              void patch(id, { replyIgnoredAt });
+            }}
           />
           <section className="crm-thread">
             {active ? (

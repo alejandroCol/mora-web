@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useRef, useState, type MouseEvent } from "react";
 import { APP_STORES } from "@/lib/appStores";
+import { FilmSheet } from "@/components/uso/FilmSheet";
+import { INSTALL_FILM } from "@/components/uso/tutorials";
+import "@/components/uso/uso.css";
 
 function isAppleMobile() {
   const ua = navigator.userAgent || "";
@@ -12,6 +15,7 @@ function isAppleMobile() {
 
 export function IphoneSteps() {
   const [notice, setNotice] = useState(false);
+  const [tutorial, setTutorial] = useState(false);
   const tried = useRef(false);
 
   function openMora(event: MouseEvent<HTMLAnchorElement>) {
@@ -62,7 +66,24 @@ export function IphoneSteps() {
         Primero TestFlight. Después, Mora.
       </p>
 
-      <ol className="mt-8 grid gap-4">
+      <button
+        type="button"
+        onClick={() => setTutorial(true)}
+        className="mt-8 flex w-full items-center gap-3.5 rounded-full bg-white/90 py-2.5 pl-2.5 pr-5 text-left shadow-[0_12px_34px_rgba(70,50,130,0.08)] ring-1 ring-white transition-opacity hover:opacity-80 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#6f61b8]"
+      >
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#6f61b8] text-white" aria-hidden>
+          <svg viewBox="0 0 24 24" className="ml-0.5 h-4 w-4">
+            <path d="M8.8 6.6v10.8L18 12 8.8 6.6z" fill="currentColor" />
+          </svg>
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[12px] tracking-[-0.01em] text-[#6a6488]">Paso 0</span>
+          <span className="block text-[17px] font-medium tracking-[-0.03em] text-[#2c2648]">Ver tutorial</span>
+        </span>
+        <span className="ml-auto text-[13px] tracking-[-0.01em] text-[#8a84a0]">1 min</span>
+      </button>
+
+      <ol className="mt-4 grid gap-4">
         <li className="rounded-[1.75rem] bg-white/90 px-6 py-7 shadow-[0_18px_50px_rgba(70,50,130,0.1)] ring-1 ring-white sm:px-8">
           <div className="flex items-start gap-4">
             <span className="text-[2.75rem] font-semibold leading-none tracking-[-0.05em] text-[#6f61b8]">01</span>
@@ -105,6 +126,15 @@ export function IphoneSteps() {
           ) : null}
         </li>
       </ol>
+
+      {tutorial ? (
+        <FilmSheet
+          src={INSTALL_FILM.src}
+          label="el tutorial"
+          title={INSTALL_FILM.title}
+          onClose={() => setTutorial(false)}
+        />
+      ) : null}
     </main>
   );
 }

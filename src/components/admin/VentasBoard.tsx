@@ -702,7 +702,7 @@ function OrderCard({
               {order.shipping.ciudad || "Sin ciudad"} · {ORDER_CHANNEL_LABEL[order.channel]}
             </p>
             <p className="mt-2 flex flex-wrap gap-2 text-[11px] text-[var(--admin-muted)]">
-              <span>{PAYMENT_METHOD_LABEL[order.payment.method]}</span>
+              <span>{order.meta?.gift ? "Regalo" : PAYMENT_METHOD_LABEL[order.payment.method]}</span>
               <span>·</span>
               <span>{ago(order.updatedAt)}</span>
               {order.shipping.trackingNumber ? (
@@ -837,6 +837,7 @@ function OrderDrawer({
     <div className="admin-drawer-backdrop" onClick={onClose}>
       <aside className="admin-drawer" onClick={(event) => event.stopPropagation()}>
         <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--admin-muted)]">
+          {order.meta?.gift ? "Regalo · " : ""}
           {ORDER_STATUS_LABEL[order.status]}
         </p>
         <h2 className="mt-2 font-display text-3xl tracking-[-0.04em]">{order.orderNumber}</h2>

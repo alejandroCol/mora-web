@@ -235,6 +235,8 @@ export type MoraOrder = {
     invoiceRequested?: boolean;
     /** Venta manual: el cliente paga solo (Bold o Addi) desde la página de su pedido. */
     payLink?: boolean;
+    /** Cortesía: mismo pedido que una compra, total en cero. No suma ingresos ni venta. */
+    gift?: boolean;
   };
   conversationId?: string;
   createdAt: number;

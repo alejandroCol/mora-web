@@ -43,12 +43,15 @@ export function trackingSteps(order: {
   needsSize?: boolean;
   sizerStatus?: string | null;
   deliveryLabel?: string;
+  gift?: boolean;
 }): TrackingStep[] {
   const rank = order.status === "cancelled" ? -1 : RANK[order.status];
   const paid = rank >= RANK.paid;
-  const paidDescription = order.deliveryLabel
-    ? `Tu pago quedó aprobado. Tu anillo llega el ${order.deliveryLabel}.`
-    : "Tu pago quedó aprobado.";
+  const paidDescription = order.gift
+    ? "Tu pedido está confirmado. Es un regalo, no tiene costo."
+    : order.deliveryLabel
+      ? `Tu pago quedó aprobado. Tu anillo llega el ${order.deliveryLabel}.`
+      : "Tu pago quedó aprobado.";
 
   const steps: TrackingStep[] = [
     {
@@ -59,7 +62,12 @@ export function trackingSteps(order: {
         : "Recibimos tu pedido y estamos confirmando tu pago.",
       done: rank >= 0,
     },
-    { key: "paid", label: "Pedido pagado", description: paidDescription, done: paid },
+    {
+      key: "paid",
+      label: order.gift ? "Pedido confirmado" : "Pedido pagado",
+      description: paidDescription,
+      done: paid,
+    },
   ];
 
   if (order.hasSizer) {

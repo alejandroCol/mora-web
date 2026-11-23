@@ -117,7 +117,7 @@ function fromMeta(order: MoraOrder) {
 }
 
 function isPaid(order: MoraOrder | undefined): order is MoraOrder {
-  return Boolean(order?.paidAt) && order?.status !== "cancelled";
+  return Boolean(order?.paidAt) && order?.status !== "cancelled" && order?.meta?.gift !== true;
 }
 
 type CrmByAd = Map<string, AdsOutcome>;

@@ -134,7 +134,8 @@ export function isCostLineKey(value: unknown): value is CostLineKey {
   );
 }
 
-export function ringSold(order: Pick<MoraOrder, "status">) {
+export function ringSold(order: Pick<MoraOrder, "status"> & { meta?: { gift?: boolean } }) {
+  if (order.meta?.gift) return false;
   return RING_SOLD_STATUSES.includes(order.status);
 }
 

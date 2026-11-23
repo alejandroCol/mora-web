@@ -8,6 +8,7 @@ import { orderHasSizer, orderNeedsSize } from "@/commerce/sizing";
 import { legFromShipping } from "@/commerce/shipments";
 import {
   isLinkMethod,
+  looksLikeEmail,
   MANUAL_PAY_LABEL,
   MANUAL_PENDING_TTL_MS,
   type ManualPayMethod,
@@ -311,6 +312,113 @@ export async function createManualOrder(input: {
     emails,
     ...(invoice && order.meta?.invoiceRequested ? { invoice: invoice.snapshot } : {}),
   };
+}
+
+/**
+ * Regalo con el mismo camino que una compra: Mora Pro Rosa Perla, medidor y talla
+ * por definir. Total en cero. No suma ingresos, no factura y no marca el chat como vendido.
+ * El correo, si se pide, es el de pedido confirmado.
+ */
+export async function createGiftOrder(input: {
+  customer: CustomerSnapshot;
+  shipping: ShippingSnapshot;
+  conversationId?: string;
+  createdBy: string;
+  notes?: string;
+  notify?: boolean;
+}): Promise<MoraOrder> {
+  const email = input.customer.email.trim().toLowerCase();
+  if (email && !looksLikeEmail(email)) throw new Error("Ese correo no sirve.");
+  if (input.notify && !email) throw new Error("Falta un correo para enviar el pedido.");
+  if (
+    !input.shipping.ciudad.trim() ||
+    !input.shipping.direccion.trim() ||
+    !input.shipping.departamento.trim()
+  ) {
+    throw new Error("Faltan ciudad, dirección o departamento.");
+  }
+
+  const item = lineToOrderItem({
+    key: "aero:lilac:kit",
+    kind: "ring",
+    modelId: "aero",
+    finishId: "lilac",
+    size: 0,
+    sizing: "kit",
+    qty: 1,
+  });
+  if (!item.unitPrice || item.sku) {
+    throw new Error("El regalo tiene que salir sin talla, para mandar el medidor primero.");
+  }
+
+  const db = adminDb();
+  const now = Date.now();
+  const ref = db.collection(COLLECTIONS.orders).doc();
+  const orderNumber = await nextOrderNumber(db);
+  const order: MoraOrder = {
+    id: ref.id,
+    orderNumber,
+    status: "paid",
+    channel: !input.conversationId
+      ? "manual"
+      : isInstagramConversationId(input.conversationId)
+        ? "instagram"
+        : "whatsapp",
+    payment: { method: "efectivo", status: "approved", reference: "Regalo" },
+    customer: {
+      firstName: input.customer.firstName.trim(),
+      lastName: input.customer.lastName?.trim() ?? "",
+      email,
+      phone: input.customer.phone?.trim() ?? "",
+      ...(input.customer.documentType ? { documentType: input.customer.documentType } : {}),
+      ...(input.customer.documentNumber ? { documentNumber: input.customer.documentNumber } : {}),
+    },
+    shipping: { ...input.shipping, envioCop: 0 },
+    items: [item],
+    totals: totalsOf([item], 0, item.unitPrice * item.qty),
+    notes:
+      input.notes?.trim() ||
+      "Regalo. Mora Pro Rosa Perla. Primero el medidor; la talla se confirma después.",
+    timeline: [
+      { status: "awaiting_payment", at: now, by: input.createdBy },
+      { status: "paid", at: now, by: input.createdBy, note: "Regalo" },
+    ],
+    meta: { gift: true, offerCode: "Regalo" },
+    createdAt: now,
+    updatedAt: now,
+    paidAt: now,
+    createdBy: input.createdBy,
+    ...(input.conversationId ? { conversationId: input.conversationId } : {}),
+  };
+
+  await ref.set(order);
+  await db.collection(COLLECTIONS.orderNumbers).doc(orderNumber).set({ orderId: ref.id, createdAt: now });
+
+  if (input.conversationId) {
+    await updateConversation(input.conversationId, {
+      orderId: order.id,
+      orderNumber: order.orderNumber,
+    }).catch(() => undefined);
+    const { addCrmNote } = await import("./crm");
+    await addCrmNote({
+      phone: input.conversationId,
+      text: `Regalo ${order.orderNumber}. Mora Pro Rosa Perla, medidor, talla por definir.`,
+      by: input.createdBy,
+      byName: "Regalos",
+      kind: "system",
+    }).catch(() => undefined);
+  }
+
+  if (input.notify) {
+    const sent = await sendPaidCustomerEmail(order);
+    if (!sent.ok) {
+      throw new Error(`El pedido ${orderNumber} quedó creado, pero el correo no salió.`);
+    }
+    const emails = { paidSentAt: now };
+    await ref.set({ emails, updatedAt: Date.now() }, { merge: true });
+    order.emails = emails;
+  }
+  return order;
 }
 
 /** Une el chat con el pedido. Con el pago adentro, el chat queda como vendido. */
@@ -952,6 +1060,7 @@ export function publicOrderView(order: MoraOrder) {
     dispatchedAt: order.dispatchedAt ?? null,
     deliveredAt: order.deliveredAt ?? null,
     purchaseEventId: order.meta?.purchaseEventId ?? null,
+    gift: order.meta?.gift === true,
   };
 }
 

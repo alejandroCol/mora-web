@@ -27,6 +27,29 @@ function reply(
   return { id, title, body, desk };
 }
 
+/** Datos de envío para retomar el chat con una creadora. El texto es el que pidió Alejo, tal cual. */
+export const CREATOR_SHIPPING_REPLY_ID = "creadores-envio";
+
+export const CREATOR_SHIPPING_REPLY_BODY = `¡Holaa! 💜
+
+Estamos muy felices de que hagas parte de Mora Ring ✨
+
+Primero te enviaremos un medidor de tallas para asegurarnos de que tu anillo te quede perfecto.
+
+¿Nos compartes estos daticos para coordinar el envío el dia de mañana? 🥰
+
+Nombre completo
+Número de celular
+Ciudad
+Dirección completa
+Barrio
+
+¡Estamos emocionados de que tengas tu Mora Ring!`;
+
+export function creatorShippingReply(): CrmQuickReply {
+  return reply("creadores-envio", "Datos de envío", CREATOR_SHIPPING_REPLY_BODY, "creators");
+}
+
 export function defaultCrmReplies(): CrmQuickReply[] {
   const pro = formatMoney(products.aero.price);
   const ultra = formatMoney(products.titan.price);
@@ -110,6 +133,7 @@ export function defaultCrmReplies(): CrmQuickReply[] {
       "Dime qué ves en la app y si el anillo es Pro o Ultra. Con eso te oriento.",
       "support",
     ),
+    creatorShippingReply(),
   ];
 }
 

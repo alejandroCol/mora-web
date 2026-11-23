@@ -426,12 +426,20 @@ export async function sendPaidCustomerEmail(order: MoraOrder) {
   const sizeLink = withSizer
     ? `<p style="margin:22px 0 0;text-align:center;font-family:${FONT};font-size:13px;line-height:1.6;color:${SOFT}">¿Ya tienes tu talla? <a href="${escapeHtml(`${siteUrl()}${tallaPath(order.orderNumber)}`)}" style="color:${ACCENT};text-decoration:none;font-weight:500">Cuéntanos aquí</a></p>`
     : "";
+  const gift = order.meta?.gift === true;
   const html = shell({
-    preheader: `Tu pago quedó aprobado. Pedido ${order.orderNumber}.`,
+    preheader: gift
+      ? `Tu pedido está confirmado. Pedido ${order.orderNumber}.`
+      : `Tu pago quedó aprobado. Pedido ${order.orderNumber}.`,
     kicker: "Pedido confirmado",
-    title: name ? `¡Gracias, ${order.customer.firstName.trim()}!` : "¡Gracias por tu compra!",
-    intro:
-      "Tu pago quedó aprobado y tu pedido está confirmado. Aquí tienes todo el detalle; guarda este correo para seguir cada paso.",
+    title: gift
+      ? "Tu pedido está confirmado"
+      : name
+        ? `¡Gracias, ${order.customer.firstName.trim()}!`
+        : "¡Gracias por tu compra!",
+    intro: gift
+      ? "Tu pedido está confirmado. Es un regalo, no tiene costo. Aquí tienes todo el detalle; guarda este correo para seguir cada paso."
+      : "Tu pago quedó aprobado y tu pedido está confirmado. Aquí tienes todo el detalle; guarda este correo para seguir cada paso.",
     body: `${orderSummary(order, photos)}
       ${sectionTitle("Lo que sigue")}
       ${nextSteps(steps)}`,

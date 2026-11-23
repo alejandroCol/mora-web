@@ -52,6 +52,7 @@ type PublicOrder = {
   dispatchedAt: number | null;
   deliveredAt: number | null;
   purchaseEventId?: string | null;
+  gift?: boolean;
 };
 
 async function fetchOrder(n: string) {
@@ -328,6 +329,7 @@ function OrderStatusCard({
     needsSize,
     sizerStatus: order.sizerStatus,
     deliveryLabel: sales.mode === "presale" ? sales.deliveryLabel : undefined,
+    gift: order.gift,
   });
   const current = steps.findIndex((step) => !step.done);
   const sizerHeadline =
@@ -347,7 +349,7 @@ function OrderStatusCard({
         <div>
           <p className="kicker">{order.orderNumber}</p>
           <p className="mt-2 text-[1.35rem] tracking-[-0.03em] text-ink">
-            {ORDER_STATUS_LABEL[order.status]}
+            {order.gift && order.status === "paid" ? "Pedido confirmado" : ORDER_STATUS_LABEL[order.status]}
           </p>
           <p className="mt-1 text-[13px] text-soft">
             {order.ciudad}

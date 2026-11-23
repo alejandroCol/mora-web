@@ -83,7 +83,13 @@ export function orderJourney(order: MoraOrder): OrderJourney {
 
   steps.push({
     id: "paid",
-    title: paid ? "Pago recibido" : cancelled ? "Pago" : "Esperando el pago",
+    title: cancelled
+      ? "Pago"
+      : !paid
+        ? "Esperando el pago"
+        : order.meta?.gift
+          ? "Pedido confirmado"
+          : "Pago recibido",
     state: paid ? "done" : "current",
     at: paid ? order.paidAt ?? timelineAt(order, "paid") : undefined,
   });

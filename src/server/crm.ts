@@ -9,7 +9,13 @@ import {
   isCrmDesk,
   needsReply,
 } from "@/crm/labels";
-import { LEGACY_PAYMENT_REPLY_BODIES, PAYMENT_REPLY_BODY, emptyCrmSettings } from "@/crm/replies";
+import {
+  CREATOR_SHIPPING_REPLY_ID,
+  LEGACY_PAYMENT_REPLY_BODIES,
+  PAYMENT_REPLY_BODY,
+  creatorShippingReply,
+  emptyCrmSettings,
+} from "@/crm/replies";
 import type {
   CrmCounts,
   CrmDesk,
@@ -166,8 +172,11 @@ export async function loadCrmSettings(): Promise<CrmSettings> {
     const snap = await settingsDoc().get();
     if (!snap.exists) return fallback;
     const data = snap.data() as Partial<CrmSettings>;
-    const replies =
+    const stored =
       Array.isArray(data.replies) && data.replies.length ? data.replies : fallback.replies;
+    const replies = stored.some((item) => item.id === CREATOR_SHIPPING_REPLY_ID)
+      ? stored
+      : [creatorShippingReply(), ...stored];
     return {
       // El texto de «Pago» de fábrica cambió (Addi, link, web): si nadie lo editó, se refresca solo.
       replies: replies.map((item) =>

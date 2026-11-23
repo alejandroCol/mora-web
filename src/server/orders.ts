@@ -213,6 +213,8 @@ export async function createManualOrder(input: {
   /** Factura electrónica cuando el pedido quede pagado. */
   invoice?: boolean;
   discountCop?: number;
+  /** Black Friday / Hora Loca en vivo al crear la venta. */
+  promo?: OrderPromo;
   /** Referencia de Bold ya generada para el enlace de pago. */
   boldReference?: string;
   notes?: string;
@@ -243,6 +245,7 @@ export async function createManualOrder(input: {
   const meta: NonNullable<MoraOrder["meta"]> = {
     ...(input.invoice ? { invoiceRequested: true } : {}),
     ...(payLink ? { payLink: true } : {}),
+    ...(input.promo ? { promo: input.promo } : {}),
   };
   let orderNumber: string;
   try {

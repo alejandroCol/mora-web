@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CASE_COLOR_LIST, CASE_PRODUCT, caseLineKey, type CaseColorId } from "@/lib/cases";
-import { cartCount, subtotalOf } from "@/commerce/cartMath";
+import { cartCount, discountOf, subtotalOf } from "@/commerce/cartMath";
 import { DOCUMENT_TYPES } from "@/commerce/labels";
 import { cartHasRing, isCaseLine, lineSwatch, lineUnitPrice } from "@/commerce/lines";
 import {
@@ -11,6 +11,7 @@ import {
   MANUAL_PAY_LABEL,
   MANUAL_PAY_METHODS,
   MANUAL_PENDING_HOURS,
+  manualDiscountOf,
   type ManualPayMethod,
   type ManualQuote,
   type ManualSaleContext,
@@ -196,7 +197,10 @@ export function ManualSaleForm({
     [lines, pricing],
   );
   const hasRing = cartHasRing(lines);
-  const discountCop = Math.min(subtotal, Number(digits(discount)) || 0);
+  const promo = context?.promo ?? null;
+  const promoCop = promo ? discountOf(subtotal, { kind: "percent", value: promo.percent }) : 0;
+  const manualCop = Number(digits(discount)) || 0;
+  const { discountCop, promoApplied } = manualDiscountOf(subtotal, manualCop, promoCop);
 
   // Envío: gratis si lleva anillo; si es solo case se cotiza como en la tienda.
   const needsQuote = ship && lines.length > 0 && !hasRing && Boolean(departamento && ciudad);
@@ -298,7 +302,7 @@ export function ManualSaleForm({
         : { mode: "pickup" },
       payment: { method, paid, reference: paid ? reference.trim() : undefined },
       invoice,
-      discountCop,
+      discountCop: manualCop,
       notes: notes.trim(),
       channel: initial?.channel ?? "manual",
       conversationId: initial?.conversationId,
@@ -369,7 +373,7 @@ export function ManualSaleForm({
             </div>
             {discountCop > 0 ? (
               <div>
-                <dt>Descuento</dt>
+                <dt>{promoApplied && promo ? `${promo.label} −${promo.percent} %` : "Descuento"}</dt>
                 <dd>−{formatMoney(discountCop)}</dd>
               </div>
             ) : null}
@@ -776,7 +780,13 @@ export function ManualSaleForm({
         </label>
 
         <div className="sale-card sale-grid">
-          <Field label="Descuento en pesos (opcional)">
+          <Field
+            label={
+              promo
+                ? `Descuento en pesos (${promo.label} ya descuenta ${promo.percent} %)`
+                : "Descuento en pesos (opcional)"
+            }
+          >
             <input
               value={discount ? Number(digits(discount)).toLocaleString("es-CO") : ""}
               onChange={(event) => setDiscount(digits(event.target.value))}

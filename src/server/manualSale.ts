@@ -1,15 +1,17 @@
-import { cartCount, subtotalOf, totalsOf } from "@/commerce/cartMath";
+import { cartCount, discountOf, subtotalOf, totalsOf } from "@/commerce/cartMath";
 import { cartHasRing } from "@/commerce/lines";
 import {
   isLinkMethod,
   looksLikeEmail,
   MANUAL_PAY_METHODS,
+  manualDiscountOf,
   payLinkPath,
   type ManualDelivery,
   type ManualQuote,
   type ManualSaleContext,
   type ManualSaleRequest,
 } from "@/commerce/manualSale";
+import { PROMO_PAY_GRACE_MS, type OrderPromo } from "@/commerce/promos";
 import { availableUnits, cartLinesError, lineToOrderItem, normalizeCartLine } from "@/commerce/sku";
 import type { CartLine, CustomerSnapshot, MoraOrder, ShippingSnapshot } from "@/commerce/types";
 import { matiasIdentityDocumentId } from "@/invoices/identity";
@@ -27,6 +29,7 @@ import { boldSessionForOrder } from "./checkoutSession";
 import { listInventory } from "./inventory";
 import { createManualOrder } from "./orders";
 import { ensurePricing } from "./pricing";
+import { livePromoNow } from "./promos";
 import { quoteShipping } from "./quoteShipping";
 
 /** Venta en mano: sin envío. Mismo destino que siempre han tenido las ventas en punto. */
@@ -52,10 +55,11 @@ function cleanItems(raw: CartLine[] | undefined) {
 
 /** Lo que el formulario necesita para no ofrecer nada que no se pueda vender o cobrar. */
 export async function manualSaleContext(): Promise<ManualSaleContext> {
-  const [inventory, boldEnv, addiEnv] = await Promise.all([
+  const [inventory, boldEnv, addiEnv, live] = await Promise.all([
     listInventory(),
     resolveBoldEnvironment(),
     resolveAddiEnvironment(),
+    livePromoNow().catch(() => null),
   ]);
   const stock: Record<string, number> = {};
   for (const row of inventory) {
@@ -66,6 +70,7 @@ export async function manualSaleContext(): Promise<ManualSaleContext> {
     bold: boldIsConfigured(boldEnv),
     addi: addiIsConfigured(addiEnv),
     invoice: matiasIsConfigured(),
+    promo: live ? { label: live.label, percent: live.percent } : null,
   };
 }
 
@@ -197,7 +202,20 @@ export async function createManualSale(
 
   const shipping = await resolveShipping(body.delivery, items, customer);
   const subtotal = subtotalOf(items);
-  const discountCop = Math.min(subtotal, Math.max(0, Math.round(Number(body.discountCop) || 0)));
+  const live = await livePromoNow(PROMO_PAY_GRACE_MS).catch(() => null);
+  const promoCop = live ? discountOf(subtotal, { kind: "percent", value: live.percent }) : 0;
+  const { discountCop, promoApplied } = manualDiscountOf(subtotal, Number(body.discountCop), promoCop);
+  const promo: OrderPromo | undefined = live
+    ? {
+        kind: live.kind,
+        key: live.key,
+        label: live.label,
+        percent: live.percent,
+        startsAt: live.startsAt,
+        endsAt: live.endsAt,
+        applied: promoApplied,
+      }
+    : undefined;
   const totals = totalsOf(items.map(lineToOrderItem), shipping.envioCop, discountCop);
 
   let boldReference: string | undefined;
@@ -223,6 +241,7 @@ export async function createManualSale(
     payment: { method: payment.method, paid, reference: payment.reference?.trim().slice(0, 120) },
     invoice: body.invoice === true,
     discountCop,
+    promo,
     boldReference,
     notes: body.notes,
     createdBy: staff.uid,

@@ -92,7 +92,16 @@ export type ManualSaleContext = {
   addi: boolean;
   /** La facturación electrónica está configurada. */
   invoice: boolean;
+  /** Black Friday / Hora Loca en vivo: la venta la descuenta sola, como la tienda. */
+  promo?: { label: string; percent: number } | null;
 };
+
+/** Gana el mayor entre el descuento a mano y la promoción; en empate, la promoción. */
+export function manualDiscountOf(subtotal: number, manualCop: number, promoCop: number) {
+  const manual = Math.min(subtotal, Math.max(0, Math.round(manualCop) || 0));
+  const promoApplied = promoCop > 0 && promoCop >= manual;
+  return { discountCop: promoApplied ? promoCop : manual, promoApplied };
+}
 
 export type ManualQuote = {
   envioCop: number;

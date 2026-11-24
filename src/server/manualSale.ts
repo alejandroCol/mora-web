@@ -10,6 +10,7 @@ import {
   type ManualQuote,
   type ManualSaleContext,
   type ManualSaleRequest,
+  type ManualStockHold,
 } from "@/commerce/manualSale";
 import { PROMO_PAY_GRACE_MS, type OrderPromo } from "@/commerce/promos";
 import { availableUnits, cartLinesError, lineToOrderItem, normalizeCartLine } from "@/commerce/sku";
@@ -26,8 +27,8 @@ import {
 } from "@/payments";
 import { orderEligibleForAddi } from "@/payments/addi";
 import { boldSessionForOrder } from "./checkoutSession";
-import { listInventory } from "./inventory";
-import { createManualOrder } from "./orders";
+import { demandFromItems, listInventory } from "./inventory";
+import { createManualOrder, holdsStock, listPendingOrders, releaseExpiredCheckouts } from "./orders";
 import { ensurePricing } from "./pricing";
 import { livePromoNow } from "./promos";
 import { quoteShipping } from "./quoteShipping";
@@ -55,8 +56,11 @@ function cleanItems(raw: CartLine[] | undefined) {
 
 /** Lo que el formulario necesita para no ofrecer nada que no se pueda vender o cobrar. */
 export async function manualSaleContext(): Promise<ManualSaleContext> {
-  const [inventory, boldEnv, addiEnv, live] = await Promise.all([
+  // Un apartado vencido no debe verse como «en checkout» hasta el próximo pedido.
+  await releaseExpiredCheckouts().catch(() => undefined);
+  const [inventory, pending, boldEnv, addiEnv, live] = await Promise.all([
     listInventory(),
+    listPendingOrders().catch(() => []),
     resolveBoldEnvironment(),
     resolveAddiEnvironment(),
     livePromoNow().catch(() => null),
@@ -65,8 +69,24 @@ export async function manualSaleContext(): Promise<ManualSaleContext> {
   for (const row of inventory) {
     stock[row.sku] = availableUnits(row.units ?? 0, row.reserved ?? 0);
   }
+  const holds: Record<string, ManualStockHold[]> = {};
+  for (const order of pending) {
+    if (!holdsStock(order)) continue;
+    for (const [sku, qty] of demandFromItems(order.items)) {
+      (holds[sku] ??= []).push({
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        customer: `${order.customer.firstName} ${order.customer.lastName}`.trim(),
+        method: order.payment.method,
+        channel: order.channel,
+        qty,
+        until: order.meta?.holdUntil ?? order.expiresAt ?? null,
+      });
+    }
+  }
   return {
     stock,
+    holds,
     bold: boldIsConfigured(boldEnv),
     addi: addiIsConfigured(addiEnv),
     invoice: matiasIsConfigured(),

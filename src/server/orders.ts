@@ -1,4 +1,4 @@
-import type { DocumentData, Firestore } from "firebase-admin/firestore";
+import { FieldValue, type DocumentData, type Firestore } from "firebase-admin/firestore";
 import { COLLECTIONS, DOCS, ORDER_SEQ_START, PENDING_TTL_MS } from "@/commerce/paths";
 import { demandBySku, totalsOf } from "@/commerce/cartMath";
 import type { OrderPromo } from "@/commerce/promos";
@@ -28,12 +28,16 @@ import { isInstagramConversationId } from "@/crm/channel";
 import { isModelId, products, type FinishId } from "@/lib/catalog";
 import { adminDb } from "@/lib/firebaseAdmin";
 import {
+  consumeInTransaction,
   consumeReservation,
   consumeWithoutReservation,
   demandFromItems,
+  releaseInTransaction,
   releaseReservation,
+  reserveInTransaction,
   restoreUnits,
   assertAndReserve,
+  assertAvailable,
 } from "./inventory";
 import {
   sendCancelledCustomerEmail,
@@ -87,37 +91,100 @@ async function nextOrderNumber(db: Firestore) {
   return `MORA-${seq}`;
 }
 
+export function holdsStock(order: Pick<MoraOrder, "meta">) {
+  return order.meta?.stockHeld !== false;
+}
+
 export async function releaseExpiredCheckouts() {
   const db = adminDb();
   const now = Date.now();
-  const snap = await db
-    .collection(COLLECTIONS.orders)
-    .where("status", "==", "awaiting_payment")
-    .where("expiresAt", "<=", now)
-    .limit(25)
-    .get();
+  const [expired, holds] = await Promise.all([
+    db
+      .collection(COLLECTIONS.orders)
+      .where("status", "==", "awaiting_payment")
+      .where("expiresAt", "<=", now)
+      .limit(25)
+      .get(),
+    db.collection(COLLECTIONS.orders).where("meta.holdUntil", "<=", now).limit(25).get(),
+  ]);
 
-  for (const doc of snap.docs) {
-    const order = serializeOrder(doc.id, doc.data());
+  for (const doc of expired.docs) {
     await db.runTransaction(async (tx) => {
       const fresh = await tx.get(doc.ref);
       const data = fresh.data();
       if (!data || data.status !== "awaiting_payment") return;
+      const order = serializeOrder(doc.id, data);
       tx.update(doc.ref, {
         status: "cancelled",
         cancelledAt: now,
         updatedAt: now,
+        "meta.stockHeld": false,
+        "meta.holdUntil": FieldValue.delete(),
         timeline: [
           ...(data.timeline ?? []),
           { status: "cancelled", at: now, note: "Checkout expirado" },
         ],
       });
+      if (holdsStock(order)) releaseInTransaction(tx, db, demandFromItems(order.items));
     });
-    await releaseReservation(db, demandFromItems(order.items)).catch(() => undefined);
-    if (order.meta?.discountCode) {
-      await releaseDiscountCode(order.meta.discountCode).catch(() => undefined);
-    }
+    const discountCode = (doc.data().meta as MoraOrder["meta"])?.discountCode;
+    if (discountCode) await releaseDiscountCode(discountCode).catch(() => undefined);
   }
+
+  // Un enlace que se abrió y no se pagó: suelta la pieza, el pedido sigue vivo.
+  for (const doc of holds.docs) {
+    await db.runTransaction(async (tx) => {
+      const fresh = await tx.get(doc.ref);
+      const data = fresh.data();
+      if (!data || data.status !== "awaiting_payment") return;
+      const order = serializeOrder(doc.id, data);
+      if (!order.meta?.holdUntil || order.meta.holdUntil > now) return;
+      tx.update(doc.ref, {
+        "meta.stockHeld": false,
+        "meta.holdUntil": FieldValue.delete(),
+        updatedAt: now,
+      });
+      if (holdsStock(order)) releaseInTransaction(tx, db, demandFromItems(order.items));
+    });
+  }
+}
+
+export async function listPendingOrders(): Promise<MoraOrder[]> {
+  const snap = await adminDb()
+    .collection(COLLECTIONS.orders)
+    .where("status", "==", "awaiting_payment")
+    .get();
+  return snap.docs.map((doc) => serializeOrder(doc.id, doc.data()));
+}
+
+/**
+ * Última validación de stock antes de abrir Bold o Addi: aparta la pieza mientras el cliente
+ * paga. Si ya estaba apartada, solo alarga el plazo.
+ */
+export async function holdOrderStock(orderId: string) {
+  const db = adminDb();
+  const ref = orderRef(db, orderId);
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists) throw new Error("Pedido no encontrado.");
+    const order = serializeOrder(snap.id, snap.data()!);
+    if (order.status !== "awaiting_payment") throw new Error("Ese pedido ya no espera pago.");
+    const reserve = holdsStock(order)
+      ? null
+      : await reserveInTransaction(tx, db, demandFromItems(order.items)).catch(() => {
+          throw Object.assign(
+            new Error("Esa pieza se acaba de vender. Escríbenos y te ayudamos con otra."),
+            { status: 409 },
+          );
+        });
+    const now = Date.now();
+    reserve?.();
+    tx.update(ref, {
+      "meta.stockHeld": true,
+      "meta.holdUntil": now + PENDING_TTL_MS,
+      updatedAt: now,
+    });
+  });
 }
 
 export async function createPendingOrder(input: {
@@ -229,9 +296,13 @@ export async function createManualOrder(input: {
   const orderItems = input.items.map(lineToOrderItem);
   const demand = demandBySku(input.items);
   const paid = input.payment.paid;
-  // Pagada: el stock sale ya. Pendiente: se aparta hasta que paguen o venza.
+  const payLink = !paid && isLinkMethod(input.payment.method);
+  // Pagada: el stock sale ya. Enlace: no aparta hasta que el cliente vaya a pagar.
+  // Por transferencia: se aparta hasta que paguen o venza.
   if (paid) {
     if (!input.skipStock) await consumeWithoutReservation(db, demand);
+  } else if (payLink) {
+    await assertAvailable(db, demand);
   } else {
     await assertAndReserve(db, demand);
   }
@@ -241,18 +312,17 @@ export async function createManualOrder(input: {
   const now = Date.now();
   const ref = db.collection(COLLECTIONS.orders).doc();
   const reference = input.payment.reference?.trim();
-  const payLink = !paid && isLinkMethod(input.payment.method);
   const meta: NonNullable<MoraOrder["meta"]> = {
     ...(input.invoice ? { invoiceRequested: true } : {}),
-    ...(payLink ? { payLink: true } : {}),
+    ...(payLink ? { payLink: true, stockHeld: false } : {}),
     ...(input.promo ? { promo: input.promo } : {}),
   };
   let orderNumber: string;
   try {
     orderNumber = await nextOrderNumber(db);
   } catch (error) {
-    if (!paid) await releaseReservation(db, demand).catch(() => undefined);
-    else if (!input.skipStock) await restoreUnits(db, demand).catch(() => undefined);
+    if (!paid && !payLink) await releaseReservation(db, demand).catch(() => undefined);
+    else if (paid && !input.skipStock) await restoreUnits(db, demand).catch(() => undefined);
     throw error;
   }
   const order: MoraOrder = {
@@ -629,17 +699,20 @@ async function fulfillOrderDoc(
     const fresh = await tx.get(ref);
     if (!fresh.exists) return { kind: "missing" as const, order };
     const current = serializeOrder(fresh.id, fresh.data()!);
-    if (current.status === "cancelled") {
+    // Aprobado después de vencer o de que el equipo lo cancelara: la plata entró, no se pierde.
+    const late = current.status === "cancelled" && status === "APPROVED" && !current.paidAt;
+    if (current.status === "cancelled" && !late) {
       return { kind: "cancelled" as const, order: current };
     }
     if (current.status === "paid" || current.payment.status === "approved") {
       return { kind: "duplicate" as const, order: current };
     }
-    if (current.status !== "awaiting_payment") {
+    if (current.status !== "awaiting_payment" && !late) {
       return { kind: "skip" as const, order: current };
     }
 
     const now = Date.now();
+    const method = input.method ?? current.payment.method;
     if (status !== "APPROVED") {
       const paymentStatus: PaymentStatus =
         status === "REJECTED" || status === "DECLINED"
@@ -649,6 +722,9 @@ async function fulfillOrderDoc(
             : status === "FAILED" || status === "ERROR"
               ? "error"
               : "pending";
+      // Addi rechazado es definitivo: la pieza vuelve a la venta. Bold suele reintentar en
+      // el mismo widget, así que conserva el apartado hasta que venza.
+      const release = method === "addi" && paymentStatus !== "pending" && holdsStock(current);
       const next: MoraOrder = {
         ...current,
         payment: {
@@ -657,16 +733,17 @@ async function fulfillOrderDoc(
           boldTransactionId: input.transactionId,
           boldPaymentType: input.paymentType,
         },
+        ...(release
+          ? { meta: { ...current.meta, stockHeld: false, holdUntil: undefined } }
+          : {}),
         updatedAt: now,
       };
-      tx.set(
-        ref,
-        {
-          payment: next.payment,
-          updatedAt: now,
-        },
-        { merge: true },
-      );
+      tx.update(ref, {
+        payment: next.payment,
+        updatedAt: now,
+        ...(release ? { "meta.stockHeld": false, "meta.holdUntil": FieldValue.delete() } : {}),
+      });
+      if (release) releaseInTransaction(tx, db, demandFromItems(current.items));
       return { kind: "recorded" as const, order: next };
     }
 
@@ -674,9 +751,26 @@ async function fulfillOrderDoc(
       throw new Error("El monto del pago no coincide con el pedido.");
     }
 
-    const method = input.method ?? current.payment.method;
+    const stock = await consumeInTransaction(
+      tx,
+      db,
+      demandFromItems(current.items),
+      holdsStock(current) && !late,
+    );
+    stock.apply();
+    const base: MoraOrder = { ...current, meta: { ...current.meta } };
+    delete base.cancelledAt;
+    delete base.meta!.holdUntil;
+    if (stock.short) base.meta!.oversold = true;
+    const note = [
+      method === "addi" ? "Pago con Addi" : "Pago en línea",
+      late ? "llegó después de que el checkout venciera" : "",
+      stock.short ? "no había stock libre: reponer la pieza o reembolsar" : "",
+    ]
+      .filter(Boolean)
+      .join(" · ");
     const paid: MoraOrder = {
-      ...current,
+      ...base,
       status: "paid",
       payment: {
         ...current.payment,
@@ -694,13 +788,10 @@ async function fulfillOrderDoc(
       },
       paidAt: now,
       updatedAt: now,
-      timeline: [
-        ...current.timeline,
-        { status: "paid", at: now, note: method === "addi" ? "Pago con Addi" : "Pago en línea" },
-      ],
+      timeline: [...current.timeline, { status: "paid", at: now, note }],
     };
     tx.set(ref, paid);
-    return { kind: "applied" as const, order: paid };
+    return { kind: "applied" as const, order: paid, late };
   });
 
   if (outcome.kind !== "applied" && outcome.kind !== "duplicate") {
@@ -709,8 +800,8 @@ async function fulfillOrderDoc(
 
   const paid = outcome.order;
   if (outcome.kind === "applied") {
-    await consumeReservation(db, demandFromItems(paid.items));
-    if (paid.meta?.discountCode) {
+    // Al vencer, el código ya devolvió su uso apartado: no se liquida dos veces.
+    if (paid.meta?.discountCode && !outcome.late) {
       await settleDiscountCode(paid.meta.discountCode).catch((error) =>
         console.error("[discount settle]", error),
       );
@@ -837,10 +928,12 @@ export async function transitionOrder(input: {
     };
   }
   if (input.to === "delivered") patch.deliveredAt = now;
+  const leavesPending = order.status === "awaiting_payment" && input.to !== "awaiting_payment";
   if (input.to === "cancelled") {
     patch.cancelledAt = now;
     if (order.status === "awaiting_payment") {
-      await releaseReservation(db, demandFromItems(order.items));
+      if (holdsStock(order)) await releaseReservation(db, demandFromItems(order.items));
+      patch.meta = { ...order.meta, stockHeld: false };
       if (order.meta?.discountCode) {
         await releaseDiscountCode(order.meta.discountCode).catch(() => undefined);
       }
@@ -849,13 +942,17 @@ export async function transitionOrder(input: {
   if (input.to === "paid" && order.status === "awaiting_payment") {
     patch.paidAt = now;
     patch.payment = { ...order.payment, status: "approved" };
-    await consumeReservation(db, demandFromItems(order.items));
+    if (holdsStock(order)) await consumeReservation(db, demandFromItems(order.items));
+    else await consumeWithoutReservation(db, demandFromItems(order.items));
     if (order.meta?.discountCode) {
       await settleDiscountCode(order.meta.discountCode).catch(() => undefined);
     }
   }
 
   await ref.set(patch, { merge: true });
+  if (leavesPending && order.meta?.holdUntil) {
+    await ref.update({ "meta.holdUntil": FieldValue.delete() });
+  }
   const next = { ...order, ...patch } as MoraOrder;
   const emails = { ...(order.emails ?? {}) };
 
@@ -1004,7 +1101,7 @@ export async function confirmOrderSizes(input: {
   }
 
   const db = adminDb();
-  if (order.status === "awaiting_payment") {
+  if (order.status === "awaiting_payment" && holdsStock(order)) {
     if (take.size) await assertAndReserve(db, take);
     if (back.size) await releaseReservation(db, back);
   } else if (order.status === "paid" || order.status === "sizer_transit") {

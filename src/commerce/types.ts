@@ -237,6 +237,15 @@ export type MoraOrder = {
     payLink?: boolean;
     /** Cortesía: mismo pedido que una compra, total en cero. No suma ingresos ni venta. */
     gift?: boolean;
+    /**
+     * `false`: el pedido espera pago sin apartar stock (enlace aún sin abrir, pago rechazado,
+     * apartado vencido). Ausente = apartado, como todos los pedidos anteriores a este campo.
+     */
+    stockHeld?: boolean;
+    /** Hasta cuándo dura el apartado de un pedido que lo tomó al ir a pagar. */
+    holdUntil?: number;
+    /** Pagó cuando ya no había stock (aprobación tardía): reponer la pieza o reembolsar. */
+    oversold?: boolean;
   };
   conversationId?: string;
   createdAt: number;

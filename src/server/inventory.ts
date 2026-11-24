@@ -1,4 +1,4 @@
-import { FieldValue, type Firestore } from "firebase-admin/firestore";
+import { FieldValue, type Firestore, type Transaction } from "firebase-admin/firestore";
 import { CASE_PRODUCT } from "@/lib/cases";
 import { catalog } from "@/lib/catalog";
 import { COLLECTIONS } from "@/commerce/paths";
@@ -146,6 +146,100 @@ export async function assertAndReserve(
       );
     });
   });
+}
+
+/** Mira que haya stock libre sin apartarlo. */
+export async function assertAvailable(db: Firestore, demand: Map<string, number>) {
+  await seedInventoryIfNeeded(db);
+  const snaps = await Promise.all([...demand.keys()].map((sku) => inventoryRef(db, sku).get()));
+  snaps.forEach((snap) => {
+    const data = snap.data() as InventoryDoc | undefined;
+    if (availableUnits(data?.units ?? 0, data?.reserved ?? 0) < (demand.get(snap.id) ?? 0)) {
+      throw new Error(`Sin stock suficiente para ${inventoryLabel(snap.id)}.`);
+    }
+  });
+}
+
+/**
+ * Aparta dentro de una transacción del llamador. Lee el inventario, así que va antes de
+ * cualquier escritura de esa transacción.
+ */
+export async function reserveInTransaction(
+  tx: Transaction,
+  db: Firestore,
+  demand: Map<string, number>,
+) {
+  const refs = [...demand.keys()].map((sku) => inventoryRef(db, sku));
+  const snaps = await Promise.all(refs.map((ref) => tx.get(ref)));
+  snaps.forEach((snap, index) => {
+    const data = snap.data() as InventoryDoc | undefined;
+    if (availableUnits(data?.units ?? 0, data?.reserved ?? 0) < (demand.get(refs[index].id) ?? 0)) {
+      throw new Error(`Sin stock suficiente para ${inventoryLabel(refs[index].id)}.`);
+    }
+  });
+  return () => {
+    for (const ref of refs) {
+      tx.set(
+        ref,
+        { reserved: FieldValue.increment(demand.get(ref.id) ?? 0), updatedAt: Date.now() },
+        { merge: true },
+      );
+    }
+  };
+}
+
+/**
+ * Descuenta lo vendido dentro de una transacción del llamador (lee, así que va antes de
+ * escribir). Con apartado, sale de lo apartado. Sin apartado, sale de lo libre; si no alcanza,
+ * no toca el stock y devuelve `short`.
+ */
+export async function consumeInTransaction(
+  tx: Transaction,
+  db: Firestore,
+  demand: Map<string, number>,
+  held: boolean,
+) {
+  const refs = [...demand.keys()].map((sku) => inventoryRef(db, sku));
+  const snaps = await Promise.all(refs.map((ref) => tx.get(ref)));
+  const rows = snaps.map((snap, index) => {
+    const data = snap.data() as InventoryDoc | undefined;
+    return {
+      ref: refs[index],
+      qty: demand.get(refs[index].id) ?? 0,
+      units: data?.units ?? 0,
+      reserved: data?.reserved ?? 0,
+    };
+  });
+  const short =
+    !held && rows.some((row) => availableUnits(row.units, row.reserved) < row.qty);
+  return {
+    short,
+    apply() {
+      if (short) return;
+      for (const row of rows) {
+        tx.set(
+          row.ref,
+          {
+            units: Math.max(0, row.units - row.qty),
+            ...(held ? { reserved: Math.max(0, row.reserved - row.qty) } : {}),
+            updatedAt: Date.now(),
+          },
+          { merge: true },
+        );
+      }
+    },
+  };
+}
+
+/** Libera dentro de una transacción del llamador. Solo escribe. */
+export function releaseInTransaction(tx: Transaction, db: Firestore, demand: Map<string, number>) {
+  for (const [sku, qty] of demand) {
+    tx.set(
+      inventoryRef(db, sku),
+      { reserved: FieldValue.increment(-qty), updatedAt: Date.now() },
+      { merge: true },
+    );
+  }
 }
 
 export async function consumeReservation(

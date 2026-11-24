@@ -29,7 +29,10 @@ export const MANUAL_PAY_LABEL: Record<ManualPayMethod, string> = {
   addi: "Addi",
 };
 
-/** Cuánto se aparta el stock de una venta manual que aún no se paga. */
+/**
+ * Cuánto vive una venta manual por cobrar. Por transferencia aparta el stock todo ese tiempo;
+ * un enlace (Bold o Addi) solo lo aparta cuando el cliente va a pagar.
+ */
 export const MANUAL_PENDING_TTL_MS = 72 * 60 * 60 * 1000;
 export const MANUAL_PENDING_HOURS = 72;
 
@@ -94,6 +97,18 @@ export type ManualSaleContext = {
   invoice: boolean;
   /** Black Friday / Hora Loca en vivo: la venta la descuenta sola, como la tienda. */
   promo?: { label: string; percent: number } | null;
+  /** Quién tiene apartada cada referencia mientras paga. */
+  holds?: Record<string, ManualStockHold[]>;
+};
+
+export type ManualStockHold = {
+  orderId: string;
+  orderNumber: string;
+  customer: string;
+  method: PaymentMethod;
+  channel: OrderChannel;
+  qty: number;
+  until: number | null;
 };
 
 /** Gana el mayor entre el descuento a mano y la promoción; en empate, la promoción. */

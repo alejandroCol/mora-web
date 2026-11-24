@@ -6,7 +6,7 @@ import {
   resolveAddiEnvironment,
   resolveBoldEnvironment,
 } from "@/payments";
-import { getOrderByNumber, setOrderPaymentReference } from "@/server/orders";
+import { getOrderByNumber, holdOrderStock, setOrderPaymentReference } from "@/server/orders";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,6 +55,13 @@ export async function POST(request: Request) {
         { ok: false, error: "Ese pago sigue en proceso. Espera un momento." },
         { status: 409 },
       );
+    }
+
+    try {
+      await holdOrderStock(order.id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Esa pieza ya no está disponible.";
+      return Response.json({ ok: false, error: message }, { status: 409 });
     }
 
     if (order.payment.status === "pending" && method === "bold") {

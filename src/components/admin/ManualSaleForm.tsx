@@ -16,6 +16,7 @@ import {
   type ManualQuote,
   type ManualSaleContext,
   type ManualSaleRequest,
+  type ManualStockHold,
 } from "@/commerce/manualSale";
 import { commerceLineLabel } from "@/commerce/sizing";
 import { cartLineKey, stockSku } from "@/commerce/sku";
@@ -43,6 +44,10 @@ const LOW_STOCK = 3;
 
 function digits(value: string) {
   return value.replace(/\D/g, "");
+}
+
+function clock(at: number) {
+  return new Date(at).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit" });
 }
 
 function whatsappUrl(phone: string, text: string) {
@@ -116,6 +121,8 @@ export function ManualSaleForm({
   const [copied, setCopied] = useState(false);
   const topRef = useRef<HTMLDivElement>(null);
 
+  const [releasing, setReleasing] = useState("");
+
   useEffect(() => {
     let alive = true;
     authorizedFetch("/api/admin/orders/manual")
@@ -129,8 +136,47 @@ export function ManualSaleForm({
     };
   }, [authorizedFetch]);
 
+  function reloadContext() {
+    return authorizedFetch("/api/admin/orders/manual")
+      .then((res) => res.json())
+      .then((data: { ok?: boolean; context?: ManualSaleContext }) => {
+        if (data.ok && data.context) setContext(data.context);
+      })
+      .catch(() => undefined);
+  }
+
+  async function releaseHold(hold: ManualStockHold) {
+    const who = hold.customer || "el cliente";
+    const ok = window.confirm(
+      `¿Cancelar ${hold.orderNumber} de ${who} y liberar la pieza?\n\n` +
+        `Si ${hold.method === "addi" ? "Addi" : "el pago"} lo aprueba de todas formas, el pedido vuelve como pagado ` +
+        "y queda marcado para reponer la pieza o reembolsar.",
+    );
+    if (!ok) return;
+    setReleasing(hold.orderId);
+    setError("");
+    try {
+      const res = await authorizedFetch(`/api/admin/orders/${hold.orderId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "cancelled", note: "Liberado para una venta manual" }),
+      });
+      const data = (await res.json()) as { ok?: boolean; error?: string };
+      if (!data.ok) throw new Error(data.error || "No se pudo liberar.");
+      await reloadContext();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo liberar.");
+    } finally {
+      setReleasing("");
+    }
+  }
+
   const isCase = product === "case";
   const model = isCase ? null : products[product];
+  const finishHolds = model
+    ? model.sizes.flatMap((item) =>
+        (context?.holds?.[`${product}__${finishId}__${item}`] ?? []).map((hold) => ({ size: item, hold })),
+      )
+    : [];
 
   /** Unidades libres de una referencia, descontando lo que ya va en esta venta. */
   function left(sku: string | null) {
@@ -334,12 +380,7 @@ export function ManualSaleForm({
     setError("");
     setCopied(false);
     // El stock cambió con la venta anterior.
-    void authorizedFetch("/api/admin/orders/manual")
-      .then((res) => res.json())
-      .then((data: { ok?: boolean; context?: ManualSaleContext }) => {
-        if (data.ok && data.context) setContext(data.context);
-      })
-      .catch(() => undefined);
+    void reloadContext();
     topRef.current?.scrollIntoView({ block: "start" });
   }
 
@@ -526,6 +567,27 @@ export function ManualSaleForm({
                 Primero sale el medidor. El cliente confirma la talla desde su pedido y ahí se descuenta el
                 stock.
               </p>
+            ) : null}
+            {finishHolds.length > 0 ? (
+              <ul className="sale-holds">
+                {finishHolds.map(({ size: heldSize, hold }) => (
+                  <li key={`${hold.orderId}-${heldSize}`}>
+                    <span>
+                      <strong>Talla {heldSize}</strong> · {hold.customer || "Cliente"} está pagando con{" "}
+                      {hold.method === "addi" ? "Addi" : "tarjeta o PSE"}
+                      {hold.channel === "online" ? " en la tienda" : " por enlace"} · {hold.orderNumber}
+                      {hold.until ? ` · se libera sola a las ${clock(hold.until)}` : ""}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={releasing === hold.orderId}
+                      onClick={() => void releaseHold(hold)}
+                    >
+                      {releasing === hold.orderId ? "…" : "Liberar"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
             ) : null}
           </>
         ) : null}
@@ -755,8 +817,8 @@ export function ManualSaleForm({
             ? "El pedido queda pagado, descuenta stock y pasa a despacho."
             : link
               ? method === "addi"
-                ? `Te damos un enlace para que pague a cuotas con Addi. Al pagar, el pedido se confirma solo. El stock queda apartado ${MANUAL_PENDING_HOURS} h.`
-                : `Te damos un enlace para que pague con tarjeta, PSE o Nequi. Al pagar, el pedido se confirma solo. El stock queda apartado ${MANUAL_PENDING_HOURS} h.`
+                ? `Te damos un enlace para que pague a cuotas con Addi. Al pagar, el pedido se confirma solo. La pieza se aparta cuando el cliente abre el pago, no antes. El enlace dura ${MANUAL_PENDING_HOURS} h.`
+                : `Te damos un enlace para que pague con tarjeta, PSE o Nequi. Al pagar, el pedido se confirma solo. La pieza se aparta cuando el cliente abre el pago, no antes. El enlace dura ${MANUAL_PENDING_HOURS} h.`
               : `Queda en «Esperando pago» con el stock apartado ${MANUAL_PENDING_HOURS} h. Cuando entre el dinero, confírmalo en el pedido.`}
         </p>
 
@@ -920,7 +982,16 @@ function SaleDone({
                   : "La factura se emite sola cuando entre el pago."}
           </li>
         ) : null}
-        {!isPaid ? <li>El stock queda apartado {MANUAL_PENDING_HOURS} horas.</li> : null}
+        {!isPaid ? (
+          payUrl ? (
+            <li>
+              La pieza no queda apartada: se aparta cuando abra el pago. Si alguien la compra antes, el enlace le
+              avisa. El enlace dura {MANUAL_PENDING_HOURS} horas.
+            </li>
+          ) : (
+            <li>El stock queda apartado {MANUAL_PENDING_HOURS} horas.</li>
+          )
+        ) : null}
       </ul>
 
       {payUrl ? (

@@ -209,17 +209,29 @@ export async function resolveDropiCity(input: {
   throw new Error("Dropi no tiene esa ciudad para envíos sin recaudo.");
 }
 
-export type DropiProduct = { id: number; type: string; supplierId: number; name: string };
+export type DropiProduct = {
+  id: number;
+  type: string;
+  supplierId: number;
+  name: string;
+  salePrice: number;
+};
 
 export async function getDropiProduct(productId: number): Promise<DropiProduct> {
   const data = await dropiFetch(`products/v2/${productId}`);
   const row = data.objects as
-    | { id?: number; type?: string; user_id?: number; name?: string }
+    | { id?: number; type?: string; user_id?: number; name?: string; sale_price?: string | number }
     | undefined;
   if (!data.isSuccess || !row?.id || !row.user_id) {
     throw new Error(envelopeMessage(data, "Dropi no encontró el producto de la guía."));
   }
-  return { id: row.id, type: row.type || "SIMPLE", supplierId: row.user_id, name: row.name || "" };
+  return {
+    id: row.id,
+    type: row.type || "SIMPLE",
+    supplierId: row.user_id,
+    name: row.name || "",
+    salePrice: Number(row.sale_price) || 0,
+  };
 }
 
 export type DropiOrder = {

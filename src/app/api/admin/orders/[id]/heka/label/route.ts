@@ -28,10 +28,10 @@ export async function GET(request: Request, ctx: Ctx) {
     if (!guideId) {
       return Response.json({ ok: false, error: "Esta venta no tiene guía." }, { status: 404 });
     }
-    const byDropi =
-      leg !== "sizer" &&
-      order.shipments?.rings?.guideProvider === "dropi" &&
-      order.shipments.rings.hekaGuideId?.trim() === guideId;
+    const byDropi = [order.shipments?.rings, order.shipments?.sizer].some(
+      (shipment) =>
+        shipment?.guideProvider === "dropi" && shipment.hekaGuideId?.trim() === guideId,
+    );
     const pdf = byDropi ? await fetchDropiSticker(guideId) : await fetchHekaSticker(guideId);
     return new Response(new Uint8Array(pdf), {
       headers: {

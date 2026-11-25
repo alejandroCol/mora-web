@@ -91,12 +91,9 @@ export async function setInventoryUnits(sku: string, units: number) {
       units: 0,
       reserved: 0,
     };
+    // Puede quedar por debajo de lo apartado: si ese checkout paga, el pedido sale marcado
+    // para reponer o reembolsar (`consumeInTransaction`).
     const nextUnits = Math.max(0, Math.round(units));
-    if (nextUnits < (current.reserved ?? 0)) {
-      throw new Error(
-        "No puedes dejar menos unidades que las ya reservadas en checkouts abiertos.",
-      );
-    }
     tx.set(
       ref,
       {
@@ -190,8 +187,9 @@ export async function reserveInTransaction(
 
 /**
  * Descuenta lo vendido dentro de una transacción del llamador (lee, así que va antes de
- * escribir). Con apartado, sale de lo apartado. Sin apartado, sale de lo libre; si no alcanza,
- * no toca el stock y devuelve `short`.
+ * escribir). Con apartado, sale de lo apartado. Sin apartado, sale de lo libre. Si no alcanza
+ * (o el equipo bajó las unidades por debajo de lo apartado), no descuenta unidades, suelta el
+ * apartado y devuelve `short`.
  */
 export async function consumeInTransaction(
   tx: Transaction,
@@ -210,17 +208,18 @@ export async function consumeInTransaction(
       reserved: data?.reserved ?? 0,
     };
   });
-  const short =
-    !held && rows.some((row) => availableUnits(row.units, row.reserved) < row.qty);
+  const short = rows.some((row) =>
+    held ? row.units < row.qty : availableUnits(row.units, row.reserved) < row.qty,
+  );
   return {
     short,
     apply() {
-      if (short) return;
       for (const row of rows) {
+        if (short && !held) continue;
         tx.set(
           row.ref,
           {
-            units: Math.max(0, row.units - row.qty),
+            ...(short ? {} : { units: Math.max(0, row.units - row.qty) }),
             ...(held ? { reserved: Math.max(0, row.reserved - row.qty) } : {}),
             updatedAt: Date.now(),
           },

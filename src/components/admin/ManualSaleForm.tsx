@@ -497,7 +497,9 @@ export function ManualSaleForm({
         </p>
         <div className="sale-swatches">
           {isCase
-            ? CASE_COLOR_LIST.map((item) => {
+            ? CASE_COLOR_LIST.filter(
+                (item) => !context || (context.stock[`case__${item.id}`] ?? 0) > 0,
+              ).map((item) => {
                 const free = left(`case__${item.id}`);
                 return (
                   <button

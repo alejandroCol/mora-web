@@ -4,7 +4,6 @@ import Image from "next/image";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  CASE_COLOR_LIST,
   CASE_PRODUCT,
   caseColor,
   landingCaseColor,
@@ -17,7 +16,7 @@ import { insightCaseOffer, insightProductCart, useInsightProduct } from "@/insig
 import { useMoraStore } from "@/lib/store";
 import { checkoutHref } from "@/payments/public";
 import { hideCaseOffer } from "@/components/cart/CaseOffer";
-import { usePricing, useSales } from "@/components/sales/SalesProvider";
+import { useCaseColors, usePricing, useSales } from "@/components/sales/SalesProvider";
 
 export function CaseExperience({
   color = null,
@@ -30,8 +29,11 @@ export function CaseExperience({
   const sales = useSales();
   const price = usePricing().case;
   const { addCaseToCart, closeCart, openCart } = useMoraStore();
+  const colors = useCaseColors();
   const opened = landingCaseColor(color);
-  const [colorId, setColorId] = useState<CaseColorId>(opened);
+  const [picked, setColorId] = useState<CaseColorId>(opened);
+  // Un enlace viejo o el color por defecto pueden estar agotados: se muestra el primero que hay.
+  const colorId = colors.some((item) => item.id === picked) ? picked : colors[0].id;
   const current = caseColor(colorId);
 
   useInsightProduct(CASE_PRODUCT.id, CASE_PRODUCT.name);
@@ -142,7 +144,7 @@ export function CaseExperience({
               <fieldset className="mt-4 sm:mt-7">
                 <legend className="text-[12px] text-soft">Color</legend>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {CASE_COLOR_LIST.map((item) => {
+                  {colors.map((item) => {
                     const on = item.id === colorId;
                     return (
                       <button

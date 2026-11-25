@@ -1,6 +1,15 @@
 export type AccessoryId = "case";
 /** `ice` (Hielo) ya no se vende: sigue aquí solo para que los pedidos viejos muestren su nombre y su foto. */
-export type CaseColorId = "white" | "gray" | "ice" | "mint" | "chocolate" | "sage" | "sky" | "lavender";
+export type CaseColorId =
+  | "white"
+  | "black"
+  | "gray"
+  | "ice"
+  | "mint"
+  | "chocolate"
+  | "sage"
+  | "sky"
+  | "lavender";
 
 export type CaseColor = {
   id: CaseColorId;
@@ -32,11 +41,11 @@ export const CASE_PRODUCT: CaseProduct = {
   line: "Silicona",
   material: "Silicona suave",
   price: 19_900,
-  colors: ["white", "gray", "mint", "chocolate", "sage", "sky", "lavender"],
+  colors: ["white", "black", "gray", "mint", "chocolate", "sage", "sky", "lavender"],
   promise: "Lo cuida. No se ve.",
   details: [
     "Cubre el anillo sin añadir peso.",
-    "Siete colores, un mismo gesto.",
+    "Cada color, un mismo gesto.",
     "Para Pro y Ultra.",
   ],
 };
@@ -49,6 +58,14 @@ export const caseColors: Record<CaseColorId, CaseColor> = {
     slug: "blanco",
     swatch: "linear-gradient(145deg, #ffffff 0%, #f3f3f5 55%, #dedee2 100%)",
     src: "/cases/white.jpg",
+  },
+  black: {
+    id: "black",
+    title: "Negro",
+    whisper: "Negro mate, sin reflejos.",
+    slug: "negro",
+    swatch: "linear-gradient(145deg, #4a4a4e 0%, #2a2a2d 52%, #141416 100%)",
+    src: "/cases/black.jpg",
   },
   gray: {
     id: "gray",
@@ -117,6 +134,7 @@ export function isAccessoryId(value: unknown): value is AccessoryId {
 export function isCaseColorId(value: unknown): value is CaseColorId {
   return (
     value === "white" ||
+    value === "black" ||
     value === "gray" ||
     value === "ice" ||
     value === "mint" ||

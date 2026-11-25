@@ -26,6 +26,7 @@ import {
   resolveSalesPresentation,
   type SalesPresentation,
 } from "@/commerce/sales";
+import { CASE_COLOR_LIST, type CaseColorId } from "@/lib/cases";
 
 type PromoFeed = { now: number; windows: PromoWindow[] };
 
@@ -39,6 +40,7 @@ type PromoState = {
 
 const Ctx = createContext<SalesPresentation>(resolveSalesPresentation(DEFAULT_SALES_POLICY));
 const PricingCtx = createContext<Pricing>(DEFAULT_PRICING);
+const CaseOutCtx = createContext<CaseColorId[]>([]);
 const PromoCtx = createContext<PromoState>({ promo: null, offset: 0, loaded: false });
 
 const PROMO_POLL_MS = 60_000;
@@ -98,6 +100,7 @@ export function SalesProvider({
 }) {
   const [sales, setSales] = useState(initial);
   const [pricing, setPricing] = useState<Pricing>(DEFAULT_PRICING);
+  const [caseOut, setCaseOut] = useState<CaseColorId[]>([]);
   const [feed, setFeed] = useState<{
     windows: PromoWindow[];
     offset: number;
@@ -129,9 +132,11 @@ export function SalesProvider({
           sales?: SalesPresentation;
           pricing?: Record<string, unknown>;
           promos?: PromoFeed;
+          caseOut?: CaseColorId[];
         }) => {
           if (!alive || !data.ok) return;
           if (data.sales) setSales(data.sales);
+          if (Array.isArray(data.caseOut)) setCaseOut(data.caseOut);
           if (data.pricing) {
             const next = normalizePricing(data.pricing);
             // Primero el catálogo compartido, luego el render: quien lea products[x].price
@@ -197,7 +202,9 @@ export function SalesProvider({
   return (
     <Ctx.Provider value={sales}>
       <PricingCtx.Provider value={pricing}>
-        <PromoCtx.Provider value={promoState}>{children}</PromoCtx.Provider>
+        <CaseOutCtx.Provider value={caseOut}>
+          <PromoCtx.Provider value={promoState}>{children}</PromoCtx.Provider>
+        </CaseOutCtx.Provider>
       </PricingCtx.Provider>
     </Ctx.Provider>
   );
@@ -213,6 +220,15 @@ export function useSales() {
  */
 export function usePricing() {
   return useContext(PricingCtx);
+}
+
+/** Colores del case que se pueden vender ahora: sin los agotados. */
+export function useCaseColors() {
+  const out = useContext(CaseOutCtx);
+  return useMemo(() => {
+    const open = CASE_COLOR_LIST.filter((item) => !out.includes(item.id));
+    return open.length > 0 ? open : CASE_COLOR_LIST;
+  }, [out]);
 }
 
 /** Black Friday / Hora Loca que manda ahora (anunciada o en vivo), o null. */

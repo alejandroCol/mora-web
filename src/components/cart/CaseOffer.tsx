@@ -6,7 +6,6 @@ import { IconClose } from "@/components/icons/NavIcons";
 import { shouldSuggestCase } from "@/commerce/lines";
 import { insightCaseOffer, insightProductCart } from "@/insights/client";
 import {
-  CASE_COLOR_LIST,
   CASE_PRODUCT,
   caseColor,
   caseFromCheckoutPath,
@@ -14,7 +13,7 @@ import {
 } from "@/lib/cases";
 import { formatMoney } from "@/lib/catalog";
 import { useMoraStore } from "@/lib/store";
-import { usePricing } from "@/components/sales/SalesProvider";
+import { useCaseColors, usePricing } from "@/components/sales/SalesProvider";
 
 const SEEN_KEY = "mora-case-offer-seen";
 const HIDE_KEY = "mora-case-offer-hide";
@@ -36,8 +35,10 @@ export function CaseOffer() {
   const cart = useMoraStore((state) => state.cart);
   const addCaseToCart = useMoraStore((state) => state.addCaseToCart);
   const price = usePricing().case;
-  const [colorId, setColorId] = useState<CaseColorId>(CASE_PRODUCT.colors[0]);
+  const colors = useCaseColors();
+  const [picked, setColorId] = useState<CaseColorId>(CASE_PRODUCT.colors[0]);
   const [open, setOpen] = useState(false);
+  const colorId = colors.some((item) => item.id === picked) ? picked : colors[0].id;
   const color = caseColor(colorId);
 
   useEffect(() => {
@@ -95,7 +96,7 @@ export function CaseOffer() {
         </span>
       </button>
       <div className="case-offer-dots" role="group" aria-label="Color">
-        {CASE_COLOR_LIST.map((item) => (
+        {colors.map((item) => (
           <button
             key={item.id}
             type="button"

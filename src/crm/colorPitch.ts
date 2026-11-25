@@ -23,9 +23,9 @@ export type ColorShot = {
  */
 const WORN_SHOT: Record<ModelId, Partial<Record<FinishId, string>>> = {
   aero: {
-    lilac: "08a3b8a8-41a4-42dc-a1af-bc970e0c0fc6",
-    white: "120944a0-fb07-493c-afb8-e0c4016e3f10",
-    black: "ba265d99-46c2-494a-906f-5ce763737770",
+    lilac: "a78d79f6-5e90-411b-8284-690749940a48",
+    white: "5b2c14cd-fc36-4861-a7f5-823d1cf3958a",
+    black: "c48315f8-65be-46fc-9dc0-fa132caf46b4",
   },
   titan: {
     silver: "5941deed-e9b8-46cf-9b60-926d90f01426",

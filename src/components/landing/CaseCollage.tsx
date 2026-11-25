@@ -3,13 +3,14 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
-import { CASE_COLOR_LIST, CASE_PRODUCT, casePath } from "@/lib/cases";
+import { CASE_PRODUCT, casePath } from "@/lib/cases";
 import { PromoPrice } from "@/components/promo/PromoPrice";
-import { usePricing } from "@/components/sales/SalesProvider";
+import { useCaseColors, usePricing } from "@/components/sales/SalesProvider";
 
 export function CaseCollage() {
   const stage = useRef<HTMLDivElement>(null);
   const price = usePricing().case;
+  const colors = useCaseColors();
 
   useEffect(() => {
     const root = stage.current;
@@ -39,10 +40,10 @@ export function CaseCollage() {
           <h2 className="case-collage-name">{CASE_PRODUCT.name}</h2>
           <p className="case-collage-finishes">
             <span className="sr-only">
-              {CASE_COLOR_LIST.map((item) => item.title).join(", ")}
+              {colors.map((item) => item.title).join(", ")}
             </span>
             <span className="world-dots" aria-hidden>
-              {CASE_COLOR_LIST.map((item) => (
+              {colors.map((item) => (
                 <span key={item.id} className="world-dot" style={{ background: item.swatch }} />
               ))}
             </span>
@@ -60,7 +61,7 @@ export function CaseCollage() {
           </div>
         </div>
         <div ref={stage} className="case-collage-stage" aria-hidden>
-          {CASE_COLOR_LIST.map((item, index) => (
+          {colors.map((item, index) => (
             <span
               key={item.id}
               className={`case-collage-tile case-collage-tile-${index}`}

@@ -3,6 +3,7 @@ import { DOCS, COLLECTIONS } from "@/commerce/paths";
 import { parseScarcityCount, sizeBadge, sizeIsOut, SCARCITY_MAX, type ScarcityNote } from "@/commerce/scarcity";
 import { availableUnits, inventorySku, parseInventorySku } from "@/commerce/sku";
 import type { InventoryDoc } from "@/commerce/types";
+import { isCaseColorId, type CaseColorId } from "@/lib/cases";
 import { products, type ModelId } from "@/lib/catalog";
 import { adminDb } from "@/lib/firebaseAdmin";
 
@@ -110,6 +111,26 @@ export async function sizeShelf(modelId: ModelId): Promise<SizeShelf> {
   } catch (error) {
     console.error("[scarcity badges]", error);
     return empty;
+  }
+}
+
+/** Colores del case sin unidades libres: la tienda no los ofrece. */
+export async function caseColorsOut(): Promise<CaseColorId[]> {
+  try {
+    const snap = await adminDb()
+      .collection(COLLECTIONS.inventory)
+      .where("modelId", "==", "case")
+      .get();
+    const out: CaseColorId[] = [];
+    for (const doc of snap.docs) {
+      const row = doc.data() as InventoryDoc;
+      if (!isCaseColorId(row.finishId)) continue;
+      if (sizeIsOut(availableUnits(row.units ?? 0, row.reserved ?? 0))) out.push(row.finishId);
+    }
+    return out;
+  } catch (error) {
+    console.error("[case stock]", error);
+    return [];
   }
 }
 

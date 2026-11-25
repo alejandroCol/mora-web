@@ -150,6 +150,13 @@ export function CrmComposer({
   function pickReply(reply: CrmQuickReply) {
     setDraft(reply.body);
     setAttachError("");
+    const slot = reply.body.indexOf("[nombre]");
+    if (slot >= 0) {
+      requestAnimationFrame(() => {
+        area.current?.focus();
+        area.current?.setSelectionRange(slot, slot + "[nombre]".length);
+      });
+    }
     if (reply.media) {
       setAttachment(null);
       setReplyMedia(reply);

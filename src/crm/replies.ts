@@ -50,6 +50,28 @@ export function creatorShippingReply(): CrmQuickReply {
   return reply("creadores-envio", "Datos de envío", CREATOR_SHIPPING_REPLY_BODY, "creators");
 }
 
+/** Retoma el chat tras la llamada con Julio. `[nombre]` queda seleccionado al elegirla para escribir encima. */
+export const CREATOR_RESUME_REPLY_ID = "creadores-retomar";
+
+export const CREATOR_RESUME_REPLY_BODY = `¡Hola, [nombre]! 💜
+
+Mi nombre es Lina y hago parte del equipo de Mora Ring.
+
+Retomando la conversación que tuviste con nuestro líder de Marketing, Julio Noguera, nos encantaría comenzar a trabajar contigo, siguiendo lo que conversaron previamente.
+
+¡Nos hace mucha ilusión que hagas parte de Mora Ring! ✨
+
+¿Te parece si avanzamos? 💜`;
+
+export function creatorResumeReply(): CrmQuickReply {
+  return reply(CREATOR_RESUME_REPLY_ID, "Retomar con Julio", CREATOR_RESUME_REPLY_BODY, "creators");
+}
+
+/** Plantillas de creadoras que siempre deben estar, aunque Ajustes ya tenga respuestas guardadas. */
+export function creatorReplies(): CrmQuickReply[] {
+  return [creatorShippingReply(), creatorResumeReply()];
+}
+
 export function defaultCrmReplies(): CrmQuickReply[] {
   const pro = formatMoney(products.aero.price);
   const ultra = formatMoney(products.titan.price);
@@ -133,7 +155,7 @@ export function defaultCrmReplies(): CrmQuickReply[] {
       "Dime qué ves en la app y si el anillo es Pro o Ultra. Con eso te oriento.",
       "support",
     ),
-    creatorShippingReply(),
+    ...creatorReplies(),
   ];
 }
 

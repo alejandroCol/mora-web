@@ -10,10 +10,9 @@ import {
   needsReply,
 } from "@/crm/labels";
 import {
-  CREATOR_SHIPPING_REPLY_ID,
   LEGACY_PAYMENT_REPLY_BODIES,
   PAYMENT_REPLY_BODY,
-  creatorShippingReply,
+  creatorReplies,
   emptyCrmSettings,
 } from "@/crm/replies";
 import type {
@@ -174,9 +173,8 @@ export async function loadCrmSettings(): Promise<CrmSettings> {
     const data = snap.data() as Partial<CrmSettings>;
     const stored =
       Array.isArray(data.replies) && data.replies.length ? data.replies : fallback.replies;
-    const replies = stored.some((item) => item.id === CREATOR_SHIPPING_REPLY_ID)
-      ? stored
-      : [creatorShippingReply(), ...stored];
+    const missing = creatorReplies().filter((item) => !stored.some((own) => own.id === item.id));
+    const replies = missing.length ? [...missing, ...stored] : stored;
     return {
       // El texto de «Pago» de fábrica cambió (Addi, link, web): si nadie lo editó, se refresca solo.
       replies: replies.map((item) =>

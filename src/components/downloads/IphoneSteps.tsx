@@ -31,7 +31,7 @@ export function IphoneSteps() {
     document.addEventListener("visibilitychange", onHide);
     window.addEventListener("pagehide", onPageHide);
     // Si TestFlight ya está, iOS abre la invitación. Si no, la página se queda.
-    window.location.href = APP_STORES.ios.replace(/^https:\/\//, "itms-beta://");
+    window.location.href = APP_STORES.testflightJoin.replace(/^https:\/\//, "itms-beta://");
     window.setTimeout(() => {
       document.removeEventListener("visibilitychange", onHide);
       window.removeEventListener("pagehide", onPageHide);
@@ -39,7 +39,7 @@ export function IphoneSteps() {
       // El enlace de la invitación abre TestFlight cuando la app ya está.
       tried.current = true;
       setNotice(true);
-      window.location.assign(APP_STORES.ios);
+      window.location.assign(APP_STORES.testflightJoin);
     }, 900);
   }
 
@@ -113,7 +113,7 @@ export function IphoneSteps() {
             </div>
           </div>
           <a
-            href={APP_STORES.ios}
+            href={APP_STORES.testflightJoin}
             onClick={openMora}
             className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-full bg-[#6f61b8] px-4 text-[16px] tracking-[-0.02em] text-white transition-opacity hover:opacity-90"
           >

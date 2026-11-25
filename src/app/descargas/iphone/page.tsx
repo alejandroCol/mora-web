@@ -15,7 +15,7 @@ export const metadata: Metadata = {
     locale: "es_CO",
     images: [{ url: "/descargas/pulso.jpg", width: 576, height: 1024, alt: "La app Mora Ring" }],
   },
-  robots: { index: true, follow: true },
+  robots: { index: false, follow: false },
 };
 
 export default function IphoneDownloadPage() {

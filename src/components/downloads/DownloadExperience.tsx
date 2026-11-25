@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import { DownloadStudio } from "@/components/downloads/DownloadStudio";
 import { APP_STORES, type AppStoreId } from "@/lib/appStores";
@@ -66,29 +65,17 @@ function StoreButtons({ platform }: { platform: Platform | null }) {
 
   return (
     <div className="flex w-full max-w-xl flex-col gap-3 sm:max-w-none sm:flex-row">
-      <Link
-        href="/descargas/iphone"
-        aria-label={
-          recommended === "ios"
-            ? "Descargar Mora Ring para iPhone. Recomendada para este teléfono"
-            : "Descargar Mora Ring para iPhone"
-        }
-        className={storeCardClass(recommended === "ios")}
-      >
-        {recommended === "ios" ? (
-          <span className="absolute -top-2.5 left-4 rounded-full bg-white px-2.5 py-1 text-[11px] font-medium tracking-[-0.01em] text-[#3d3568] shadow-[0_4px_14px_rgba(40,30,80,0.12)]">
-            {platform === "ipad" ? "Tu iPad" : "Tu iPhone"}
-          </span>
-        ) : null}
-        <AppleMark className="h-8 w-8 shrink-0" />
-        <span className="min-w-0 text-left leading-none">
-          <span className="block text-[12px] font-medium tracking-[-0.01em] text-white/70">iPhone y iPad</span>
-          <span className="mt-1 block text-[1.45rem] font-semibold tracking-[-0.03em]">iPhone</span>
-        </span>
-        <span aria-hidden className="ml-auto text-[1.6rem] font-light leading-none text-white/40">
-          ›
-        </span>
-      </Link>
+      <StoreLink
+        id="ios"
+        href={APP_STORES.ios}
+        recommended={recommended === "ios"}
+        chip={platform === "ipad" ? "Tu iPad" : "Tu iPhone"}
+        kicker="App Store"
+        title="iPhone"
+        note=""
+        label="Descargar Mora Ring para iPhone en el App Store"
+        mark={<AppleMark className="h-8 w-8" />}
+      />
       <StoreLink
         id="android"
         href={APP_STORES.android}
@@ -196,7 +183,7 @@ export function DownloadExperience() {
             <StoreButtons platform={platform} />
           </div>
           <p className="mt-4 max-w-md text-[13px] leading-5 text-[#6a6488]">
-            En iPhone son dos pasos: TestFlight y luego Mora. Android abre Play Store.
+            iPhone abre el App Store. Android abre Play Store.
           </p>
         </div>
 

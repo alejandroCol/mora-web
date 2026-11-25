@@ -173,7 +173,10 @@
 /* El encabezado baja con la franja y se lee en blanco sobre el escenario negro. */
 
 .site-header {
-  transition: top 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  transition:
+    top 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
 }
 
 .site-header img,

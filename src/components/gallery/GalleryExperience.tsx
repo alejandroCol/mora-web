@@ -208,7 +208,7 @@ export function GalleryExperience({
           </Link>
         </div>
         <div className="min-h-0 flex-1 lg:pb-0">
-          <BuySheet modelId={modelId} description="" />
+          <BuySheet modelId={modelId} panel />
         </div>
       </aside>
     </div>

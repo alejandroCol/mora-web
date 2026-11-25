@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { BuySheet } from "@/components/product/BuySheet";
+import { FeatureRail } from "@/components/product/FeatureRail";
 import { LookStage } from "@/components/product/LookStage";
 import { ShareProduct } from "@/components/product/ShareProduct";
 import { landingFinish, products, writeProductColor, type ModelId } from "@/lib/catalog";
@@ -11,13 +12,11 @@ import { useMoraStore } from "@/lib/store";
 
 export function ProductExperience({
   modelId,
-  description,
   color = null,
   left = {},
   out = [],
 }: {
   modelId: ModelId;
-  description: string;
   color?: string | null;
   /** `color:talla` → el aviso, solo si está prendido. */
   left?: Record<string, number>;
@@ -26,30 +25,10 @@ export function ProductExperience({
 }) {
   const { selection, setModel, setFinish } = useMoraStore();
   const model = products[modelId];
-  const [copy, setCopy] = useState(description);
   const opened = landingFinish(modelId, color);
   const finishId = model.finishes.includes(selection.finishId)
     ? selection.finishId
     : opened;
-
-  useEffect(() => {
-    setCopy(description);
-  }, [description]);
-
-  useEffect(() => {
-    let alive = true;
-    void fetch(`/api/gallery?model=${modelId}`)
-      .then(async (res) => (await res.json()) as { description?: string })
-      .then((data) => {
-        if (alive && typeof data.description === "string" && data.description.trim()) {
-          setCopy(data.description);
-        }
-      })
-      .catch(() => undefined);
-    return () => {
-      alive = false;
-    };
-  }, [modelId]);
 
   useLayoutEffect(() => {
     const finish = landingFinish(modelId, color);
@@ -71,11 +50,31 @@ export function ProductExperience({
     });
   }, [model.id, model.line, model.name, model.price]);
 
+  // En celular baja la página entera, foto incluida. El encabezado es transparente sobre la foto:
+  // en cuanto la página se mueve toma fondo de cristal para leerse sobre la ficha.
+  useEffect(() => {
+    const root = document.documentElement;
+    let frame = 0;
+    const read = () => root.toggleAttribute("data-page-scrolled", window.scrollY > 8);
+    const onScroll = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(read);
+    };
+    read();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", onScroll);
+      root.removeAttribute("data-page-scrolled");
+    };
+  }, []);
+
   return (
-    <div className="hero-wash h-dvh overflow-hidden pt-[var(--offer-bar,0px)] transition-[padding] duration-300">
-      <div className="flex h-full flex-col lg:flex-row">
-        <section className="relative h-[min(50dvh,36rem)] min-h-[20rem] shrink-0 lg:h-auto lg:min-h-0 lg:min-w-0 lg:flex-1">
+    <div className="hero-wash product-page min-h-dvh pt-[var(--offer-bar,0px)] transition-[padding] duration-300 lg:h-dvh lg:overflow-hidden">
+      <div className="flex flex-col lg:h-full lg:flex-row">
+        <section className="relative h-[min(50svh,36rem)] min-h-[20rem] shrink-0 lg:h-auto lg:min-h-0 lg:min-w-0 lg:flex-1">
           <LookStage modelId={modelId} landing={opened} />
+          <FeatureRail modelId={modelId} />
           <ShareProduct
             modelId={modelId}
             finishId={finishId}
@@ -83,8 +82,8 @@ export function ProductExperience({
             className="absolute bottom-3 right-3 z-10 sm:bottom-5 sm:right-5"
           />
         </section>
-        <aside className="product-sheet relative min-h-0 flex-1 bg-white/70 lg:w-[26rem] lg:flex-none lg:border-l lg:border-line lg:bg-transparent xl:w-[28rem]">
-          <BuySheet modelId={modelId} description={copy} left={left} out={out} />
+        <aside className="product-sheet relative flex-1 bg-white/70 lg:min-h-0 lg:w-[26rem] lg:flex-none lg:border-l lg:border-line lg:bg-transparent xl:w-[28rem]">
+          <BuySheet modelId={modelId} left={left} out={out} />
         </aside>
       </div>
     </div>

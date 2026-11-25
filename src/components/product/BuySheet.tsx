@@ -10,7 +10,6 @@ import {
   type ModelId,
 } from "@/lib/catalog";
 import { track } from "@/growth/track";
-import { PromoPrice } from "@/components/promo/PromoPrice";
 import { usePricing, useSales } from "@/components/sales/SalesProvider";
 import { insightProductCart } from "@/insights/client";
 import { useMoraStore } from "@/lib/store";
@@ -18,17 +17,21 @@ import { AddiCuotasButton } from "@/components/payments/AddiCuotasButton";
 import { addiAmountAllowed, checkoutHref } from "@/payments/public";
 import { loadPayMethods } from "@/payments/methodsClient";
 import { FreeShipping } from "./FreeShipping";
-import { ProductSpecSheet } from "./ProductSpecSheet";
+import { ProductPrice } from "./ProductPrice";
+import { ProductReviews } from "./ProductReviews";
+import { ProductFinePrint, ProductSpecSheet } from "./ProductSpecSheet";
 import { SizeChoice } from "./SizeChoice";
+import { SoldCount } from "./SoldCount";
 
 export function BuySheet({
   modelId,
-  description,
   left = {},
   out = [],
+  panel = false,
 }: {
   modelId: ModelId;
-  description: string;
+  /** Dentro de una hoja de alto fijo (galería): scroll propio y barra pegada abajo, siempre. */
+  panel?: boolean;
   left?: Record<string, number>;
   out?: string[];
 }) {
@@ -51,9 +54,10 @@ export function BuySheet({
     : model.finishes[0];
   const sizing = selection.sizing;
   const [need, setNeed] = useState("");
-  const [showCopy, setShowCopy] = useState(false);
   const [addiRange, setAddiRange] = useState<{ minCop: number; maxCop: number } | null>(null);
-  const specRef = useRef<HTMLDivElement>(null);
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const sizeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let alive = true;
@@ -66,22 +70,33 @@ export function BuySheet({
     };
   }, []);
 
+  // En celular la barra de compra flota sobre la página: la hoja deja debajo justo su alto,
+  // para que la última línea no quede tapada (el alto cambia con Addi y con el aviso).
   useEffect(() => {
-    if (!showCopy || !specRef.current) return;
-    const node = specRef.current;
-    const scroller = node.closest(".overflow-y-auto");
-    if (!(scroller instanceof HTMLElement)) return;
-    const delta = node.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-    scroller.scrollTo({ top: Math.max(0, scroller.scrollTop + delta - 12), behavior: "smooth" });
-  }, [showCopy]);
+    const sheet = sheetRef.current;
+    const bar = barRef.current;
+    if (!sheet || !bar) return;
+    const sync = () => sheet.style.setProperty("--buy-bar-h", `${bar.offsetHeight}px`);
+    sync();
+    const observer = new ResizeObserver(sync);
+    observer.observe(bar);
+    return () => observer.disconnect();
+  }, []);
+
+  /** La barra se toca desde cualquier punto de la página: si falta la talla, se la muestra. */
+  function showSizes() {
+    sizeRef.current?.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
 
   function validateSelection() {
     if ((sizing ?? "self") === "self" && !model.sizes.includes(selection.size)) {
       setNeed(sales.needSize);
+      showSizes();
       return false;
     }
     if ((sizing ?? "self") !== "kit" && out.includes(`${finishId}:${selection.size}`)) {
       setNeed("Esa talla no está.");
+      showSizes();
       return false;
     }
     setNeed("");
@@ -130,27 +145,31 @@ export function BuySheet({
   const hint = need || (sizing === "self" ? sales.deliveryHint : "");
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-12 pt-3 hide-scroll sm:px-8 sm:pb-14 sm:pt-8">
-        <div className="flex items-end justify-between gap-3">
-          <div className="flex min-w-0 items-end gap-2">
-            <h1 className="title-name text-[2.35rem] text-[#1d1d1f] sm:text-[2.85rem]">
-              <span className="sr-only">Mora </span>
-              {model.name}
-            </h1>
-            <p className="shrink-0 text-[11px] tracking-[-0.01em] text-soft sm:text-[12px]">
-              {model.line}
-            </p>
-            <FreeShipping className="ship-free-sm shrink-0" />
+    <div
+      ref={sheetRef}
+      className={`flex flex-col lg:h-full lg:min-h-0 ${panel ? "buy-panel h-full min-h-0" : ""}`}
+    >
+      <div className="buy-scroll px-5 pt-2.5 hide-scroll sm:px-8 sm:pt-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
+              <h1 className="title-name text-[clamp(2.05rem,9.4vw,2.35rem)] text-[#1d1d1f] sm:text-[2.6rem]">
+                <span className="sr-only">Mora </span>
+                {model.name}
+              </h1>
+              <span className="flex items-center gap-1.5 pb-[3px]">
+                <span className="text-[11.5px] leading-none tracking-[-0.01em] text-soft">{model.line}</span>
+                <FreeShipping className="ship-free-xs shrink-0" />
+              </span>
+            </div>
+            <SoldCount modelId={modelId} className="mt-1.5" />
           </div>
-          <p className="shrink-0 text-right text-[17px] tracking-[-0.02em] text-[#1d1d1f]">
-            <PromoPrice value={price} stacked />
-          </p>
+          <ProductPrice value={price} />
         </div>
 
-        <fieldset className="mt-4 sm:mt-7">
-          <legend className="text-[12px] text-soft">Color</legend>
-          <div className="mt-3 flex gap-2">
+        <fieldset className="mt-5 sm:mt-6">
+          <legend className="sr-only">Color</legend>
+          <div className="flex gap-2">
             {model.finishes.map((id) => {
               const item = resolveFinish(modelId, id);
               const on = id === finishId;
@@ -180,7 +199,7 @@ export function BuySheet({
         </fieldset>
 
         {model.kind === "ring" ? (
-          <div className="mt-5 sm:mt-6">
+          <div ref={sizeRef} className="mt-5 sm:mt-6">
             <SizeChoice
               sizing={sizing}
               onSizing={(method) => {
@@ -199,33 +218,14 @@ export function BuySheet({
           </div>
         ) : null}
 
-        <div className="product-copy mt-5 sm:mt-6">
-          <div aria-hidden className="mb-3.5 h-[0.5px] w-36 bg-[#d8d8de]" />
-          {description ? (
-            <p className="max-w-[40ch] text-[12px] leading-4 text-soft">
-              {description}
-            </p>
-          ) : null}
-          <button
-            type="button"
-            aria-expanded={showCopy}
-            onClick={() => setShowCopy((value) => !value)}
-            className="mt-1 text-[12px] text-[#6e6e73] transition-colors hover:text-[#1d1d1f]"
-          >
-            {showCopy ? "Cerrar descripción" : "Ver toda la descripción"}
-            <span aria-hidden className="ml-0.5">
-              {showCopy ? "‹" : "›"}
-            </span>
-          </button>
-          {/* Siempre en el HTML (plegada con `hidden`): es el texto que Google lee de la ficha. */}
-          <div ref={specRef} hidden={!showCopy}>
-            <ProductSpecSheet modelId={modelId} />
-          </div>
+        <div className="mt-8 space-y-8 sm:mt-9">
+          <ProductSpecSheet modelId={modelId} />
+          <ProductReviews />
+          <ProductFinePrint />
         </div>
-
       </div>
 
-      <div className="shrink-0 border-t border-line bg-white px-4 py-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] sm:px-8">
+      <div ref={barRef} className="buy-bar">
         <div className="buy-dock">
           <button type="button" onClick={addToCart} className="buy-cart">
             Añadir al carrito
@@ -236,7 +236,9 @@ export function BuySheet({
           {offerAddi ? <AddiCuotasButton onClick={() => buyNow("addi")} /> : null}
         </div>
         {hint ? (
-          <p className="mt-2 text-center text-[11px] leading-4 text-soft">{hint}</p>
+          <p className={`buy-bar-hint ${need ? "buy-bar-need" : ""}`} role={need ? "alert" : undefined}>
+            {hint}
+          </p>
         ) : null}
       </div>
     </div>

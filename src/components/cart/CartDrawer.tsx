@@ -53,9 +53,10 @@ export function CartDrawer() {
         }`}
         aria-label="Cerrar carrito"
       />
+      {/* Cerrado se va un poco más allá del borde: si no, su sombra asoma sobre la página. */}
       <aside
         className={`absolute inset-y-0 right-0 flex w-full max-w-[26rem] flex-col bg-paper shadow-[-24px_0_60px_rgba(22,20,31,0.12)] transition-transform duration-300 ${
-          cartOpen ? "translate-x-0" : "translate-x-full"
+          cartOpen ? "translate-x-0" : "translate-x-[calc(100%+5.5rem)]"
         }`}
       >
         <header className="flex items-center justify-between px-6 pt-[max(1.25rem,env(safe-area-inset-top))] pb-4">

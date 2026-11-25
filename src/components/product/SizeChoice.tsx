@@ -269,7 +269,7 @@ export function SizeChoice({
         ) : null}
       </div>
 
-      <div ref={rowRef} className="mt-5 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+      <div ref={rowRef} className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
         <p className="text-[14px] tracking-[-0.018em] text-[#1d1d1f] sm:text-[15px]">
           ¿Quieres pedir un medidor?
         </p>

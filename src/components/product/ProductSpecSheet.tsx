@@ -1,103 +1,137 @@
 import Link from "next/link";
 import type { ModelId } from "@/lib/catalog";
-import { specCompare, specDisclaimer, specSheet, type SpecRow } from "@/lib/productSpec";
-
-function SpecTable({ title, rows }: { title: string; rows: SpecRow[] }) {
-  return (
-    <div className="mt-4">
-      <p className="px-3.5 text-[10px] text-soft">{title}</p>
-      <table className="mt-1.5 w-full border-collapse text-left text-[12px] leading-4">
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.label} className="border-t border-line">
-              <th
-                scope="row"
-                className="w-[34%] px-3.5 py-2 align-top font-normal text-soft"
-              >
-                {row.label}
-              </th>
-              <td className="px-3.5 py-2 align-top text-[#1d1d1f]">{row.value}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+import { specCompare, specDisclaimer, specSheet } from "@/lib/productSpec";
+import { SpecIcon } from "./SpecIcon";
 
 function CompareTable({ current }: { current: ModelId }) {
+  const on = "bg-[#f4f3f8] text-[#1d1d1f]";
   return (
-    <div className="mt-4">
-      <p className="px-3.5 text-[10px] text-soft">Pro y Ultra</p>
-      <table className="mt-1.5 w-full border-collapse text-left text-[11px] leading-4">
-        <thead>
-          <tr className="border-t border-line">
-            <th scope="col" className="w-[28%] px-3.5 py-2 font-normal text-soft">
-              <span className="sr-only">Dato</span>
-            </th>
-            <th
-              scope="col"
-              className={`px-2 py-2 font-normal ${current === "aero" ? "bg-[#f4f3f8] font-medium text-[#1d1d1f]" : "text-soft"}`}
-            >
-              Pro{current === "aero" ? " · este" : ""}
-            </th>
-            <th
-              scope="col"
-              className={`px-2 py-2 font-normal ${current === "titan" ? "bg-[#f4f3f8] font-medium text-[#1d1d1f]" : "text-soft"}`}
-            >
-              Ultra{current === "titan" ? " · este" : ""}
-            </th>
+    <table className="spec-compare">
+      <thead>
+        <tr>
+          <th scope="col" className="w-[30%]">
+            <span className="sr-only">Dato</span>
+          </th>
+          <th scope="col" className={current === "aero" ? `${on} rounded-t-lg font-semibold` : ""}>
+            Pro
+          </th>
+          <th scope="col" className={current === "titan" ? `${on} rounded-t-lg font-semibold` : ""}>
+            Ultra
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {specCompare.map((row) => (
+          <tr key={row.label}>
+            <th scope="row">{row.label}</th>
+            <td className={current === "aero" ? on : ""}>{row.aero}</td>
+            <td className={current === "titan" ? on : ""}>{row.titan}</td>
           </tr>
-        </thead>
-        <tbody>
-          {specCompare.map((row) => (
-            <tr key={row.label} className="border-t border-line">
-              <th scope="row" className="px-3.5 py-2 align-top font-normal text-soft">
-                {row.label}
-              </th>
-              <td
-                className={`px-2 py-2 align-top ${current === "aero" ? "bg-[#f4f3f8] text-[#1d1d1f]" : "text-[#1d1d1f]"}`}
-              >
-                {row.aero}
-              </td>
-              <td
-                className={`px-2 py-2 align-top ${current === "titan" ? "bg-[#f4f3f8] text-[#1d1d1f]" : "text-[#1d1d1f]"}`}
-              >
-                {row.titan}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+        ))}
+      </tbody>
+    </table>
   );
 }
 
+/**
+ * La ficha técnica, siempre abierta: tres cifras, la lista de datos y lo que lee el anillo.
+ * La comparación va plegada en un `<details>`, que sigue en el HTML: es texto que Google lee.
+ */
 export function ProductSpecSheet({ modelId }: { modelId: ModelId }) {
   const sheet = specSheet[modelId];
+  const [bond, ...rest] = [...sheet.readings].reverse();
+  const tiles = rest.reverse();
   return (
-    <div className="spec-in mt-4 overflow-hidden rounded-2xl border border-line bg-white/85 pb-5">
-      <p className="px-3.5 pt-3.5 text-[12px] leading-4 text-[#1d1d1f]">
-        {sheet.lead}
-      </p>
-      <SpecTable title="Ficha" rows={sheet.specs} />
-      <SpecTable title="En la app" rows={sheet.readings} />
-      <p className="mt-3 px-3.5 text-[12px] leading-4 text-[#1d1d1f]">{sheet.extra}</p>
-      <CompareTable current={modelId} />
-      <p className="mt-3 px-3.5 text-[12px] leading-4 text-[#1d1d1f]">{sheet.choose}</p>
-      <p className="mt-2 px-3.5 text-[11px] leading-4 text-soft">{specDisclaimer}</p>
-      <p className="mt-3 px-3.5">
-        <Link
-          href="/envios-y-garantia"
-          className="text-[11px] leading-4 text-soft underline decoration-[#d2d2d7] underline-offset-2 hover:text-[#1d1d1f]"
-        >
+    <section aria-labelledby="spec-title">
+      <h2 id="spec-title" className="sheet-title">
+        Ficha técnica
+      </h2>
+
+      <dl className="spec-stats">
+        {sheet.stats.map((stat) => (
+          <div key={stat.label} className="spec-stat">
+            <dt className="spec-stat-label">{stat.label}</dt>
+            <dd>
+              <span className="spec-stat-pre">{stat.pre}</span>
+              <span className="spec-stat-value">{stat.value}</span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <dl className="spec-list">
+        {sheet.specs.map((row) => (
+          <div key={row.label} className="spec-li">
+            <dt>{row.label}</dt>
+            <dd>
+              {row.value}
+              {row.note ? <span className="spec-li-note">{row.note}</span> : null}
+            </dd>
+          </div>
+        ))}
+      </dl>
+
+      <h3 className="sheet-sub">Lo que lee</h3>
+      <ul className="read-grid">
+        {tiles.map((item, index) => (
+          <li
+            key={item.label}
+            className={`read-tile ${tiles.length % 2 && index === tiles.length - 1 ? "read-tile-span" : ""}`}
+          >
+            <SpecIcon id={item.icon} />
+            <p className="read-name">{item.label}</p>
+            <p className="read-desc">{item.value}</p>
+          </li>
+        ))}
+        {bond ? (
+          <li className="read-tile read-tile-wide">
+            <span className="read-badge">
+              <SpecIcon id={bond.icon} />
+            </span>
+            <span>
+              <span className="read-name">{bond.label}</span>
+              <span className="read-desc">{bond.value}</span>
+            </span>
+          </li>
+        ) : null}
+      </ul>
+
+      <details className="spec-more">
+        <summary>
+          Comparar Pro y Ultra
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden>
+            <path
+              d="M2.5 4.5 6 8l3.5-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </summary>
+        <div className="spec-more-body">
+          <p>{sheet.lead}</p>
+          <CompareTable current={modelId} />
+        </div>
+      </details>
+    </section>
+  );
+}
+
+/** Letra pequeña al final de la ficha: qué es y qué no, y a dónde ir por envíos y garantía. */
+export function ProductFinePrint() {
+  const link =
+    "underline decoration-[#d2d2d7] underline-offset-2 transition-colors hover:text-[#1d1d1f]";
+  return (
+    <div className="text-[11px] leading-4 tracking-[-0.005em] text-[#86868b]">
+      <p>{specDisclaimer}</p>
+      <p className="mt-2">
+        <Link href="/envios-y-garantia" className={link}>
           Envíos, cambios y garantía
         </Link>
-        <span className="text-[11px] leading-4 text-soft"> · </span>
-        <Link
-          href="/datos-del-sueno"
-          className="text-[11px] leading-4 text-soft underline decoration-[#d2d2d7] underline-offset-2 hover:text-[#1d1d1f]"
-        >
+        {" · "}
+        <Link href="/datos-del-sueno" className={link}>
           Cómo se calcula el sueño
         </Link>
       </p>

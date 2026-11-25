@@ -150,11 +150,11 @@ export function CrmComposer({
   function pickReply(reply: CrmQuickReply) {
     setDraft(reply.body);
     setAttachError("");
-    const slot = reply.body.indexOf("[nombre]");
-    if (slot >= 0) {
+    const slot = /\[(nombre|creador)\]/.exec(reply.body);
+    if (slot) {
       requestAnimationFrame(() => {
         area.current?.focus();
-        area.current?.setSelectionRange(slot, slot + "[nombre]".length);
+        area.current?.setSelectionRange(slot.index, slot.index + slot[0].length);
       });
     }
     if (reply.media) {

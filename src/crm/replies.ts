@@ -50,7 +50,7 @@ export function creatorShippingReply(): CrmQuickReply {
   return reply("creadores-envio", "Datos de envío", CREATOR_SHIPPING_REPLY_BODY, "creators");
 }
 
-/** Retoma el chat tras la llamada con Julio. `[nombre]` queda seleccionado al elegirla para escribir encima. */
+/** Retoma el chat tras la llamada con Julio. `[nombre]` y `[creador]` quedan seleccionados al elegir la respuesta. */
 export const CREATOR_RESUME_REPLY_ID = "creadores-retomar";
 
 export const CREATOR_RESUME_REPLY_BODY = `¡Hola, [nombre]! 💜
@@ -67,9 +67,21 @@ export function creatorResumeReply(): CrmQuickReply {
   return reply(CREATOR_RESUME_REPLY_ID, "Retomar con Julio", CREATOR_RESUME_REPLY_BODY, "creators");
 }
 
+export const CREATOR_CHECKIN_REPLY_ID = "creadores-experiencia";
+
+export const CREATOR_CHECKIN_REPLY_BODY = `¡Hola, [creador]! 💜
+
+Nos encantaría saber cómo vas con tu Mora Ring y cómo ha sido tu experiencia utilizándolo. ✨
+
+¿Qué tal te has sentido con él? ¿Has podido explorar sus funcionalidades y descubrir todo lo que tiene para ofrecerte?`;
+
+export function creatorCheckinReply(): CrmQuickReply {
+  return reply(CREATOR_CHECKIN_REPLY_ID, "Cómo vas", CREATOR_CHECKIN_REPLY_BODY, "creators");
+}
+
 /** Plantillas de creadoras que siempre deben estar, aunque Ajustes ya tenga respuestas guardadas. */
 export function creatorReplies(): CrmQuickReply[] {
-  return [creatorShippingReply(), creatorResumeReply()];
+  return [creatorShippingReply(), creatorResumeReply(), creatorCheckinReply()];
 }
 
 export function defaultCrmReplies(): CrmQuickReply[] {

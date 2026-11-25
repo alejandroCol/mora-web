@@ -11,7 +11,7 @@ import { getOrder } from "@/server/orders";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-/** Guías de una venta. Los anillos salen por Dropi si hay token; el medidor, por Heka. */
+/** Guías de una venta. Medidor y anillos salen por Dropi si hay token; si no, por Heka. */
 export async function POST(request: Request, ctx: Ctx) {
   try {
     const staff = await requirePermission(request, "sales");

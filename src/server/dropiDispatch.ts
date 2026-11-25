@@ -4,6 +4,7 @@ import {
   dropiCarrierLabel,
   dropiConfigured,
   dropiRingProductId,
+  dropiSizerProductId,
   dropiStatusLabel,
   generateDropiGuide,
   getDropiOrder,
@@ -14,11 +15,12 @@ import {
 import { guideTarget } from "./hekaDispatch";
 import { attachShippingGuide, getOrder, notifyGuideReady, transitionOrder } from "./orders";
 
-/** Los anillos salen por Dropi cuando hay token. El medidor sigue por Heka. */
+/** Con token, el medidor y los anillos salen por Dropi; cada tramo con su producto. */
 export function orderGuideGoesByDropi(order: MoraOrder) {
   if (!dropiConfigured()) return false;
   try {
-    return guideTarget(order).kind === "rings";
+    guideTarget(order);
+    return true;
   } catch {
     return false;
   }
@@ -44,8 +46,8 @@ function ringPieces(order: MoraOrder) {
   return Math.max(1, rings);
 }
 
-function declaredValue(order: MoraOrder) {
-  return Math.max(25000, Math.round(order.totals.subtotal));
+function declaredValue(order: MoraOrder, kind: "sizer" | "rings") {
+  return kind === "sizer" ? 25000 : Math.max(25000, Math.round(order.totals.subtotal));
 }
 
 /** Lo que el super admin ve antes de crear la guía: transportadoras y flete de Dropi. */
@@ -54,7 +56,7 @@ export async function quoteOrderWithDropi(orderId: string) {
   const order = await getOrder(orderId);
   if (!order) throw new Error("Pedido no encontrado.");
   const { kind, destinationDane } = guideTarget(order);
-  const options = await quoteDropi({ destinationDane, declaredValue: declaredValue(order) });
+  const options = await quoteDropi({ destinationDane, declaredValue: declaredValue(order, kind) });
   if (!options.length) throw new Error("Dropi no tiene cobertura para esa ciudad.");
   const wanted = (order.shipping.carrier || "").toLowerCase();
   const suggested = options.find((option) => option.carrier === wanted) ?? options[0];
@@ -71,16 +73,14 @@ export async function quoteOrderWithDropi(orderId: string) {
 export async function dispatchOrderWithDropi(
   orderId: string,
   by: string,
-  choice: { carrier?: string; sizer?: boolean } = {},
+  choice: { carrier?: string } = {},
 ) {
   requireDropi();
   const order = await getOrder(orderId);
   if (!order) throw new Error("Pedido no encontrado.");
   const { kind, phone, destinationDane } = guideTarget(order);
-  // En Dropi el medidor sale como un anillo (no hay producto de medidor), por eso solo a pedido.
-  if (kind === "sizer" && !choice.sizer) throw new Error("El medidor todavía no sale por Dropi.");
   const isSizer = kind === "sizer";
-  const declared = declaredValue(order);
+  const declared = declaredValue(order, kind);
 
   let dropiOrderId = order.shipments?.[kind]?.dropiOrderId?.trim() ?? "";
   let carrierLabel = order.shipments?.[kind]?.carrierLabel ?? "";
@@ -103,7 +103,7 @@ export async function dispatchOrderWithDropi(
         departamento: order.shipping.departamento,
         ciudad: order.shipping.ciudad,
       }),
-      getDropiProduct(dropiRingProductId()),
+      getDropiProduct(isSizer ? dropiSizerProductId() : dropiRingProductId()),
     ]);
 
     const pieces = isSizer ? 1 : ringPieces(order);

@@ -155,7 +155,7 @@ env:
     secret: HEKA_DEMO_WAREHOUSE_ID
     availability:
       - RUNTIME
-  # Dropi: guías de los anillos. El token vive en Secret Manager, no en este archivo.
+  # Dropi: guías del medidor y de los anillos. El token vive en Secret Manager, no en este archivo.
   - variable: DROPI_INTEGRATION_KEY
     secret: DROPI_INTEGRATION_KEY
     availability:

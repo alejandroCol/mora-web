@@ -15,6 +15,8 @@ const DROPI_USER_AGENT = "WordPress/6.6; https://moraring.com";
 
 /** Producto del catálogo de Dropi que viaja en cada guía de anillos (Mora Ultra). */
 const DEFAULT_RING_PRODUCT_ID = "2331406";
+/** Producto del catálogo de Dropi que viaja en cada guía del medidor (Medidor de tallas). */
+const DEFAULT_SIZER_PRODUCT_ID = "2356056";
 /** Cali: la bodega de Dropi desde la que sale el producto. */
 const DEFAULT_ORIGIN_DANE = "76001000";
 
@@ -48,6 +50,10 @@ export function dropiConfigured() {
 
 export function dropiRingProductId() {
   return Number(process.env.DROPI_RING_PRODUCT_ID?.trim() || DEFAULT_RING_PRODUCT_ID);
+}
+
+export function dropiSizerProductId() {
+  return Number(process.env.DROPI_SIZER_PRODUCT_ID?.trim() || DEFAULT_SIZER_PRODUCT_ID);
 }
 
 export function dropiOriginDane() {

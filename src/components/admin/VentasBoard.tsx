@@ -8,11 +8,11 @@ import {
   PAYMENT_METHOD_LABEL,
 } from "@/commerce/labels";
 import type { CommerceSettings, MoraOrder, OrderStatus, ShippingQuoteOption } from "@/commerce/types";
-import { commerceLineLabel, orderHasSizer, orderNeedsSize } from "@/commerce/sizing";
-import { enCaminoTarget, guideKindFor } from "@/commerce/shipments";
+import { commerceLineLabel, isSizePending, orderHasSizer, orderNeedsSize } from "@/commerce/sizing";
+import { enCaminoTarget, guideKindFor, sizerSent } from "@/commerce/shipments";
 import { orderJourney } from "@/commerce/orderJourney";
 import { payLinkPath } from "@/commerce/manualSale";
-import { formatMoney } from "@/lib/catalog";
+import { formatMoney, isModelId, products, type ModelId } from "@/lib/catalog";
 import { useAdminAuth } from "./AdminAuth";
 import type { GiftRecord } from "@/commerce/gifts";
 import { GiftForm } from "./GiftForm";
@@ -273,6 +273,25 @@ export function VentasBoard() {
     }
   }
 
+  async function saveSizes(order: MoraOrder, sizes: { index: number; size: number }[]) {
+    setBusy(`${order.id}:size`);
+    setHekaError("");
+    try {
+      const res = await authorizedFetch(`/api/admin/orders/${order.id}/size`, {
+        method: "POST",
+        body: JSON.stringify({ sizes }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string; order?: MoraOrder };
+      if (!data.ok) throw new Error(data.error);
+      setSelected(data.order ?? null);
+      await load();
+    } catch (error) {
+      setHekaError(error instanceof Error && error.message ? error.message : "No se pudo guardar la talla.");
+    } finally {
+      setBusy("");
+    }
+  }
+
   const tabs: { id: Tab; label: string; count?: number }[] = [
     { id: "pipeline", label: "Por despachar", count: stats.paid + stats.transit },
     { id: "awaiting_payment", label: "Esperando pago", count: stats.awaiting },
@@ -476,6 +495,7 @@ export function VentasBoard() {
             if (!target) return;
             void changeStatus(selectedFresh, target.to, guideNumberFor(selectedFresh, target.kind, tracking));
           }}
+          onSize={(sizes) => void saveSizes(selectedFresh, sizes)}
         />
       ) : null}
 
@@ -776,6 +796,62 @@ function OrderCard({
   );
 }
 
+/** El equipo pone la talla cuando el cliente la dice por chat. */
+function SizePicker({
+  order,
+  busy,
+  onSave,
+}: {
+  order: MoraOrder;
+  busy: string;
+  onSave: (sizes: { index: number; size: number }[]) => void;
+}) {
+  const lines = order.items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => isSizePending(item) && isModelId(item.modelId));
+  const [picks, setPicks] = useState<Record<number, number>>({});
+  if (lines.length === 0) return null;
+  const complete = lines.every(({ index }) => picks[index]);
+  const skipsSizer = !sizerSent(order) && !order.shipments?.sizer?.hekaGuideId;
+  return (
+    <div className="order-manual">
+      <p className="order-manual-label">
+        ¿Ya sabes la talla? Ponla tú
+        {skipsSizer ? " y el pedido sigue sin enviar el medidor." : " y siguen los anillos."}
+      </p>
+      {lines.map(({ item, index }) => (
+        <div key={item.key} className="order-manual-row">
+          <select
+            value={picks[index] ?? ""}
+            disabled={Boolean(busy)}
+            onChange={(event) => setPicks({ ...picks, [index]: Number(event.target.value) })}
+            className="order-manual-input"
+            aria-label={`Talla de ${commerceLineLabel(item)}`}
+          >
+            <option value="">
+              {lines.length > 1 ? `${commerceLineLabel(item)} · talla` : "Elige la talla"}
+            </option>
+            {products[item.modelId as ModelId].sizes.map((size) => (
+              <option key={size} value={size}>
+                Talla {size}
+              </option>
+            ))}
+          </select>
+        </div>
+      ))}
+      <button
+        type="button"
+        disabled={Boolean(busy) || !complete}
+        onClick={() => onSave(lines.map(({ index }) => ({ index, size: picks[index] })))}
+        className="admin-cta mt-3 h-11 w-full disabled:opacity-40"
+      >
+        <Spin on={busy === `${order.id}:size`} />
+        Guardar talla
+      </button>
+    </div>
+  );
+}
+
 function OrderDrawer({
   order,
   tracking,
@@ -787,6 +863,7 @@ function OrderDrawer({
   onHeka,
   onView,
   onEnCamino,
+  onSize,
 }: {
   order: MoraOrder;
   tracking: string;
@@ -798,6 +875,7 @@ function OrderDrawer({
   onHeka: (action: "create" | "refresh") => void;
   onView: (leg?: "sizer" | "rings") => void;
   onEnCamino: () => void;
+  onSize: (sizes: { index: number; size: number }[]) => void;
 }) {
   const phone = order.customer.phone.replace(/\D/g, "");
   const crmHref =
@@ -806,6 +884,8 @@ function OrderDrawer({
       : null;
   const { steps, next } = orderJourney(order);
   const camino = enCaminoTarget(order);
+  const pendingSize =
+    orderNeedsSize(order.items) && (order.status === "paid" || order.status === "sizer_transit");
   const [copied, setCopied] = useState(false);
   // Venta manual por enlace que aún no se paga.
   const payUrl =
@@ -972,6 +1052,10 @@ function OrderDrawer({
                 </button>
               </div>
             </div>
+          ) : null}
+
+          {pendingSize ? (
+            <SizePicker order={order} busy={busy} onSave={onSize} />
           ) : null}
 
           {next.action === "deliver" ? (

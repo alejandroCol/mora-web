@@ -184,7 +184,7 @@ export function orderJourney(order: MoraOrder): OrderJourney {
   } else if (hasSizer && needsSize) {
     next = {
       title: "El cliente está eligiendo la talla",
-      body: "Cuando reciba el medidor, elige la talla desde su enlace. Al confirmarla, aquí aparece el envío de los anillos. Si pasan días, recuérdaselo por el chat.",
+      body: "Cuando reciba el medidor, elige la talla desde su enlace. Si te la dice por chat, ponla tú aquí. Con la talla, aparece el envío de los anillos.",
       action: "none",
       waiting: true,
       tone: "waiting",

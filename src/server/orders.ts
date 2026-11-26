@@ -5,7 +5,7 @@ import type { OrderPromo } from "@/commerce/promos";
 import { canTransition } from "@/commerce/orderMachine";
 import { inventorySku, lineToOrderItem } from "@/commerce/sku";
 import { orderHasSizer, orderNeedsSize } from "@/commerce/sizing";
-import { legFromShipping } from "@/commerce/shipments";
+import { legFromShipping, sizerSent } from "@/commerce/shipments";
 import {
   isLinkMethod,
   looksLikeEmail,
@@ -1062,6 +1062,8 @@ export async function attachShippingGuide(input: {
 export async function confirmOrderSizes(input: {
   orderNumber: string;
   sizes: { index: number; size: number }[];
+  /** Admin que pone la talla en lugar del cliente; queda en el historial. */
+  by?: string;
 }): Promise<MoraOrder> {
   const order = await getOrderByNumber(input.orderNumber);
   if (!order) throw new Error("No encontramos ese pedido.");
@@ -1074,6 +1076,8 @@ export async function confirmOrderSizes(input: {
   }
 
   const now = Date.now();
+  // Con la talla puesta desde el admin antes de despachar el medidor, el medidor ya no viaja.
+  const skipSizer = Boolean(input.by) && !sizerSent(order) && !order.shipments?.sizer?.hekaGuideId;
   const take = new Map<string, number>();
   const back = new Map<string, number>();
   const items = order.items.map((item, index) => {
@@ -1093,7 +1097,13 @@ export async function confirmOrderSizes(input: {
       take.set(nextSku, (take.get(nextSku) ?? 0) + qty);
       if (item.sku) back.set(item.sku, (back.get(item.sku) ?? 0) + qty);
     }
-    return { ...item, size: pick.size, sku: nextSku, sizedAt: now };
+    return {
+      ...item,
+      size: pick.size,
+      sku: nextSku,
+      sizedAt: now,
+      ...(skipSizer ? { sizing: "self" as const } : {}),
+    };
   });
 
   if (!items.some((item, index) => item.size !== order.items[index].size)) {
@@ -1110,8 +1120,22 @@ export async function confirmOrderSizes(input: {
   }
 
   const ref = orderRef(db, order.id);
-  await ref.set({ items, updatedAt: now }, { merge: true });
-  return { ...order, items, updatedAt: now };
+  const timeline = input.by
+    ? [
+        ...order.timeline,
+        {
+          status: order.status,
+          at: now,
+          by: input.by,
+          note: `Talla ${items
+            .filter((item, index) => item.size !== order.items[index].size)
+            .map((item) => item.size)
+            .join(", ")} puesta desde el admin${skipSizer ? ", sin medidor" : ""}`,
+        },
+      ]
+    : order.timeline;
+  await ref.set({ items, timeline, updatedAt: now }, { merge: true });
+  return { ...order, items, timeline, updatedAt: now };
 }
 
 export function publicOrderView(order: MoraOrder) {

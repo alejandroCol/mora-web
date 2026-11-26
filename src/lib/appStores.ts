@@ -4,7 +4,8 @@
  * Android abre la ficha de Mora en Play Store.
  * Los botones de /descargas leen este archivo.
  *
- * TestFlight queda guardado para /descargas/iphone, que ya no se enlaza.
+ * TestFlight sirve a /descarga-testers (link directo para quien no ve Mora en su
+ * App Store, p. ej. Apple ID de otro país) y a /descargas/iphone, que ya no se enlaza.
  */
 export const APP_STORES = {
   ios: "https://apps.apple.com/co/app/mora-ring/id6830425313?l=en-GB",

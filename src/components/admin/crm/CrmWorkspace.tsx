@@ -24,6 +24,7 @@ import { playMoraChime, unlockMoraChime } from "@/crm/chime";
 import { DESK_LABEL, isCrmDesk, isSnoozed, needsReply } from "@/crm/labels";
 import { WHATSAPP_CAPTION_MAX } from "@/crm/media";
 import { referralKindLabel } from "@/crm/referral";
+import { leavesGap, mergeMessages, THREAD_OLDER_PAGE, THREAD_PAGE } from "@/crm/thread";
 import { uploadReplyMedia } from "@/crm/uploadReplyMedia";
 import { useAdminAuth } from "../AdminAuth";
 import { GiftForm } from "../GiftForm";
@@ -135,9 +136,27 @@ export function CrmWorkspace() {
   const [usage, setUsage] = useState<WhatsAppUsageReport | null>(null);
   const [activeId, setActiveId] = useState<string | null>(search.get("c"));
   const [messages, setMessages] = useState<WhatsAppMessage[]>([]);
+  const [hasOlder, setHasOlder] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [contact, setContact] = useState<CrmContactState | null>(null);
   const [error, setError] = useState("");
   const heard = useRef<Map<string, number> | null>(null);
+  // Las respuestas llegan tarde: se descartan si ya se cambió de chat.
+  const activeRef = useRef<string | null>(activeId);
+  const messagesRef = useRef<WhatsAppMessage[]>([]);
+  const loadedFor = useRef<string | null>(null);
+  const contactAt = useRef(-1);
+  const olderBusy = useRef(false);
+
+  const showMessages = useCallback((next: WhatsAppMessage[]) => {
+    messagesRef.current = next;
+    setMessages(next);
+  }, []);
+
+  const addMessages = useCallback(
+    (sent: WhatsAppMessage[]) => showMessages(mergeMessages(messagesRef.current, sent)),
+    [showMessages],
+  );
 
   const loadWorkspace = useCallback(async () => {
     const res = await authorizedFetch("/api/admin/crm");
@@ -188,38 +207,65 @@ export function CrmWorkspace() {
     };
   }, [loadUsage]);
 
-  const loadThread = useCallback(
+  const loadContact = useCallback(
     async (id: string) => {
-      const [threadRes, contactRes] = await Promise.all([
-        authorizedFetch(`/api/admin/whatsapp/${id}`),
-        authorizedFetch(`/api/admin/crm/contacts/${id}`),
+      const res = await authorizedFetch(`/api/admin/crm/contacts/${id}`);
+      const dossier = (await res.json()) as { ok?: boolean } & Partial<CrmContactState>;
+      if (!dossier.ok || activeRef.current !== id) return;
+      setContact({
+        conversation: dossier.conversation ?? null,
+        lead: dossier.lead ?? null,
+        orders: dossier.orders ?? [],
+        carts: dossier.carts ?? [],
+        notes: dossier.notes ?? [],
+        gifts: dossier.gifts ?? [],
+        otherChat: dossier.otherChat ?? null,
+        windowOpen: Boolean(dossier.windowOpen),
+        windowClosesAt: dossier.windowClosesAt ?? null,
+      });
+    },
+    [authorizedFetch],
+  );
+
+  /**
+   * Trae solo la página más reciente y la une a lo que hay en pantalla; las
+   * páginas viejas que ya se cargaron se quedan. La ficha se pide al abrir y
+   * cuando el chat se mueve (ventana de 24 h, pedidos), no en cada refresco.
+   */
+  const loadThread = useCallback(
+    async (id: string, withContact = false) => {
+      const opening = loadedFor.current !== id;
+      const [threadRes] = await Promise.all([
+        authorizedFetch(`/api/admin/whatsapp/${id}?limit=${THREAD_PAGE}`),
+        opening || withContact ? loadContact(id) : undefined,
       ]);
       const thread = (await threadRes.json()) as {
         ok?: boolean;
         conversation?: WhatsAppConversation;
         messages?: WhatsAppMessage[];
+        hasMore?: boolean;
       };
-      const dossier = (await contactRes.json()) as { ok?: boolean } & Partial<CrmContactState>;
-      if (thread.ok) {
-        setMessages(thread.messages ?? []);
-        if (thread.conversation) {
-          setConversations((current) =>
-            current.map((item) => (item.id === id ? thread.conversation! : item)),
-          );
-        }
+      if (!thread.ok || activeRef.current !== id) return;
+      const page = thread.messages ?? [];
+      const more = Boolean(thread.hasMore);
+      if (opening || leavesGap(messagesRef.current, page, more)) {
+        loadedFor.current = id;
+        showMessages(page);
+        setHasOlder(more);
+      } else {
+        showMessages(mergeMessages(messagesRef.current, page));
       }
-      if (dossier.ok) {
-        setContact({
-          conversation: dossier.conversation ?? thread.conversation ?? null,
-          lead: dossier.lead ?? null,
-          orders: dossier.orders ?? [],
-          carts: dossier.carts ?? [],
-          notes: dossier.notes ?? [],
-          gifts: dossier.gifts ?? [],
-          otherChat: dossier.otherChat ?? null,
-          windowOpen: Boolean(dossier.windowOpen),
-          windowClosesAt: dossier.windowClosesAt ?? null,
-        });
+      const lastAt = thread.conversation?.lastAt ?? 0;
+      if (opening || withContact) {
+        contactAt.current = lastAt;
+      } else if (lastAt !== contactAt.current) {
+        contactAt.current = lastAt;
+        void loadContact(id);
+      }
+      if (thread.conversation) {
+        setConversations((current) =>
+          current.map((item) => (item.id === id ? thread.conversation! : item)),
+        );
       }
       if ((thread.conversation?.unread ?? 0) > 0) {
         await authorizedFetch(`/api/admin/whatsapp/${id}`, {
@@ -228,8 +274,28 @@ export function CrmWorkspace() {
         });
       }
     },
-    [authorizedFetch],
+    [authorizedFetch, loadContact, showMessages],
   );
+
+  const loadOlder = useCallback(async () => {
+    const id = activeRef.current;
+    const oldest = messagesRef.current[0];
+    if (!id || !oldest || olderBusy.current) return;
+    olderBusy.current = true;
+    setLoadingOlder(true);
+    try {
+      const res = await authorizedFetch(
+        `/api/admin/whatsapp/${id}?before=${encodeURIComponent(oldest.id)}&limit=${THREAD_OLDER_PAGE}`,
+      );
+      const data = (await res.json()) as { ok?: boolean; messages?: WhatsAppMessage[]; hasMore?: boolean };
+      if (!data.ok || activeRef.current !== id) return;
+      showMessages(mergeMessages(messagesRef.current, data.messages ?? []));
+      setHasOlder(Boolean(data.hasMore));
+    } finally {
+      olderBusy.current = false;
+      setLoadingOlder(false);
+    }
+  }, [authorizedFetch, showMessages]);
 
   useEffect(() => {
     const start = window.setTimeout(() => void loadWorkspace(), 0);
@@ -246,18 +312,25 @@ export function CrmWorkspace() {
   }, [loadWorkspace]);
 
   useEffect(() => {
-    if (!activeId) {
-      setMessages([]);
-      setContact(null);
-      return;
-    }
+    activeRef.current = activeId;
+    loadedFor.current = null;
+    showMessages([]);
+    setHasOlder(false);
+    setContact(null);
+    if (!activeId) return;
+    // Con la pestaña oculta el hilo no se refresca; al volver se pone al día enseguida.
+    const refresh = () => {
+      if (!document.hidden) void loadThread(activeId);
+    };
     const start = window.setTimeout(() => void loadThread(activeId), 0);
-    const timer = window.setInterval(() => void loadThread(activeId), 6000);
+    const timer = window.setInterval(refresh, 6000);
+    document.addEventListener("visibilitychange", refresh);
     return () => {
       window.clearTimeout(start);
       window.clearInterval(timer);
+      document.removeEventListener("visibilitychange", refresh);
     };
-  }, [activeId, loadThread]);
+  }, [activeId, loadThread, showMessages]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -376,7 +449,7 @@ export function CrmWorkspace() {
       setError(data.error ?? "No se pudo enviar.");
       return false;
     }
-    if (data.message) setMessages((current) => [...current, data.message!]);
+    if (data.message) addMessages([data.message]);
     await loadWorkspace();
     await loadThread(activeId);
     return true;
@@ -403,7 +476,7 @@ export function CrmWorkspace() {
       setError(data.error ?? "No se pudo enviar el archivo.");
       return false;
     }
-    if (data.message) setMessages((current) => [...current, data.message!]);
+    if (data.message) addMessages([data.message]);
     if (longText) return send(longText);
     await loadWorkspace();
     await loadThread(activeId);
@@ -422,7 +495,7 @@ export function CrmWorkspace() {
       setError(data.error ?? "No se pudo enviar la respuesta.");
       return false;
     }
-    if (data.messages?.length) setMessages((current) => [...current, ...data.messages!]);
+    if (data.messages?.length) addMessages(data.messages);
     await loadWorkspace();
     await loadThread(activeId);
     return true;
@@ -441,7 +514,7 @@ export function CrmWorkspace() {
       setError(data.error ?? "WhatsApp no aceptó la plantilla.");
       return;
     }
-    if (data.message) setMessages((current) => [...current, data.message!]);
+    if (data.message) addMessages([data.message]);
     await loadWorkspace();
   }
 
@@ -606,6 +679,9 @@ export function CrmWorkspace() {
                 <CrmThread
                   conversation={active}
                   messages={messages}
+                  hasOlder={hasOlder}
+                  loadingOlder={loadingOlder}
+                  onLoadOlder={() => void loadOlder()}
                   sellers={sellers}
                   meUid={me?.uid}
                   onBack={() => {
@@ -728,7 +804,7 @@ export function CrmWorkspace() {
           onClose={() => setSale(false)}
           onCreated={() => {
             void loadWorkspace();
-            if (activeId) void loadThread(activeId);
+            if (activeId) void loadThread(activeId, true);
           }}
           initial={{
             firstName: active.name,
@@ -750,7 +826,7 @@ export function CrmWorkspace() {
           authorizedFetch={authorizedFetch}
           onClose={() => setGift(false)}
           onCreated={() => {
-            if (activeId) void loadThread(activeId);
+            if (activeId) void loadThread(activeId, true);
           }}
           chat={{
             id: active.id,

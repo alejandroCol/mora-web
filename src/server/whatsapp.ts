@@ -88,12 +88,35 @@ export async function listConversations(limit = 200): Promise<WhatsAppConversati
   }));
 }
 
-export async function listMessages(conversationId: string, limit = 80) {
-  const snap = await messages(conversationId).orderBy("at", "asc").limit(limit).get();
-  return snap.docs.map((doc) => ({
-    id: doc.id,
-    ...(doc.data() as Omit<WhatsAppMessage, "id">),
-  }));
+export const MESSAGE_PAGE_MAX = 100;
+
+/**
+ * Una página del hilo en orden cronológico: los `limit` más recientes, o los
+ * anteriores al mensaje `before`. El cursor es el documento, no la hora: dos
+ * mensajes en el mismo milisegundo no se saltan.
+ */
+export async function listMessages(
+  conversationId: string,
+  options: { limit?: number; before?: string } = {},
+) {
+  const limit = Math.min(Math.max(Math.floor(options.limit ?? 40), 1), MESSAGE_PAGE_MAX);
+  let query = messages(conversationId).orderBy("at", "desc");
+  if (options.before) {
+    const cursor = await messages(conversationId).doc(options.before).get();
+    if (!cursor.exists) return { messages: [], hasMore: false };
+    query = query.startAfter(cursor);
+  }
+  const snap = await query.limit(limit + 1).get();
+  const docs = snap.docs.slice(0, limit);
+  return {
+    messages: docs
+      .map((doc) => ({
+        id: doc.id,
+        ...(doc.data() as Omit<WhatsAppMessage, "id">),
+      }))
+      .reverse(),
+    hasMore: snap.docs.length > limit,
+  };
 }
 
 export async function getConversation(id: string) {

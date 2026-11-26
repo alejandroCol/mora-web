@@ -16,12 +16,20 @@ export async function GET(
   try {
     await requirePermission(request, "whatsapp");
     const { id } = await context.params;
+    const url = new URL(request.url);
+    const before = url.searchParams.get("before")?.trim() || undefined;
+    const limit = Number(url.searchParams.get("limit")) || undefined;
+    // Las páginas viejas solo traen mensajes; la conversación ya la tiene el cliente.
+    if (before) {
+      const page = await listMessages(id, { before, limit });
+      return Response.json({ ok: true, ...page });
+    }
     const conversation = await getConversation(id);
     if (!conversation) {
       return Response.json({ ok: false, error: "Conversación no encontrada." }, { status: 404 });
     }
-    const messages = await listMessages(id, 120);
-    return Response.json({ ok: true, conversation, messages });
+    const page = await listMessages(id, { limit });
+    return Response.json({ ok: true, conversation, ...page });
   } catch (error) {
     return jsonError(error);
   }

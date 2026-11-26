@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { CrmDesk, CrmSeller, WhatsAppConversation, WhatsAppMessage } from "@/growth/types";
 import { channelOf, conversationHandle, conversationTitle, instagramProfileUrl } from "@/crm/channel";
 import {
@@ -42,9 +42,15 @@ function snoozeAt(kind: "1h" | "manana" | "sem") {
   return date.getTime();
 }
 
+/** Píxeles desde arriba a los que se pide la página anterior, antes de tocar el borde. */
+const OLDER_EDGE = 600;
+
 export function CrmThread({
   conversation,
   messages,
+  hasOlder,
+  loadingOlder,
+  onLoadOlder,
   sellers,
   meUid,
   onBack,
@@ -55,6 +61,10 @@ export function CrmThread({
 }: {
   conversation: WhatsAppConversation;
   messages: WhatsAppMessage[];
+  /** Hay mensajes más viejos en el servidor que aún no se pidieron. */
+  hasOlder: boolean;
+  loadingOlder: boolean;
+  onLoadOlder: () => void;
   sellers: CrmSeller[];
   meUid?: string;
   onBack: () => void;
@@ -64,6 +74,7 @@ export function CrmThread({
   authorizedFetch: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
   const support = (conversation.desk ?? "sales") === "support";
   const creators = conversation.desk === "creators";
   const instagram = channelOf(conversation) === "instagram";
@@ -81,9 +92,58 @@ export function CrmThread({
     return () => document.removeEventListener("keydown", onKey);
   }, [lightbox]);
 
+  // Abajo del todo: los mensajes nuevos y las fotos que terminan de cargar no te despegan.
+  const pinned = useRef(true);
+  const view = useRef({ conversationId: "", firstId: "", lastId: "", height: 0, top: 0 });
+
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const prev = view.current;
+    const firstId = messages[0]?.id ?? "";
+    const lastId = messages[messages.length - 1]?.id ?? "";
+    // Leer la altura fuerza el layout; si el navegador ya ancló el scroll, scrollTop ya se movió.
+    const height = el.scrollHeight;
+    if (prev.conversationId !== conversation.id || !prev.lastId) {
+      el.scrollTop = height;
+      pinned.current = true;
+    } else if (firstId !== prev.firstId && lastId === prev.lastId) {
+      if (el.scrollTop === prev.top) el.scrollTop = prev.top + (height - prev.height);
+    } else if (lastId !== prev.lastId) {
+      if (pinned.current || messages[messages.length - 1]?.direction === "out") {
+        el.scrollTop = height;
+        pinned.current = true;
+      }
+    }
+    view.current = { conversationId: conversation.id, firstId, lastId, height: el.scrollHeight, top: el.scrollTop };
+  }, [messages, conversation.id]);
+
   useEffect(() => {
-    scroller.current?.scrollTo({ top: scroller.current.scrollHeight });
-  }, [messages.length, conversation.id]);
+    const el = scroller.current;
+    const inner = content.current;
+    if (!el || !inner) return;
+    const observer = new ResizeObserver(() => {
+      if (pinned.current) el.scrollTop = el.scrollHeight;
+      view.current.height = el.scrollHeight;
+      view.current.top = el.scrollTop;
+    });
+    observer.observe(inner);
+    return () => observer.disconnect();
+  }, []);
+
+  // Cerca del borde de arriba (o el hilo no llena la pantalla): la página anterior.
+  useEffect(() => {
+    const el = scroller.current;
+    if (el && hasOlder && !loadingOlder && el.scrollTop < OLDER_EDGE) onLoadOlder();
+  }, [hasOlder, loadingOlder, messages, onLoadOlder]);
+
+  function onScroll() {
+    const el = scroller.current;
+    if (!el) return;
+    pinned.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    view.current.top = el.scrollTop;
+    if (hasOlder && !loadingOlder && el.scrollTop < OLDER_EDGE) onLoadOlder();
+  }
 
   useEffect(() => {
     setMore(false);
@@ -261,7 +321,13 @@ export function CrmThread({
         ) : null}
       </header>
 
-      <div ref={scroller} className="crm-scroll flex-1 space-y-2 overflow-y-auto px-3 py-3 lg:px-5">
+      <div ref={scroller} onScroll={onScroll} className="crm-scroll flex-1 overflow-y-auto px-3 py-3 lg:px-5">
+        <div ref={content} className="space-y-2">
+        {hasOlder ? (
+          <p className="h-8 text-center text-[11px] leading-8 text-white/35" aria-live="polite">
+            {loadingOlder ? "Cargando mensajes anteriores…" : ""}
+          </p>
+        ) : null}
         {messages.map((message) => {
           if (message.type === "reaction") {
             // Reacción a un mensaje: línea corta, no burbuja. El emoji también
@@ -355,6 +421,7 @@ export function CrmThread({
             </div>
           );
         })}
+        </div>
       </div>
 
       {lightbox ? (

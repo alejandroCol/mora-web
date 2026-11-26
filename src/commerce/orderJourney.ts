@@ -1,6 +1,6 @@
 import type { MoraOrder, ShipmentLeg } from "./types";
 import { orderHasSizer, orderNeedsSize } from "./sizing";
-import { legFromShipping, sizerSent } from "./shipments";
+import { legFromShipping, ringsGuideId, sizerSent } from "./shipments";
 
 /**
  * Ruta del pedido para el vendedor: dónde va y qué sigue.
@@ -75,8 +75,11 @@ export function orderJourney(order: MoraOrder): OrderJourney {
   const sizedAt = order.items.reduce((max, item) => Math.max(max, item.sizedAt ?? 0), 0) || undefined;
   const sizeDone = hasSizer && !needsSize;
 
+  // Talla conocida antes de despachar el medidor: el medidor ya no hace falta.
+  const sizerSkipped = hasSizer && !sizerOut && sizeDone;
+
   const ringsLeg = legFromShipping(order, "rings", order.shipments?.rings?.status ?? "pending");
-  const ringsGuide = Boolean(ringsLeg.hekaGuideId);
+  const ringsGuide = Boolean(ringsGuideId(order));
   const ringsOut = order.status === "in_transit" || delivered;
 
   const steps: JourneyStep[] = [];
@@ -97,10 +100,12 @@ export function orderJourney(order: MoraOrder): OrderJourney {
   if (hasSizer) {
     steps.push({
       id: "sizer",
-      title: sizerOut ? "Medidor enviado" : "Enviar el medidor",
-      state: sizerOut ? "done" : paid ? "current" : "todo",
+      title: sizerOut ? "Medidor enviado" : sizerSkipped ? "Medidor no hizo falta" : "Enviar el medidor",
+      state: sizerOut || sizerSkipped ? "done" : paid ? "current" : "todo",
       at: sizerOut ? sizerLeg?.dispatchedAt ?? timelineAt(order, "sizer_transit") : undefined,
-      detail: legDetail(sizerLeg) || (sizerGuide ? "Guía creada, falta entregarla" : undefined),
+      detail: sizerSkipped
+        ? "La talla llegó antes de despacharlo"
+        : legDetail(sizerLeg) || (sizerGuide ? "Guía creada, falta entregarla" : undefined),
     });
     steps.push({
       id: "size",
@@ -116,8 +121,8 @@ export function orderJourney(order: MoraOrder): OrderJourney {
     });
   }
 
-  // Con medidor, los anillos solo «tocan» cuando el medidor ya salió y hay talla.
-  const ringsCurrent = paid && !ringsOut && (!hasSizer || (sizerOut && sizeDone));
+  // Con medidor, los anillos «tocan» en cuanto hay talla.
+  const ringsCurrent = paid && !ringsOut && (!hasSizer || sizeDone);
   steps.push({
     id: "rings",
     title: ringsOut ? (hasSizer ? "Anillos enviados" : "Pedido enviado") : hasSizer ? "Enviar los anillos" : "Enviar el pedido",
@@ -163,7 +168,7 @@ export function orderJourney(order: MoraOrder): OrderJourney {
       waiting: true,
       tone: "waiting",
     };
-  } else if (hasSizer && !sizerOut) {
+  } else if (hasSizer && !sizerOut && needsSize) {
     next = sizerGuide
       ? {
           title: "Entregar el medidor a la transportadora",

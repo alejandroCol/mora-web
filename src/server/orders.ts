@@ -901,25 +901,25 @@ export async function transitionOrder(input: {
     const sizer = legFromShipping(order, "sizer", "in_transit");
     sizer.dispatchedAt = now;
     sizer.trackingNumber = input.trackingNumber?.trim() || sizer.trackingNumber;
+    if (!sizer.trackingNumber) {
+      throw new Error("Primero crea la guía del medidor o escribe su número.");
+    }
     patch.shipments = { ...(order.shipments ?? {}), sizer };
   }
   if (input.to === "in_transit") {
-    if (orderHasSizer(order.items)) {
-      const sizerStatus = order.shipments?.sizer?.status;
-      const sizerAlready =
-        sizerStatus === "in_transit" ||
-        sizerStatus === "delivered" ||
-        order.status === "sizer_transit";
-      if (!sizerAlready) {
-        throw new Error("Primero marca el medidor en camino.");
-      }
-    }
     if (orderNeedsSize(order.items)) {
-      throw new Error("Falta la talla. El cliente aún no la confirmó.");
+      throw new Error("Falta la talla. Ponla tú o espera a que el cliente la confirme.");
     }
     const rings = legFromShipping(order, "rings", "in_transit");
     rings.dispatchedAt = now;
     rings.trackingNumber = input.trackingNumber?.trim() || rings.trackingNumber;
+    if (!rings.trackingNumber || rings.trackingNumber === order.shipments?.sizer?.trackingNumber) {
+      throw new Error(
+        orderHasSizer(order.items)
+          ? "Primero crea la guía de los anillos o escribe su número."
+          : "Primero crea la guía o escribe su número.",
+      );
+    }
     patch.dispatchedAt = now;
     patch.shipments = { ...(order.shipments ?? {}), rings };
     patch.shipping = {

@@ -1,6 +1,6 @@
 import { codigoDaneEnviaCiudad } from "@/lib/colombiaGeo";
 import type { MoraOrder, ShipmentKind } from "@/commerce/types";
-import { orderNeedsSize, orderHasSizer } from "@/commerce/sizing";
+import { orderNeedsSize } from "@/commerce/sizing";
 import { guideKindFor } from "@/commerce/shipments";
 import {
   createHekaGuide,
@@ -43,12 +43,6 @@ export function guideTarget(order: MoraOrder) {
       throw new Error("Falta la talla. El cliente aún no la confirmó.");
     }
     throw new Error("Esta venta ya tiene la guía de este envío.");
-  }
-  if (kind === "rings" && orderHasSizer(order.items)) {
-    const sizer = order.shipments?.sizer;
-    if (sizer?.status !== "in_transit" && sizer?.status !== "delivered" && order.status !== "sizer_transit") {
-      throw new Error("Primero crea la guía del medidor y márcalo en camino.");
-    }
   }
 
   const phone = phoneDigits(order.customer.phone);
@@ -234,8 +228,9 @@ export async function refreshOrderHeka(orderId: string, by: string) {
   if (!order) throw new Error("Pedido no encontrado.");
   const sizerNumber = order.shipments?.sizer?.trackingNumber?.trim();
   const ringsNumber = order.shipments?.rings?.trackingNumber?.trim();
+  // Con guía de los anillos, esa es la que importa aunque el medidor siga en camino.
   const number = (
-    order.status === "sizer_transit"
+    order.status === "sizer_transit" && !order.shipments?.rings?.hekaGuideId
       ? sizerNumber || ringsNumber || order.shipping.trackingNumber
       : ringsNumber || sizerNumber || order.shipping.trackingNumber
   )?.trim();

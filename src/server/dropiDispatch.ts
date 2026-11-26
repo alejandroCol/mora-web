@@ -26,8 +26,9 @@ export function orderGuideGoesByDropi(order: MoraOrder) {
   }
 }
 
-/** La guía del tramo que hoy se consulta (el medidor mientras va en camino, si no los anillos) es de Dropi. */
+/** Tramo que se consulta: los anillos si ya tienen guía; si no, el medidor mientras va en camino. */
 function trackedKind(order: MoraOrder): "sizer" | "rings" {
+  if (order.shipments?.rings?.hekaGuideId) return "rings";
   return order.status === "sizer_transit" ? "sizer" : "rings";
 }
 

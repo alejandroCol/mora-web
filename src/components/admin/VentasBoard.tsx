@@ -9,7 +9,14 @@ import {
 } from "@/commerce/labels";
 import type { CommerceSettings, MoraOrder, OrderStatus, ShippingQuoteOption } from "@/commerce/types";
 import { commerceLineLabel, isSizePending, orderHasSizer, orderNeedsSize } from "@/commerce/sizing";
-import { enCaminoTarget, guideKindFor, sizerSent } from "@/commerce/shipments";
+import {
+  enCaminoHasGuide,
+  enCaminoTarget,
+  guideKindFor,
+  ringsGuideId,
+  ringsTrackingNumber,
+  sizerSent,
+} from "@/commerce/shipments";
 import { orderJourney } from "@/commerce/orderJourney";
 import { payLinkPath } from "@/commerce/manualSale";
 import { formatMoney, isModelId, products, type ModelId } from "@/lib/catalog";
@@ -55,11 +62,7 @@ function guideNumberFor(order: MoraOrder, kind: "sizer" | "rings", typed = "") {
   }
   if (rings) return rings;
   if (manual && manual !== sizer) return manual;
-  const shipping = order.shipping.trackingNumber?.trim() || "";
-  if (shipping && shipping !== sizer && order.shipping.hekaGuideId !== order.shipments?.sizer?.hekaGuideId) {
-    return shipping;
-  }
-  return "";
+  return ringsTrackingNumber(order);
 }
 
 /** Guía que ya existe para el tramo que toca marcar; vacío si no hay (no arrastrar la del medidor). */
@@ -242,7 +245,7 @@ export function VentasBoard() {
       if (!data.ok) throw new Error(data.error);
       setPicker(null);
       setSelected(data.order ?? null);
-      if (data.order?.shipping.trackingNumber) setTracking(data.order.shipping.trackingNumber);
+      if (data.order) setTracking(pendingGuideFor(data.order));
       await load();
     } catch (error) {
       setHekaError(error instanceof Error ? error.message : "No se pudo crear la guía.");
@@ -284,6 +287,7 @@ export function VentasBoard() {
       const data = (await res.json()) as { ok: boolean; error?: string; order?: MoraOrder };
       if (!data.ok) throw new Error(data.error);
       setSelected(data.order ?? null);
+      setTracking(data.order ? pendingGuideFor(data.order) : "");
       await load();
     } catch (error) {
       setHekaError(error instanceof Error && error.message ? error.message : "No se pudo guardar la talla.");
@@ -703,13 +707,10 @@ function OrderCard({
 }) {
   const pendingSize = orderNeedsSize(order.items);
   const guide = guideKindFor(order);
-  const camino = enCaminoTarget(order);
+  // Sin guía del tramo, primero se crea; la guía a mano se escribe en el detalle.
+  const camino = enCaminoHasGuide(order) ? enCaminoTarget(order) : null;
   const sizerGuide = order.shipments?.sizer?.hekaGuideId;
-  const ringsGuide =
-    order.shipments?.rings?.hekaGuideId ||
-    (order.shipping.hekaGuideId && order.shipping.hekaGuideId !== sizerGuide
-      ? order.shipping.hekaGuideId
-      : undefined);
+  const ringsGuide = ringsGuideId(order);
   return (
     <li className="ventas-row">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -812,7 +813,7 @@ function SizePicker({
   const [picks, setPicks] = useState<Record<number, number>>({});
   if (lines.length === 0) return null;
   const complete = lines.every(({ index }) => picks[index]);
-  const skipsSizer = !sizerSent(order) && !order.shipments?.sizer?.hekaGuideId;
+  const skipsSizer = !sizerSent(order);
   return (
     <div className="order-manual">
       <p className="order-manual-label">
@@ -901,10 +902,8 @@ function OrderDrawer({
           ? "Factura electrónica al recibir el pago"
           : "";
   const sizerGuide = Boolean(order.shipments?.sizer?.hekaGuideId);
-  const ringsGuide = Boolean(
-    order.shipments?.rings?.hekaGuideId ||
-      (order.shipping.hekaGuideId && order.shipping.hekaGuideId !== order.shipments?.sizer?.hekaGuideId),
-  );
+  const ringsGuide = Boolean(ringsGuideId(order));
+  const caminoReady = enCaminoHasGuide(order) || Boolean(tracking.trim());
   const canRefreshHeka =
     (order.status === "sizer_transit" || order.status === "in_transit") &&
     Boolean(
@@ -1043,9 +1042,9 @@ function OrderDrawer({
                 />
                 <button
                   type="button"
-                  disabled={Boolean(busy)}
+                  disabled={Boolean(busy) || !caminoReady}
                   onClick={onEnCamino}
-                  className={next.action === "en_camino" ? "admin-cta order-manual-btn" : "order-manual-btn is-soft"}
+                  className={`${next.action === "en_camino" ? "admin-cta order-manual-btn" : "order-manual-btn is-soft"} disabled:opacity-40`}
                 >
                   <Spin on={busy === `${order.id}:status:${camino.to}`} />
                   {camino.label}

@@ -1,3 +1,4 @@
+import { ringsGuideId } from "@/commerce/shipments";
 import { jsonError, requirePermission } from "@/server/adminAuth";
 import { fetchDropiSticker } from "@/server/dropiClient";
 import { fetchHekaSticker } from "@/server/hekaClient";
@@ -18,13 +19,8 @@ export async function GET(request: Request, ctx: Ctx) {
       leg === "sizer"
         ? order.shipments?.sizer?.hekaGuideId?.trim()
         : leg === "rings"
-          ? order.shipments?.rings?.hekaGuideId?.trim() ||
-            (order.shipping.hekaGuideId !== order.shipments?.sizer?.hekaGuideId
-              ? order.shipping.hekaGuideId?.trim()
-              : "")
-          : order.shipments?.rings?.hekaGuideId?.trim() ||
-            order.shipments?.sizer?.hekaGuideId?.trim() ||
-            order.shipping.hekaGuideId?.trim();
+          ? ringsGuideId(order)
+          : ringsGuideId(order) || order.shipments?.sizer?.hekaGuideId?.trim();
     if (!guideId) {
       return Response.json({ ok: false, error: "Esta venta no tiene guía." }, { status: 404 });
     }

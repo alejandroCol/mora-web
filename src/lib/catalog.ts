@@ -78,8 +78,8 @@ export const finishes: Record<FinishId, Finish> = {
   },
   gold: {
     id: "gold",
-    title: "Oro",
-    whisper: "Oro que no grita.",
+    title: "Gold",
+    whisper: "Gold que no grita.",
     // Oro 18k de joya: el color es el F0 del metal (sRGB). Más oscuro o saturado se lee latón.
     color: "#EECB88",
     metalness: 1,
@@ -93,7 +93,7 @@ export const finishes: Record<FinishId, Finish> = {
   },
   silver: {
     id: "silver",
-    title: "Plata",
+    title: "Silver",
     whisper: "Titanio mate.",
     // Anodizado: el cuerpo es gris claro (no conductor puro) y el reflejo queda mate.
     color: "#E4E7EA",

@@ -11,12 +11,12 @@ export const RINGS = [
   },
   {
     id: "plata",
-    title: "Plata",
+    title: "Silver",
     src: "/encuesta/plata.jpg",
   },
   {
     id: "oro",
-    title: "Oro",
+    title: "Gold",
     src: "/encuesta/oro.jpg",
   },
   {

@@ -115,7 +115,7 @@ export function defaultCrmReplies(): CrmQuickReply[] {
     reply(
       "ultra",
       "Mora Ultra",
-      `Mora Ultra es titanio, ${ultra}. El más ligero de la casa. ¿Plata, negro u oro?`,
+      `Mora Ultra es titanio, ${ultra}. El más ligero de la casa. ¿Silver, negro o Gold?`,
       "sales",
     ),
     reply(

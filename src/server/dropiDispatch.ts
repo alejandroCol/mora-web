@@ -47,6 +47,15 @@ function ringPieces(order: MoraOrder) {
   return Math.max(1, rings);
 }
 
+/**
+ * Dropi no acepta dos órdenes con la misma referencia de tienda. Los medidores viejos
+ * salieron con el número de pedido a secas, así que los anillos de esos pedidos llevan sufijo.
+ */
+function shopOrderId(order: MoraOrder, kind: "sizer" | "rings") {
+  if (kind === "sizer") return `${order.orderNumber}-MEDIDOR`;
+  return order.shipments?.sizer?.dropiOrderId ? `${order.orderNumber}-ANILLOS` : order.orderNumber;
+}
+
 function declaredValue(order: MoraOrder, kind: "sizer" | "rings") {
   return kind === "sizer" ? 25000 : Math.max(25000, Math.round(order.totals.subtotal));
 }
@@ -136,7 +145,7 @@ export async function dispatchOrderWithDropi(
       status: "PENDIENTE",
       total_order: unitPrice * pieces,
       supplier_id: product.supplierId,
-      shop_order_id: order.orderNumber,
+      shop_order_id: shopOrderId(order, kind),
       distributionCompany: { id: Number(chosen.service) },
       products: [{ id: product.id, price: unitPrice, quantity: pieces, variation_id: null }],
     });

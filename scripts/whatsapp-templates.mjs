@@ -62,6 +62,50 @@ const TEMPLATES = [
       "Hola {{1}}, soy Lina del equipo de Mora Ring 💜 Siguiendo nuestra conversación por Instagram, me gustaría coordinar contigo el envío de tu anillo y los demás detalles del contenido. ¿Te parece si lo hablamos por aquí?",
     examples: ["Ana"],
   },
+  {
+    name: "saludo_creadora",
+    label: "Saludo",
+    desk: "creators",
+    category: "MARKETING",
+    body: "¡Hola, {{1}}! 💜\n\nSoy Lina del equipo de Mora Ring, un gusto saludarte.",
+    examples: ["Ana"],
+  },
+  {
+    name: "retomar_creadora",
+    label: "Retomar con Julio",
+    desk: "creators",
+    category: "MARKETING",
+    body:
+      "¡Hola, {{1}}! 💜\n\nMi nombre es Lina y hago parte del equipo de Mora Ring.\n\nRetomando la conversación que tuviste con nuestro líder de Marketing, Julio Noguera, nos encantaría comenzar a trabajar contigo, siguiendo lo que conversaron previamente.\n\n¡Nos hace mucha ilusión que hagas parte de Mora Ring! ✨\n\n¿Te parece si avanzamos? 💜",
+    examples: ["Ana"],
+  },
+  {
+    name: "experiencia_creadora",
+    label: "Cómo vas",
+    desk: "creators",
+    category: "MARKETING",
+    body:
+      "¡Hola, {{1}}! 💜\n\nNos encantaría saber cómo vas con tu Mora Ring y cómo ha sido tu experiencia utilizándolo. ✨\n\n¿Qué tal te has sentido con él? ¿Has podido explorar sus funcionalidades y descubrir todo lo que tiene para ofrecerte?",
+    examples: ["Ana"],
+  },
+  {
+    name: "medidor_entregado_creadora",
+    label: "Medidor entregado",
+    desk: "creators",
+    category: "UTILITY",
+    body:
+      "¡Hola, {{1}}! 💜\n\nTu medidor de talla ya fue entregado. ✨\n\nEstamos muy emocionados de que nos compartas tu talla para enviarte tu Mora Ring.\n\n¿Nos cuentas qué número te quedó? 🥰",
+    examples: ["Ana"],
+  },
+  {
+    name: "seguimiento_entrega",
+    label: "Post-entrega",
+    desk: "support",
+    category: "UTILITY",
+    body:
+      "¡Hola {{1}}! 💜\n\n¡Esperamos que estés disfrutando de tu Mora Ring! ✨\n\nQueremos saber si tu pedido llegó correctamente y cómo ha sido tu primera experiencia con nosotros.\n\n¿Ya pudiste probar tu anillo y conectarlo con la app? Nos encantaría saber qué tal te ha ido y acompañarte en tus primeros días con Mora.\n\nRecuerda que estamos aquí para ayudarte con cualquier duda que tengas.\n\n¡Gracias por ser parte de Mora Ring!\n\nBaja tu marea. 🌊💜",
+    examples: ["Ana"],
+  },
 ];
 
 /** Meta rechaza plantillas con variables si no trae un ejemplo por cada una. */

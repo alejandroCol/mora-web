@@ -30,7 +30,10 @@ const CARRIER_PAGES: Record<string, CarrierPage> = {
   interrapidisimo: { url: () => "https://siguetuenvio.interrapidisimo.com/", prefilled: false },
   tcc: { url: () => "https://tcc.com.co/rastreo/", prefilled: false },
   envia: { url: () => "https://envia.co/rastreo", prefilled: false },
-  veloces: { url: () => "https://veloces.co/", prefilled: false },
+  veloces: {
+    url: (guide) => `https://tracking.veloces.app/tracking-client/${encodeURIComponent(guide)}`,
+    prefilled: true,
+  },
   domina: { url: () => "https://www.domina.com.co/", prefilled: false },
   "99minutos": { url: () => "https://tracking.99minutos.com/", prefilled: false },
 };

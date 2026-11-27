@@ -23,12 +23,13 @@ import { CHANNEL_LABEL, channelOf, conversationHandle, conversationTitle } from 
 import { playMoraChime, unlockMoraChime } from "@/crm/chime";
 import { DESK_LABEL, isCrmDesk, isSnoozed, needsReply } from "@/crm/labels";
 import { WHATSAPP_CAPTION_MAX } from "@/crm/media";
+import { orderDataFromChat, type OrderData } from "@/crm/orderData";
 import { referralKindLabel } from "@/crm/referral";
 import { leavesGap, mergeMessages, THREAD_OLDER_PAGE, THREAD_PAGE } from "@/crm/thread";
 import { uploadReplyMedia } from "@/crm/uploadReplyMedia";
 import { useAdminAuth } from "../AdminAuth";
 import { GiftForm } from "../GiftForm";
-import { ManualSaleForm } from "../ManualSaleForm";
+import { ManualSaleForm, type ManualSaleHandle } from "../ManualSaleForm";
 import { CrmBoard } from "./CrmBoard";
 import { CrmComposer } from "./CrmComposer";
 import { CrmContactPanel } from "./CrmContactPanel";
@@ -112,6 +113,9 @@ export function CrmWorkspace() {
   const [pane, setPane] = useState<Pane>(search.get("c") ? "thread" : "list");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [sale, setSale] = useState(false);
+  // Celular: la venta se esconde para leer el chat sin perder lo escrito.
+  const [salePeek, setSalePeek] = useState(false);
+  const saleForm = useRef<ManualSaleHandle>(null);
   const [gift, setGift] = useState(false);
   // `?nuevo=<celular>&nombre=<nombre>` (p. ej. desde Creadores) abre «Nuevo chat» ya lleno.
   const [newChat, setNewChat] = useState<{ phone: string; name: string } | null>(() =>
@@ -381,6 +385,22 @@ export function CrmWorkspace() {
   );
 
   const active = conversations.find((item) => item.id === activeId) ?? contact?.conversation ?? null;
+  const chatData = useMemo(() => orderDataFromChat(messages), [messages]);
+
+  function openSale() {
+    setSale(true);
+    setSalePeek(false);
+  }
+
+  function closeSale() {
+    setSale(false);
+    setSalePeek(false);
+  }
+
+  function fillSale(data: OrderData) {
+    saleForm.current?.fill(data);
+    setSalePeek(false);
+  }
   const activeChannel: CrmChannel = active ? channelOf(active) : "whatsapp";
   // El selector de canal solo aparece cuando de verdad hay dos canales con chats.
   const hasInstagramChats = useMemo(
@@ -397,6 +417,7 @@ export function CrmWorkspace() {
       setFilter("all");
     }
     if (target && channel !== "all" && channelOf(target) !== channel) setChannel("all");
+    if (id !== activeId) closeSale();
     setActiveId(id);
     setPane("thread");
     setView("inbox");
@@ -453,6 +474,20 @@ export function CrmWorkspace() {
     await loadWorkspace();
     await loadThread(activeId);
     return true;
+  }
+
+  /** Desde la venta: el error vuelve a la venta en vez de quedar en el compositor. */
+  async function sendFromSale(text: string) {
+    if (!activeId) return "No hay chat abierto.";
+    const res = await authorizedFetch(`/api/admin/whatsapp/${activeId}`, {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string; message?: WhatsAppMessage };
+    if (!data.ok) return data.error ?? "No se pudo enviar.";
+    if (data.message) addMessages([data.message]);
+    void loadWorkspace();
+    return "";
   }
 
   async function sendFile(file: File, caption: string) {
@@ -532,6 +567,7 @@ export function CrmWorkspace() {
         return;
       }
       setNewChat(null);
+      closeSale();
       await loadWorkspace();
       setDesk(input.desk);
       setFilter("all");
@@ -562,7 +598,11 @@ export function CrmWorkspace() {
   const chatting = view === "inbox" && pane !== "list";
 
   return (
-    <div className={`crm-app ${chatting ? "is-chat" : ""} ${view === "board" ? "is-board" : ""}`}>
+    <div
+      className={`crm-app ${chatting ? "is-chat" : ""} ${view === "board" ? "is-board" : ""} ${
+        sale && active ? "has-sale" : ""
+      }`}
+    >
       <header className="crm-chrome">
         <div className="crm-toolbar">
           <button
@@ -685,15 +725,23 @@ export function CrmWorkspace() {
                   sellers={sellers}
                   meUid={me?.uid}
                   onBack={() => {
+                    closeSale();
                     setPane("list");
                     setActiveId(null);
                     router.replace(`/superadmin/crm?desk=${desk}`, { scroll: false });
                   }}
                   onFicha={() => setPane(pane === "ficha" ? "thread" : "ficha")}
                   onPatch={(body) => void patch(active.id, body)}
-                  onSale={() => setSale(true)}
+                  onSale={openSale}
+                  onUseInSale={sale ? fillSale : undefined}
                   authorizedFetch={authorizedFetch}
                 />
+                {sale && salePeek ? (
+                  <button type="button" className="sale-return" onClick={() => setSalePeek(false)}>
+                    <span>Venta en curso</span>
+                    Volver a la venta
+                  </button>
+                ) : null}
                 <CrmComposer
                   desk={desk}
                   channel={activeChannel}
@@ -730,7 +778,7 @@ export function CrmWorkspace() {
             onClose={() => setPane("thread")}
             onPatch={(body) => (active ? void patch(active.id, body) : undefined)}
             onNote={(text) => void addNote(text)}
-            onSale={() => setSale(true)}
+            onSale={openSale}
             onGift={() => setGift(true)}
             onOpenChat={openChat}
           />
@@ -800,8 +848,15 @@ export function CrmWorkspace() {
 
       {sale && active ? (
         <ManualSaleForm
+          key={active.id}
+          ref={saleForm}
+          docked
+          peeking={salePeek}
+          onPeek={() => setSalePeek(true)}
+          chatData={chatData}
+          onSendChat={sendFromSale}
           authorizedFetch={authorizedFetch}
-          onClose={() => setSale(false)}
+          onClose={closeSale}
           onCreated={() => {
             void loadWorkspace();
             if (activeId) void loadThread(activeId, true);

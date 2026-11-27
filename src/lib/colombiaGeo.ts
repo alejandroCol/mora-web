@@ -57,6 +57,55 @@ export function buscarDivipolaMunicipio(
   return null;
 }
 
+/** Como lo escribe la gente → nombre DIVIPOLA, ya con `normalizeGeoKey`. */
+const MUNICIPIO_ALIAS: Record<string, string> = {
+  bogota: "bogota, d.c.",
+  "bogota dc": "bogota, d.c.",
+  cali: "santiago de cali",
+  cartagena: "cartagena de indias",
+  cucuta: "san jose de cucuta",
+};
+
+function geoPart(raw: string) {
+  return normalizeGeoKey(raw).replace(/\./g, "").trim();
+}
+
+let byMunicipio: Map<string, DivipolaRow[]> | null = null;
+
+function rowsByMunicipio(key: string) {
+  if (!byMunicipio) {
+    byMunicipio = new Map();
+    for (const row of ROWS) {
+      const name = geoPart(row.nom_mpio);
+      byMunicipio.set(name, [...(byMunicipio.get(name) ?? []), row]);
+    }
+  }
+  return byMunicipio.get(key) ?? [];
+}
+
+/**
+ * Municipio escrito a mano («Medellín», «Cali, Valle», «Bogotá D.C.»). Si el
+ * nombre existe en varios departamentos y no dice cuál, devuelve null.
+ */
+export function buscarMunicipio(texto: string): { departamento: string; ciudad: string } | null {
+  const whole = geoPart(texto);
+  if (!whole) return null;
+  const parts = texto.split(/[,/()]+/).map(geoPart).filter(Boolean);
+  const candidates = [whole, ...(parts.length > 1 ? [parts[0]] : [])];
+  for (const candidate of candidates) {
+    const target = (MUNICIPIO_ALIAS[candidate] ?? candidate).replace(/\./g, "");
+    const rows = rowsByMunicipio(target);
+    if (rows.length === 0) continue;
+    const hint = candidate === whole ? [] : parts.slice(1);
+    const named = hint.length
+      ? rows.find((row) => hint.some((part) => geoPart(row.dpto).includes(part)))
+      : undefined;
+    const row = named ?? (new Set(rows.map((item) => item.dpto)).size === 1 ? rows[0] : null);
+    return row ? { departamento: row.dpto, ciudad: row.nom_mpio } : null;
+  }
+  return null;
+}
+
 export function codigoDaneEnviaCiudad(
   departamento: string,
   municipio: string,

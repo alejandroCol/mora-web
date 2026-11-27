@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { CASE_COLOR_LIST, CASE_PRODUCT, caseLineKey, type CaseColorId } from "@/lib/cases";
 import { cartCount, discountOf, subtotalOf } from "@/commerce/cartMath";
 import { DOCUMENT_TYPES } from "@/commerce/labels";
 import { cartHasRing, isCaseLine, lineSwatch, lineUnitPrice } from "@/commerce/lines";
 import {
   isLinkMethod,
+  payLinkPath,
   looksLikeEmail,
   MANUAL_PAY_LABEL,
   MANUAL_PAY_METHODS,
@@ -32,6 +33,9 @@ import {
   type ModelId,
 } from "@/lib/catalog";
 import { ColombiaFields, useDebounced } from "@/components/checkout/ColombiaFields";
+import { hasOrderData, type ChatOrderData, type OrderData } from "@/crm/orderData";
+import { formatoDepartamentoEtiqueta } from "@/lib/colombiaGeo";
+import { siteUrl } from "@/lib/site";
 import { usePricing } from "@/components/sales/SalesProvider";
 
 type ProductPick = ModelId | "case";
@@ -39,6 +43,9 @@ type ProductPick = ModelId | "case";
 type SizePick = number | "kit" | null;
 
 type Created = { order: MoraOrder; payUrl?: string };
+
+/** El chat le pasa a la venta los datos de un mensaje («Usar en venta»). */
+export type ManualSaleHandle = { fill: (data: OrderData) => void };
 
 const LOW_STOCK = 3;
 
@@ -61,6 +68,12 @@ export function ManualSaleForm({
   onCreated,
   authorizedFetch,
   initial,
+  docked = false,
+  peeking = false,
+  onPeek,
+  chatData,
+  onSendChat,
+  ref,
 }: {
   onClose: () => void;
   /** La venta quedó creada. El formulario sigue abierto mostrando el resultado. */
@@ -74,10 +87,22 @@ export function ManualSaleForm({
     conversationId?: string;
     channel?: "manual" | "whatsapp" | "instagram";
   };
+  /** Desde el CRM: panel al lado del chat (escritorio) en vez de hoja encima. */
+  docked?: boolean;
+  /** En celular la hoja se esconde para leer el chat; lo escrito se conserva. */
+  peeking?: boolean;
+  onPeek?: () => void;
+  /** Lo que el cliente mandó por el chat: cédula, dirección, ciudad… */
+  chatData?: ChatOrderData;
+  /** Envía un texto al chat de esta venta. Devuelve el error, o "" si salió. */
+  onSendChat?: (text: string) => Promise<string>;
+  ref?: React.Ref<ManualSaleHandle>;
 }) {
   // Venta desde un chat: casi siempre se envía y se paga por transferencia.
   const fromChat = Boolean(initial?.conversationId);
   const pricing = usePricing();
+  // Respondió «Datos del pedido» con etiquetas: se confía y la venta abre ya llena.
+  const [seed] = useState<OrderData>(() => (chatData?.labeled ? chatData.data : {}));
 
   const [context, setContext] = useState<ManualSaleContext | null>(null);
 
@@ -89,19 +114,19 @@ export function ManualSaleForm({
   const [lines, setLines] = useState<CartLine[]>([]);
 
   // 2 · Cliente
-  const [firstName, setFirstName] = useState(initial?.firstName ?? "");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState(initial?.phone ?? "");
-  const [email, setEmail] = useState(initial?.email ?? "");
+  const [firstName, setFirstName] = useState(seed.firstName ?? initial?.firstName ?? "");
+  const [lastName, setLastName] = useState(seed.lastName ?? "");
+  const [phone, setPhone] = useState(seed.phone ?? initial?.phone ?? "");
+  const [email, setEmail] = useState(seed.email ?? initial?.email ?? "");
   const [documentType, setDocumentType] = useState("CC");
-  const [documentNumber, setDocumentNumber] = useState("");
+  const [documentNumber, setDocumentNumber] = useState(seed.documentNumber ?? "");
 
   // 3 · Entrega
   const [ship, setShip] = useState(fromChat);
-  const [departamento, setDepartamento] = useState("");
-  const [ciudad, setCiudad] = useState("");
-  const [direccion, setDireccion] = useState("");
-  const [referencia, setReferencia] = useState("");
+  const [departamento, setDepartamento] = useState(seed.departamento ?? "");
+  const [ciudad, setCiudad] = useState(seed.ciudad ?? "");
+  const [direccion, setDireccion] = useState(seed.direccion ?? "");
+  const [referencia, setReferencia] = useState(seed.referencia ?? "");
   const [carrier, setCarrier] = useState("");
   const [freeShipping, setFreeShipping] = useState(false);
   const [quoted, setQuoted] = useState<{ key: string; quote?: ManualQuote; error?: string } | null>(null);
@@ -122,6 +147,25 @@ export function ManualSaleForm({
   const topRef = useRef<HTMLDivElement>(null);
 
   const [releasing, setReleasing] = useState("");
+
+  function fill(data: OrderData) {
+    if (data.firstName) setFirstName(data.firstName);
+    if (data.lastName) setLastName(data.lastName);
+    if (data.phone) setPhone(data.phone);
+    if (data.email) setEmail(data.email);
+    if (data.documentNumber) setDocumentNumber(data.documentNumber);
+    if (data.departamento && data.ciudad) {
+      setDepartamento(data.departamento);
+      setCiudad(data.ciudad);
+      setCarrier("");
+    }
+    if (data.direccion) setDireccion(data.direccion);
+    if (data.referencia) setReferencia(data.referencia);
+    if (data.direccion || data.ciudad) setShip(true);
+    setError("");
+  }
+
+  useImperativeHandle(ref, () => ({ fill }));
 
   useEffect(() => {
     let alive = true;
@@ -386,7 +430,7 @@ export function ManualSaleForm({
 
   if (created) {
     return (
-      <SaleShell onClose={onClose} title="Venta creada">
+      <SaleShell onClose={onClose} title="Venta creada" docked={docked} peeking={peeking} onPeek={onPeek}>
         <SaleDone
           created={created}
           copied={copied}
@@ -396,6 +440,7 @@ export function ManualSaleForm({
           }}
           onAnother={startOver}
           onClose={onClose}
+          onSendChat={onSendChat}
         />
       </SaleShell>
     );
@@ -405,6 +450,9 @@ export function ManualSaleForm({
     <SaleShell
       onClose={onClose}
       title="Nueva venta"
+      docked={docked}
+      peeking={peeking}
+      onPeek={onPeek}
       footer={
         <>
           <dl className="sale-totals">
@@ -455,6 +503,14 @@ export function ManualSaleForm({
       }
     >
       <div ref={topRef} />
+
+      {chatData ? (
+        <ChatDataCard
+          data={chatData.data}
+          form={{ firstName, lastName, phone, email, documentNumber, departamento, ciudad, direccion, referencia }}
+          onFill={fill}
+        />
+      ) : null}
 
       <Step n={1} title="Productos" hint="Solo se puede añadir lo que hay en stock.">
         <div className="sale-seg" role="tablist" aria-label="Producto">
@@ -873,20 +929,42 @@ function SaleShell({
   onClose,
   footer,
   children,
+  docked = false,
+  peeking = false,
+  onPeek,
 }: {
   title: string;
   onClose: () => void;
   footer?: React.ReactNode;
   children: React.ReactNode;
+  docked?: boolean;
+  peeking?: boolean;
+  onPeek?: () => void;
 }) {
   return (
-    <div className="sale-backdrop" role="dialog" aria-modal="true" aria-label={title}>
+    <div
+      className={docked ? `sale-dock ${peeking ? "is-peek" : ""}` : "sale-backdrop"}
+      role="dialog"
+      aria-modal={!docked}
+      aria-label={title}
+      onClick={(event) => {
+        // En celular, tocar fuera de la hoja deja ver el chat; no cierra la venta.
+        if (docked && onPeek && event.target === event.currentTarget) onPeek();
+      }}
+    >
       <div className="sale-sheet">
         <header className="sale-head">
           <h2>{title}</h2>
-          <button type="button" onClick={onClose} className="sale-close">
-            Cerrar
-          </button>
+          <div className="sale-head-actions">
+            {docked && onPeek ? (
+              <button type="button" onClick={onPeek} className="sale-close sale-peek">
+                Ver chat
+              </button>
+            ) : null}
+            <button type="button" onClick={onClose} className="sale-close">
+              Cerrar
+            </button>
+          </div>
         </header>
         <div className="sale-body">{children}</div>
         {footer ? <footer className="sale-foot">{footer}</footer> : null}
@@ -933,12 +1011,14 @@ function SaleDone({
   onCopy,
   onAnother,
   onClose,
+  onSendChat,
 }: {
   created: Created;
   copied: boolean;
   onCopy: () => void;
   onAnother: () => void;
   onClose: () => void;
+  onSendChat?: (text: string) => Promise<string>;
 }) {
   const { order, payUrl } = created;
   const isPaid = order.status !== "awaiting_payment";
@@ -996,7 +1076,9 @@ function SaleDone({
         ) : null}
       </ul>
 
-      {payUrl ? (
+      {payUrl && onSendChat ? (
+        <SendPayLink orderNumber={order.orderNumber} onSend={onSendChat} />
+      ) : payUrl ? (
         <div className="sale-link">
           <p>{payUrl}</p>
           <div>
@@ -1025,6 +1107,173 @@ function SaleDone({
           Listo
         </button>
       </div>
+    </div>
+  );
+}
+
+type ChatDataForm = {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  documentNumber: string;
+  departamento: string;
+  ciudad: string;
+  direccion: string;
+  referencia: string;
+};
+
+/** Lo que el cliente escribió en el chat, un toque por dato o todo de una. */
+function ChatDataCard({
+  data,
+  form,
+  onFill,
+}: {
+  data: OrderData;
+  form: ChatDataForm;
+  onFill: (data: OrderData) => void;
+}) {
+  const same = (a: string, b?: string) => a.trim().toLowerCase() === (b ?? "").toLowerCase();
+  const rows: { id: string; label: string; value: string; applied: boolean; data: OrderData }[] = [
+    {
+      id: "name",
+      label: "Nombre",
+      value: [data.firstName, data.lastName].filter(Boolean).join(" "),
+      applied: same(form.firstName, data.firstName) && (!data.lastName || same(form.lastName, data.lastName)),
+      data: { firstName: data.firstName, lastName: data.lastName },
+    },
+    {
+      id: "doc",
+      label: "Cédula",
+      value: data.documentNumber ?? "",
+      applied: digits(form.documentNumber) === data.documentNumber,
+      data: { documentNumber: data.documentNumber },
+    },
+    {
+      id: "phone",
+      label: "Celular",
+      value: data.phone ?? "",
+      applied: Boolean(data.phone) && digits(form.phone).endsWith(data.phone ?? ""),
+      data: { phone: data.phone },
+    },
+    {
+      id: "email",
+      label: "Correo",
+      value: data.email ?? "",
+      applied: same(form.email, data.email),
+      data: { email: data.email },
+    },
+    {
+      id: "city",
+      label: "Ciudad",
+      value: data.ciudad ? formatoDepartamentoEtiqueta(data.ciudad) : "",
+      applied: form.ciudad === data.ciudad && form.departamento === data.departamento,
+      data: { departamento: data.departamento, ciudad: data.ciudad },
+    },
+    {
+      id: "address",
+      label: "Dirección",
+      value: data.direccion ?? "",
+      applied: same(form.direccion, data.direccion),
+      data: { direccion: data.direccion },
+    },
+    {
+      id: "ref",
+      label: "Barrio / apto",
+      value: data.referencia ?? "",
+      applied: same(form.referencia, data.referencia),
+      data: { referencia: data.referencia },
+    },
+  ].filter((row) => row.value);
+
+  if (!hasOrderData(data) || rows.length === 0) {
+    return (
+      <section className="sale-step sale-chat">
+        <h3>Del chat</h3>
+        <p className="sale-hint">
+          Envíale «Datos del pedido». Cuando responda, sus datos aparecen aquí y los pasas a la venta con un toque.
+        </p>
+      </section>
+    );
+  }
+
+  const pending = rows.filter((row) => !row.applied).length;
+  return (
+    <section className="sale-step sale-chat" aria-label="Datos del chat">
+      <div className="sale-chat-head">
+        <h3>Del chat</h3>
+        {pending > 0 ? (
+          <button type="button" onClick={() => onFill(data)} className="sale-chat-all">
+            Usar todo
+          </button>
+        ) : (
+          <span className="sale-chat-done">Todo en la venta</span>
+        )}
+      </div>
+      <p className="sale-hint">Lo que escribió el cliente. Toca un dato para pasarlo a la venta.</p>
+      <ul className="sale-card">
+        {rows.map((row) => (
+          <li key={row.id}>
+            <button
+              type="button"
+              onClick={() => onFill(row.data)}
+              className={`sale-chat-row ${row.applied ? "is-on" : ""}`}
+              title={row.applied ? "Ya está en la venta" : `Usar ${row.label.toLowerCase()}`}
+            >
+              <span className="sale-chat-text">
+                <small>{row.label}</small>
+                <strong>{row.value}</strong>
+              </span>
+              <em className="sale-chat-use">{row.applied ? "✓ En la venta" : "Usar"}</em>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** El enlace de pago al chat: se ve y se puede editar antes de enviarlo. */
+function SendPayLink({ orderNumber, onSend }: { orderNumber: string; onSend: (text: string) => Promise<string> }) {
+  const [text, setText] = useState(
+    `Te comparto el link de tu pedido para que realices el pago de tu Mora Ring 🟣 ${siteUrl(payLinkPath(orderNumber))}`,
+  );
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+
+  async function send() {
+    if (!text.trim() || busy) return;
+    setBusy(true);
+    setError("");
+    const problem = await onSend(text.trim());
+    setBusy(false);
+    if (problem) setError(problem);
+    else setSent(true);
+  }
+
+  return (
+    <div className="sale-send">
+      <p className="sale-send-label">{sent ? "Enviado al chat" : "Mensaje para el cliente"}</p>
+      <textarea
+        value={text}
+        onChange={(event) => {
+          setText(event.target.value);
+          setSent(false);
+        }}
+        rows={4}
+        disabled={busy}
+        aria-label="Mensaje con el enlace de pago"
+      />
+      {error ? (
+        <p className="sale-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+      <button type="button" onClick={() => void send()} disabled={busy || sent || !text.trim()} className="admin-cta">
+        {busy ? <span className="btn-spin" aria-hidden /> : null}
+        {busy ? "Enviando…" : sent ? "Enviado" : "Enviar"}
+      </button>
     </div>
   );
 }

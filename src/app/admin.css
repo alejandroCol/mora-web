@@ -4033,6 +4033,223 @@ a.crm-ad-card.is-compact:hover {
   color: var(--admin-danger);
 }
 
+/* ── Venta desde el chat ─────────────────────────────────────────────────────
+   Celular: hoja casi completa; «Ver chat» o tocar fuera la esconde sin perder nada.
+   Escritorio: panel a la derecha y el chat sigue vivo a la izquierda. */
+.sale-dock {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.sale-dock.is-peek {
+  display: none;
+}
+
+.sale-dock .sale-sheet {
+  max-width: none;
+  height: 94dvh;
+  max-height: none;
+  animation: sale-rise 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes sale-rise {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+.sale-head-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.sale-peek {
+  background: rgba(124, 58, 237, 0.1);
+  color: #6d28d9;
+}
+
+.sale-return {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0 0.75rem 0.4rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  background: #1d1d1f;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.sale-return span {
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.crm-use-sale {
+  display: inline-flex;
+  margin-top: 0.4rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  background: #1d1d1f;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.sale-chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.sale-chat-head h3,
+.sale-chat > h3 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: #1d1d1f;
+}
+
+.sale-chat-all {
+  height: 2rem;
+  padding: 0 0.9rem;
+  border-radius: 999px;
+  background: #1d1d1f;
+  font-size: 12.5px;
+  color: #fff;
+}
+
+.sale-chat-done {
+  font-size: 12.5px;
+  color: var(--admin-muted);
+}
+
+.sale-chat-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.95rem;
+  border-top: 1px solid var(--admin-line);
+  text-align: left;
+  transition: background 120ms ease;
+}
+
+.sale-chat li:first-child .sale-chat-row {
+  border-top: 0;
+}
+
+.sale-chat-row:hover {
+  background: #fafafc;
+}
+
+.sale-chat-text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.sale-chat-text small {
+  font-size: 11.5px;
+  color: var(--admin-muted);
+}
+
+.sale-chat-text strong {
+  overflow: hidden;
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #1d1d1f;
+}
+
+.sale-chat-use {
+  display: inline-flex;
+  flex-shrink: 0;
+  height: 1.85rem;
+  align-items: center;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  background: #fff;
+  font-size: 12.5px;
+  font-style: normal;
+  color: #1d1d1f;
+  box-shadow: inset 0 0 0 1px var(--admin-line);
+}
+
+.sale-chat-row.is-on .sale-chat-text strong {
+  color: #6e6e73;
+}
+
+.sale-chat-row.is-on .sale-chat-use {
+  padding: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--admin-muted);
+}
+
+@media (min-width: 1024px) {
+  .mora-admin {
+    --sale-dock-w: clamp(25rem, 46vw, 46rem);
+  }
+
+  .admin-main:has(.crm-app.has-sale) {
+    padding-right: calc(var(--sale-dock-w) + 0.75rem);
+  }
+
+  /* Solo el chat y la venta: la lista y la ficha vuelven al cerrar la venta. */
+  .crm-app.has-sale .crm-frame {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .crm-app.has-sale .crm-list,
+  .crm-app.has-sale .crm-panel {
+    display: none;
+  }
+
+  .sale-dock,
+  .sale-dock.is-peek {
+    inset: 0 0 0 auto;
+    display: flex;
+    width: var(--sale-dock-w);
+    align-items: stretch;
+    padding: 1rem 1.25rem 1rem 0;
+    background: none;
+  }
+
+  .sale-dock .sale-sheet {
+    height: auto;
+    max-height: none;
+    border-radius: 22px;
+    box-shadow: var(--admin-shadow);
+    animation-name: sale-slide;
+  }
+
+  @keyframes sale-slide {
+    from {
+      transform: translateX(32px);
+      opacity: 0;
+    }
+  }
+
+  .sale-peek,
+  .sale-return {
+    display: none;
+  }
+}
+
 .sale-done {
   padding: 1.6rem 0 0.4rem;
 }
@@ -4081,6 +4298,41 @@ a.crm-ad-card.is-compact:hover {
   font-size: 13px;
   color: #1d1d1f;
   user-select: all;
+}
+
+.sale-send {
+  display: grid;
+  gap: 0.6rem;
+  margin-top: 1rem;
+  border-radius: 1rem;
+  padding: 0.9rem 1rem 1rem;
+  background: #fff;
+  box-shadow: var(--admin-shadow);
+}
+
+.sale-send-label {
+  font-size: 12px;
+  color: var(--admin-muted);
+}
+
+.sale-send textarea {
+  width: 100%;
+  resize: vertical;
+  border-radius: 0.85rem;
+  padding: 0.7rem 0.8rem;
+  background: var(--admin-field);
+  font-size: 14px;
+  line-height: 1.45;
+  color: #1d1d1f;
+  outline: none;
+}
+
+.sale-send .sale-error {
+  margin-top: 0;
+}
+
+.sale-send .admin-cta {
+  height: 46px;
 }
 
 .sale-link > div,

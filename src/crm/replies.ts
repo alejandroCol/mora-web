@@ -79,9 +79,34 @@ export function creatorCheckinReply(): CrmQuickReply {
   return reply(CREATOR_CHECKIN_REPLY_ID, "Cómo vas", CREATOR_CHECKIN_REPLY_BODY, "creators");
 }
 
+/**
+ * Pide los datos para crear el pedido. Las etiquetas son las que lee la venta
+ * (`crm/orderData`): si el cliente responde llenándolas, la venta se llena sola.
+ */
+export const ORDER_DATA_REPLY_ID = "datos-pedido";
+
+export const ORDER_DATA_REPLY_BODY = `¡Súper! Para crear tu pedido envíame estos datos 💜
+
+Nombre completo:
+Cédula:
+Celular:
+Correo:
+Ciudad:
+Dirección:
+Barrio / apto:`;
+
+export function orderDataReply(): CrmQuickReply {
+  return reply(ORDER_DATA_REPLY_ID, "Datos del pedido", ORDER_DATA_REPLY_BODY, "sales");
+}
+
 /** Plantillas de creadoras que siempre deben estar, aunque Ajustes ya tenga respuestas guardadas. */
 export function creatorReplies(): CrmQuickReply[] {
   return [creatorShippingReply(), creatorResumeReply(), creatorCheckinReply()];
+}
+
+/** Respuestas que siempre deben estar, aunque Ajustes ya tenga respuestas guardadas. */
+export function pinnedReplies(): CrmQuickReply[] {
+  return [orderDataReply(), ...creatorReplies()];
 }
 
 export function defaultCrmReplies(): CrmQuickReply[] {
@@ -131,6 +156,7 @@ export function defaultCrmReplies(): CrmQuickReply[] {
       "both",
     ),
     reply("pago", "Pago", PAYMENT_REPLY_BODY, "sales"),
+    orderDataReply(),
     reply(
       "cierre",
       "Apartar",

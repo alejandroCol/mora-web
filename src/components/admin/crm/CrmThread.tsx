@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { CrmDesk, CrmSeller, WhatsAppConversation, WhatsAppMessage } from "@/growth/types";
 import { channelOf, conversationHandle, conversationTitle, instagramProfileUrl } from "@/crm/channel";
 import {
@@ -16,6 +16,7 @@ import {
 import { formatClock } from "@/crm/labels";
 import type { CrmLostReason, WhatsAppConversationStatus } from "@/growth/types";
 import { hasReferral, referralKindLabel, referralLink, referralTitle } from "@/crm/referral";
+import { parseOrderData, type OrderData } from "@/crm/orderData";
 import { quoteText } from "@/crm/quote";
 import { CrmAdCard } from "./CrmAdCard";
 import { CrmVoiceNote } from "./CrmVoiceNote";
@@ -58,6 +59,7 @@ export function CrmThread({
   onFicha,
   onPatch,
   onSale,
+  onUseInSale,
   authorizedFetch,
 }: {
   conversation: WhatsAppConversation;
@@ -72,6 +74,8 @@ export function CrmThread({
   onFicha: () => void;
   onPatch: (body: Record<string, unknown>) => void;
   onSale: () => void;
+  /** Con la venta abierta: pasa los datos de un mensaje del cliente a la venta. */
+  onUseInSale?: (data: OrderData) => void;
   authorizedFetch: (input: RequestInfo, init?: RequestInit) => Promise<Response>;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
@@ -83,6 +87,17 @@ export function CrmThread({
   const handle = conversationHandle(conversation);
   const [more, setMore] = useState(false);
   const [lightbox, setLightbox] = useState<{ src: string; caption: string } | null>(null);
+  const selling = Boolean(onUseInSale);
+  const saleData = useMemo(() => {
+    const found = new Map<string, OrderData>();
+    if (!selling) return found;
+    for (const message of messages) {
+      if (message.direction !== "in" || !message.text) continue;
+      const parsed = parseOrderData(message.text);
+      if (parsed.found > 0) found.set(message.id, parsed.data);
+    }
+    return found;
+  }, [messages, selling]);
 
   useEffect(() => {
     if (!lightbox) return;
@@ -433,6 +448,15 @@ export function CrmThread({
                 <p className="crm-media-note">{message.linkLabel}</p>
               ) : null}
               {text ? <p className="whitespace-pre-wrap break-words">{text}</p> : null}
+              {onUseInSale && saleData.has(message.id) ? (
+                <button
+                  type="button"
+                  className="crm-use-sale"
+                  onClick={() => onUseInSale(saleData.get(message.id)!)}
+                >
+                  Usar en venta
+                </button>
+              ) : null}
               <p className={`mt-1 text-[10px] ${message.direction === "out" ? "text-white/50" : "text-white/35"}`}>
                 {formatClock(message.at)}
                 {message.status && message.direction === "out" ? ` · ${message.status}` : ""}

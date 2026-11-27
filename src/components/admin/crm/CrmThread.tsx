@@ -16,6 +16,7 @@ import {
 import { formatClock } from "@/crm/labels";
 import type { CrmLostReason, WhatsAppConversationStatus } from "@/growth/types";
 import { hasReferral, referralKindLabel, referralLink, referralTitle } from "@/crm/referral";
+import { quoteText } from "@/crm/quote";
 import { CrmAdCard } from "./CrmAdCard";
 import { CrmVoiceNote } from "./CrmVoiceNote";
 
@@ -136,6 +137,15 @@ export function CrmThread({
     const el = scroller.current;
     if (el && hasOlder && !loadingOlder && el.scrollTop < OLDER_EDGE) onLoadOlder();
   }, [hasOlder, loadingOlder, messages, onLoadOlder]);
+
+  function jumpTo(id: string) {
+    const target = content.current?.querySelector<HTMLElement>(`[data-mid="${CSS.escape(id)}"]`);
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.classList.remove("is-flash");
+    void target.offsetWidth;
+    target.classList.add("is-flash");
+  }
 
   function onScroll() {
     const el = scroller.current;
@@ -372,9 +382,14 @@ export function CrmThread({
           // En archivos el texto es el nombre y ya va en la tarjeta.
           const text =
             media && (PLACEHOLDER_RE.test(message.text) || media === "document") ? "" : message.text;
+          const original = message.replyTo ? messages.find((m) => m.id === message.replyTo) : undefined;
+          const quoted = original
+            ? { text: quoteText(original), direction: original.direction }
+            : message.quote;
           const bubble = (
             <div
               key={message.id}
+              data-mid={message.id}
               className={`crm-bubble max-w-[82%] rounded-2xl px-3 py-2 text-[13px] leading-6 ${
                 message.direction === "out" ? "admin-bubble-out ml-auto" : "admin-bubble-in"
               } ${media === "image" || media === "sticker" ? "has-media" : ""} ${message.reaction ? "has-reaction" : ""}`}
@@ -383,6 +398,20 @@ export function CrmThread({
                 <span className="crm-reaction-badge" title="Reacción del cliente">
                   {message.reaction}
                 </span>
+              ) : null}
+              {message.replyTo ? (
+                <button
+                  type="button"
+                  className={`crm-quote ${quoted?.direction === "out" ? "is-out" : ""}`}
+                  onClick={() => (original ? jumpTo(original.id) : undefined)}
+                  disabled={!original}
+                  title={original ? "Ir al mensaje" : undefined}
+                >
+                  <span className="crm-quote-who">
+                    {quoted?.direction === "out" ? "Mora" : quoted?.direction === "in" ? title : "Respondió a"}
+                  </span>
+                  <span className="crm-quote-text">{quoted?.text || "un mensaje que no está en el CRM"}</span>
+                </button>
               ) : null}
               {media ? (
                 <MediaBubble

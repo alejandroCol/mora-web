@@ -177,8 +177,18 @@ export type WhatsAppMessage = {
   reaction?: string;
   /** En mensajes `type: "reaction"`: id del mensaje al que reaccionó. */
   reactionTo?: string;
+  /** Id del mensaje al que responde (deslizar para responder). */
+  replyTo?: string;
+  /** Copia corta del mensaje citado, por si el original no está en la página cargada. */
+  quote?: WhatsAppQuote;
   /** Solo en el mensaje que entró desde un anuncio o publicación. */
   referral?: WhatsAppReferral;
+};
+
+export type WhatsAppQuote = {
+  /** "" si el original no está en el CRM (p. ej. se escribió desde el teléfono). */
+  text: string;
+  direction?: "in" | "out";
 };
 
 export type WhatsAppUsageCategoryRow = {

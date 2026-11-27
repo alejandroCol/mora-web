@@ -1707,6 +1707,76 @@ a.crm-ad-card.is-compact:hover {
   right: 0.5rem;
 }
 
+/* Respuesta citando otro mensaje: el citado va arriba, como en WhatsApp. */
+.crm-quote {
+  display: block;
+  width: 100%;
+  min-width: 9rem;
+  margin-bottom: 0.3rem;
+  border-left: 3px solid #8e8e93;
+  border-radius: 0.6rem;
+  padding: 0.3rem 0.55rem;
+  background: rgba(22, 20, 31, 0.06);
+  text-align: left;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.crm-quote.is-out {
+  border-left-color: #6d28d9;
+}
+
+.crm-quote:not(:disabled) {
+  cursor: pointer;
+}
+
+.crm-quote:not(:disabled):hover {
+  background: rgba(22, 20, 31, 0.1);
+}
+
+.admin-bubble-out .crm-quote {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.admin-bubble-out .crm-quote:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.crm-bubble.has-media > .crm-quote {
+  width: auto;
+}
+
+.crm-quote-who {
+  display: block;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.crm-quote-text {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  opacity: 0.8;
+  overflow-wrap: anywhere;
+}
+
+.crm-bubble.is-flash {
+  animation: crm-flash 1.4s ease-out;
+}
+
+@keyframes crm-flash {
+  0%,
+  35% {
+    outline: 3px solid rgba(109, 40, 217, 0.45);
+    outline-offset: 2px;
+  }
+  100% {
+    outline: 3px solid transparent;
+    outline-offset: 2px;
+  }
+}
+
 /* Nota de voz: botón + barra + tiempo, como WhatsApp. */
 .crm-voice {
   display: flex;

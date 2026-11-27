@@ -7,6 +7,7 @@ import type {
 } from "@/growth/types";
 import { adminDb } from "@/lib/firebaseAdmin";
 import { outboundFileError, outboundKindOf, WHATSAPP_CAPTION_MAX } from "@/crm/media";
+import { quoteOf } from "@/crm/quote";
 import { loadGrowthSettings } from "./growthSettings";
 import { upsertLead } from "./leads";
 import { normalizePhone, sendMetaEvent } from "./metaCapi";
@@ -482,6 +483,8 @@ type WebhookMessage = {
   reaction?: { message_id?: string; emoji?: string };
   voice?: MediaBlob;
   referral?: WebhookReferral;
+  /** Viene cuando el cliente responde citando un mensaje. */
+  context?: { from?: string; id?: string };
 };
 
 /** Objeto `referral` de Meta (Click-to-WhatsApp). Todos los campos son opcionales. */
@@ -575,7 +578,12 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
         const at = raw.timestamp ? Number(raw.timestamp) * 1000 : Date.now();
         const referral = normalizeReferral(raw.referral, at);
 
-        const existing = await conversations().doc(phone).get();
+        // Las reacciones también traen `context`, pero ya van por `reactionTo`.
+        const replyTo = raw.type !== "reaction" ? raw.context?.id : undefined;
+        const [existing, quoted] = await Promise.all([
+          conversations().doc(phone).get(),
+          replyTo ? messages(phone).doc(replyTo).get() : null,
+        ]);
         const isFirst = !existing.exists;
         const prev = existing.data() as WhatsAppConversation | undefined;
 
@@ -590,6 +598,10 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
           mediaId: media.mediaId,
           mimeType: media.mimeType,
           reactionTo: raw.type === "reaction" ? raw.reaction?.message_id : undefined,
+          replyTo,
+          quote: replyTo
+            ? compact(quoteOf(quoted?.exists ? (quoted.data() as WhatsAppMessage) : undefined))
+            : undefined,
           // Va en el mensaje además de en la conversación: así el hilo muestra
           // de qué anuncio entró cada vez, aunque luego llegue por otro.
           referral: referral ? compact(referral) : undefined,

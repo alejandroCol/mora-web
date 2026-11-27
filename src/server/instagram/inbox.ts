@@ -1,6 +1,7 @@
 import { FieldValue } from "firebase-admin/firestore";
 import { COLLECTIONS } from "@/commerce/paths";
 import { instagramConversationId } from "@/crm/channel";
+import { quoteOf } from "@/crm/quote";
 import { HUMAN_AGENT_WINDOW_MS, WINDOW_MS } from "@/crm/labels";
 import type { WhatsAppConversation, WhatsAppMessage, WhatsAppReferral } from "@/growth/types";
 import { detectColombianMobile, splitForInstagram } from "@/instagram/text";
@@ -170,8 +171,15 @@ async function writeParts(input: {
   direction: "in" | "out";
   at: number;
   by?: string;
+  /** `reply_to.mid` de Meta: va en la primera burbuja. */
+  replyToMid?: string;
 }) {
   const base = messageDocId(input.mid);
+  const replyTo = input.replyToMid ? messageDocId(input.replyToMid) : undefined;
+  const quoted = replyTo ? await messages(input.conversationId).doc(replyTo).get() : null;
+  const quote = replyTo
+    ? compact(quoteOf(quoted?.exists ? (quoted.data() as WhatsAppMessage) : undefined))
+    : undefined;
   await Promise.all(
     input.parts.map((part, index) => {
       const id = index === 0 ? base : `${base}_${index}`;
@@ -189,6 +197,8 @@ async function writeParts(input: {
         linkUrl: part.linkUrl,
         linkLabel: part.linkLabel,
         by: input.by,
+        replyTo: index === 0 ? replyTo : undefined,
+        quote: index === 0 ? quote : undefined,
       };
       return messages(input.conversationId).doc(id).set(compact(message), { merge: true });
     }),
@@ -269,7 +279,7 @@ async function recordInbound(
       by: "auto",
     });
   }
-  await writeParts({ conversationId, mid, parts, direction: "in", at });
+  await writeParts({ conversationId, mid, parts, direction: "in", at, replyToMid: event.message?.reply_to?.mid });
 
   const desk = prev?.desk ?? "sales";
   const sold = prev?.status === "sold";
@@ -338,7 +348,15 @@ async function recordEcho(conversationId: string, event: InstagramMessagingEvent
   if (!snap.exists || known.exists) return false;
 
   const parts = await partsOf(event, conversationId, mid);
-  await writeParts({ conversationId, mid, parts, direction: "out", at, by: "instagram" });
+  await writeParts({
+    conversationId,
+    mid,
+    parts,
+    direction: "out",
+    at,
+    by: "instagram",
+    replyToMid: event.message?.reply_to?.mid,
+  });
   await ref.set(
     { lastMessage: parts[0].preview, lastDirection: "out", lastAt: at, lastOutboundAt: at },
     { merge: true },

@@ -2508,6 +2508,141 @@ a.crm-ad-card.is-compact:hover {
   background: #fff;
 }
 
+/* Pedido · guía de cada tramo, con rastreo. */
+.order-guide {
+  border: 1px solid var(--admin-line);
+  border-radius: 1.1rem;
+  padding: 0.9rem 1rem 1rem;
+  background: #fff;
+  color: #1d1d1f;
+}
+
+.order-guide-kicker {
+  font-size: 12px;
+  letter-spacing: -0.01em;
+  color: var(--admin-muted);
+}
+
+.order-guide-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.3rem;
+}
+
+.order-guide-number {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.order-guide-copy {
+  flex-shrink: 0;
+  height: 30px;
+  border-radius: 999px;
+  padding: 0 0.8rem;
+  background: var(--admin-field);
+  font-size: 12px;
+  color: #1d1d1f;
+}
+
+.order-guide-status {
+  margin-top: 0.2rem;
+  font-size: 12px;
+  color: var(--admin-muted);
+}
+
+.order-guide .order-soft-btn {
+  border: 1px solid var(--admin-line);
+  background: #fff;
+}
+
+.order-guide-hint {
+  margin-top: 0.5rem;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--admin-muted);
+}
+
+/* Pedido · seguimiento de entrega. */
+.order-follow {
+  margin-top: 0.75rem;
+  border-radius: 1.1rem;
+  padding: 0.9rem 1rem 1rem;
+  background: var(--admin-field);
+  color: #1d1d1f;
+}
+
+.order-follow.is-done {
+  background: #f1f8f3;
+}
+
+.order-follow-title {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.order-follow-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  background: #dff1e5;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: #1d6b3a;
+  white-space: nowrap;
+}
+
+.order-follow-pending {
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  background: #fdf3dc;
+  font-size: 11.5px;
+  color: #8a5a00;
+  white-space: nowrap;
+}
+
+.order-follow-body {
+  margin-top: 0.35rem;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--admin-muted);
+}
+
+.order-follow-preview {
+  margin-top: 0.6rem;
+}
+
+.order-follow-preview summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: #1d1d1f;
+}
+
+.order-follow-preview p {
+  margin-top: 0.5rem;
+  border-radius: 12px;
+  padding: 0.7rem 0.8rem;
+  background: #fff;
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-line;
+  color: #1d1d1f;
+}
+
+.order-follow-note {
+  margin-top: 0.5rem;
+  font-size: 12px;
+  color: var(--admin-muted);
+}
+
 /* Ruta del pedido. */
 .order-journey {
   margin-top: 1.5rem;

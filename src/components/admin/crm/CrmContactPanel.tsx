@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { ORDER_STATUS_LABEL } from "@/commerce/labels";
+import { orderGuides } from "@/commerce/tracking";
 import { commerceLineLabel } from "@/commerce/sizing";
 import type { CrmLostReason } from "@/growth/types";
 import { formatMoney } from "@/lib/catalog";
@@ -332,8 +333,14 @@ export function CrmContactPanel({
                   <p className="text-white/40">
                     {formatMoney(order.totals.total)} · {formatDay(order.createdAt)}
                   </p>
-                  {order.shipping.trackingNumber ? (
-                    <p className="text-white/40">Guía {order.shipping.trackingNumber}</p>
+                  {orderGuides(order).map((guide) => (
+                    <p key={guide.kind} className="text-white/40">
+                      {guide.title} {guide.number}
+                      {guide.carrierLabel ? ` · ${guide.carrierLabel}` : ""}
+                    </p>
+                  ))}
+                  {order.followUp ? (
+                    <p className="mt-1 text-[11px] text-emerald-300/80">✓ Seguimiento hecho</p>
                   ) : null}
                 </li>
               ))}

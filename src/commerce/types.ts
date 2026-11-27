@@ -126,6 +126,18 @@ export type OrderTimelineEvent = {
   note?: string;
 };
 
+/** Seguimiento de entrega hecho por el equipo. `manual`: se hizo por fuera (llamada, otro chat). */
+export type OrderFollowUp = {
+  at: number;
+  by: string;
+  byName?: string;
+  via: "whatsapp" | "manual";
+  /** Plantilla de Meta enviada, si fue por WhatsApp. */
+  template?: string;
+  /** Veces que se envió por WhatsApp. */
+  count?: number;
+};
+
 export type OrderTotals = {
   subtotal: number;
   shipping: number;
@@ -248,6 +260,7 @@ export type MoraOrder = {
     oversold?: boolean;
   };
   conversationId?: string;
+  followUp?: OrderFollowUp;
   createdAt: number;
   updatedAt: number;
   expiresAt?: number;

@@ -18,6 +18,8 @@ import {
   sizerSent,
 } from "@/commerce/shipments";
 import { orderJourney } from "@/commerce/orderJourney";
+import { orderGuides, type LegGuide } from "@/commerce/tracking";
+import { canFollowUp, followUpPreview } from "@/commerce/followUp";
 import { payLinkPath } from "@/commerce/manualSale";
 import { formatMoney, isModelId, products, type ModelId } from "@/lib/catalog";
 import { useAdminAuth } from "./AdminAuth";
@@ -26,7 +28,14 @@ import { GiftForm } from "./GiftForm";
 import { GiftsPanel } from "./GiftsPanel";
 import { ManualSaleForm } from "./ManualSaleForm";
 
-type Tab = "pipeline" | "awaiting_payment" | "delivered" | "cancelled" | "all" | "gifts";
+type Tab = "pipeline" | "awaiting_payment" | "delivered" | "followup" | "cancelled" | "all" | "gifts";
+
+type FollowUpAction = "whatsapp" | "resend" | "manual" | "clear";
+
+/** Va en camino o entregado y nadie le ha hecho seguimiento. */
+function needsFollowUp(order: MoraOrder) {
+  return canFollowUp(order) && !order.followUp;
+}
 
 type GuideQuote = {
   kind: "sizer" | "rings";
@@ -108,6 +117,13 @@ export function VentasBoard() {
   const [sandbox, setSandbox] = useState(false);
   const [picker, setPicker] = useState<{ order: MoraOrder; quote: GuideQuote } | null>(null);
   const [settings, setSettings] = useState<CommerceSettings | null>(null);
+  const [followError, setFollowError] = useState("");
+
+  /** La respuesta del servidor entra a la lista ya, sin esperar la recarga. */
+  const putOrder = useCallback((order: MoraOrder) => {
+    setOrders((list) => list.map((item) => (item.id === order.id ? order : item)));
+    setSelected((current) => (current?.id === order.id ? order : current));
+  }, []);
 
   const load = useCallback(async () => {
     const res = await authorizedFetch("/api/admin/orders");
@@ -183,7 +199,8 @@ export function VentasBoard() {
       .filter((o) => o.status !== "cancelled" && o.status !== "awaiting_payment")
       .reduce((sum, o) => sum + o.totals.total, 0);
     const needsSize = orders.filter((o) => o.status === "paid" && orderNeedsSize(o.items)).length;
-    return { paid, transit, awaiting, revenue, needsSize };
+    const followUp = orders.filter(needsFollowUp).length;
+    return { paid, transit, awaiting, revenue, needsSize, followUp };
   }, [orders]);
 
   const filtered = useMemo(() => {
@@ -192,6 +209,7 @@ export function VentasBoard() {
       if (tab === "pipeline" && !["paid", "sizer_transit", "in_transit"].includes(order.status)) return false;
       if (tab === "awaiting_payment" && order.status !== "awaiting_payment") return false;
       if (tab === "delivered" && order.status !== "delivered") return false;
+      if (tab === "followup" && !needsFollowUp(order)) return false;
       if (tab === "cancelled" && order.status !== "cancelled") return false;
       if (!q) return true;
       return (
@@ -200,15 +218,46 @@ export function VentasBoard() {
         order.customer.lastName.toLowerCase().includes(q) ||
         order.customer.email.toLowerCase().includes(q) ||
         order.customer.phone.includes(q) ||
-        (order.shipping.trackingNumber ?? "").toLowerCase().includes(q)
+        (order.shipping.trackingNumber ?? "").toLowerCase().includes(q) ||
+        orderGuides(order).some((guide) => guide.number.toLowerCase().includes(q))
       );
     });
   }, [orders, query, tab]);
 
-  const selectedFresh = useMemo(
-    () => orders.find((o) => o.id === selected?.id) ?? selected,
-    [orders, selected],
-  );
+  // La respuesta de una acción puede ser más nueva que la lista mientras recarga.
+  const selectedFresh = useMemo(() => {
+    if (!selected) return null;
+    const listed = orders.find((o) => o.id === selected.id);
+    return listed && listed.updatedAt > selected.updatedAt ? listed : selected;
+  }, [orders, selected]);
+
+  async function followUp(order: MoraOrder, action: FollowUpAction) {
+    setBusy(`${order.id}:follow:${action}`);
+    setFollowError("");
+    try {
+      const res = await authorizedFetch(`/api/admin/orders/${order.id}/follow-up`, {
+        method: action === "clear" ? "DELETE" : "POST",
+        body:
+          action === "clear"
+            ? undefined
+            : JSON.stringify({ mode: action === "manual" ? "manual" : "whatsapp", force: action === "resend" }),
+      });
+      const data = (await res.json()) as { ok: boolean; error?: string; order?: MoraOrder };
+      if (!data.ok || !data.order) {
+        // 409: otra persona ya le hizo seguimiento; la recarga trae su etiqueta.
+        if (res.status === 409) void load();
+        throw new Error(data.error);
+      }
+      putOrder(data.order);
+      void load();
+    } catch (error) {
+      setFollowError(
+        error instanceof Error && error.message ? error.message : "No se pudo hacer el seguimiento.",
+      );
+    } finally {
+      setBusy("");
+    }
+  }
 
   /** Cotiza el envío y abre la elección de transportadora; la guía se crea al confirmar. */
   async function pickCarrier(order: MoraOrder) {
@@ -300,6 +349,7 @@ export function VentasBoard() {
     { id: "pipeline", label: "Por despachar", count: stats.paid + stats.transit },
     { id: "awaiting_payment", label: "Esperando pago", count: stats.awaiting },
     { id: "delivered", label: "Entregados" },
+    { id: "followup", label: "Sin seguimiento", count: stats.followUp },
     { id: "cancelled", label: "Cancelados" },
     { id: "all", label: "Todos" },
     { id: "gifts", label: "Regalos", count: gifts?.filter((gift) => gift.status === "given").length },
@@ -488,7 +538,12 @@ export function VentasBoard() {
           setTracking={setTracking}
           busy={busy}
           hekaError={hekaError}
-          onClose={() => setSelected(null)}
+          followError={followError}
+          onFollowUp={(action) => void followUp(selectedFresh, action)}
+          onClose={() => {
+            setSelected(null);
+            setFollowError("");
+          }}
           onStatus={(status) => void changeStatus(selectedFresh, status)}
           onHeka={(action) =>
             void (action === "create" ? pickCarrier(selectedFresh) : runHeka(selectedFresh, action))
@@ -711,6 +766,8 @@ function OrderCard({
   const camino = enCaminoHasGuide(order) ? enCaminoTarget(order) : null;
   const sizerGuide = order.shipments?.sizer?.hekaGuideId;
   const ringsGuide = ringsGuideId(order);
+  // La del tramo más reciente: con medidor, `order.shipping` puede traer la del medidor.
+  const latestGuide = orderGuides(order).at(-1);
   return (
     <li className="ventas-row">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -726,10 +783,12 @@ function OrderCard({
               <span>{order.meta?.gift ? "Regalo" : PAYMENT_METHOD_LABEL[order.payment.method]}</span>
               <span>·</span>
               <span>{ago(order.updatedAt)}</span>
-              {order.shipping.trackingNumber ? (
+              {latestGuide ? (
                 <>
                   <span>·</span>
-                  <span>Guía {order.shipping.trackingNumber}</span>
+                  <span>
+                    {latestGuide.kind === "sizer" ? "Guía del medidor" : "Guía"} {latestGuide.number}
+                  </span>
                 </>
               ) : null}
               {pendingSize ? (
@@ -739,6 +798,11 @@ function OrderCard({
                 </>
               ) : null}
             </p>
+            {order.followUp ? (
+              <p className="mt-2">
+                <FollowUpTag />
+              </p>
+            ) : null}
         </button>
           <div className="flex flex-col items-end gap-2">
             <p className="text-[15px] font-medium">{formatMoney(order.totals.total)}</p>
@@ -853,12 +917,178 @@ function SizePicker({
   );
 }
 
+function FollowUpTag() {
+  return (
+    <span className="order-follow-tag">
+      <CheckGlyph />
+      Seguimiento
+    </span>
+  );
+}
+
+/** Número de guía a la vista, con copia y rastreo en la página de la transportadora. */
+function GuideCard({ guide }: { guide: LegGuide }) {
+  const [copied, setCopied] = useState<"" | "copy" | "track">("");
+  const carrier = guide.carrierLabel;
+  const tracking = guide.tracking;
+  function copy(why: "copy" | "track") {
+    void navigator.clipboard
+      ?.writeText(guide.number)
+      .then(() => setCopied(why))
+      .catch(() => undefined);
+  }
+  return (
+    <section className="order-guide">
+      <p className="order-guide-kicker">
+        {guide.title}
+        {carrier ? ` · ${carrier}` : ""}
+      </p>
+      <div className="order-guide-row">
+        <p className="order-guide-number">{guide.number}</p>
+        <button type="button" className="order-guide-copy" onClick={() => copy("copy")}>
+          {copied === "copy" ? "Copiada" : "Copiar"}
+        </button>
+      </div>
+      {guide.statusLabel ? <p className="order-guide-status">{guide.statusLabel}</p> : null}
+      {tracking ? (
+        <a
+          href={tracking.url}
+          target="_blank"
+          rel="noreferrer"
+          onClick={() => {
+            if (!tracking.prefilled) copy("track");
+          }}
+          className="order-soft-btn mt-3"
+        >
+          {tracking.search ? "Hacer rastreo (buscar la guía)" : `Hacer rastreo${carrier ? ` en ${carrier}` : ""}`}
+        </a>
+      ) : null}
+      {copied === "track" ? (
+        <p className="order-guide-hint">Guía copiada. Pégala en la página de {carrier || "la transportadora"}.</p>
+      ) : null}
+    </section>
+  );
+}
+
+/** Mensaje «Post-entrega» por WhatsApp en un clic, y la etiqueta de que ya se hizo. */
+function FollowUpCard({
+  order,
+  busy,
+  error,
+  crmHref,
+  onAction,
+}: {
+  order: MoraOrder;
+  busy: string;
+  error: string;
+  crmHref: string | null;
+  onAction: (action: FollowUpAction) => void;
+}) {
+  const done = order.followUp;
+  const open = canFollowUp(order);
+  const hasPhone = order.customer.phone.replace(/\D/g, "").length >= 10;
+  const running = (action: FollowUpAction) => busy === `${order.id}:follow:${action}`;
+  const who = order.customer.firstName.trim() || "el cliente";
+  return (
+    <section className={`order-follow ${done ? "is-done" : ""}`}>
+      <div className="flex items-center justify-between gap-3">
+        <p className="order-follow-title">Seguimiento de entrega</p>
+        {done ? <FollowUpTag /> : <span className="order-follow-pending">Pendiente</span>}
+      </div>
+      <p className="order-follow-body">
+        {done
+          ? [
+              done.via === "whatsapp" ? "Mensaje enviado por WhatsApp" : "Marcado a mano",
+              formatWhen(done.at),
+              done.byName,
+              done.count && done.count > 1 ? `${done.count} envíos` : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")
+          : order.status === "delivered"
+            ? "Ya le llegó. Pregúntale cómo le fue con su Mora."
+            : "Va en camino. Lo ideal es escribirle cuando la transportadora lo entregue."}
+      </p>
+      <details className="order-follow-preview">
+        <summary>Ver el mensaje</summary>
+        <p>{followUpPreview(order)}</p>
+      </details>
+
+      {open && !done ? (
+        <>
+          <button
+            type="button"
+            disabled={Boolean(busy) || !hasPhone}
+            onClick={() => onAction("whatsapp")}
+            className="admin-cta mt-3 h-11 w-full disabled:opacity-40"
+          >
+            <Spin on={running("whatsapp")} />
+            {running("whatsapp") ? "Enviando por WhatsApp…" : "Hacer seguimiento de entrega"}
+          </button>
+          {!hasPhone ? (
+            <p className="order-follow-note">El pedido no tiene celular. Escríbele por otro lado y márcalo.</p>
+          ) : null}
+          <button
+            type="button"
+            disabled={Boolean(busy)}
+            onClick={() => onAction("manual")}
+            className="order-step-link mt-3"
+          >
+            <Spin on={running("manual")} />
+            Ya le escribí por otro lado · marcar como seguimiento
+          </button>
+        </>
+      ) : null}
+
+      {done ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {crmHref ? (
+            <Link href={crmHref} className="order-manual-btn is-soft inline-flex items-center">
+              Ver chat
+            </Link>
+          ) : null}
+          {open && hasPhone ? (
+            <button
+              type="button"
+              disabled={Boolean(busy)}
+              onClick={() => {
+                if (window.confirm(`¿Enviarle otra vez el mensaje de seguimiento a ${who}?`)) onAction("resend");
+              }}
+              className="order-manual-btn is-soft"
+            >
+              <Spin on={running("resend")} />
+              Reenviar
+            </button>
+          ) : null}
+          <button
+            type="button"
+            disabled={Boolean(busy)}
+            onClick={() => {
+              if (done.via === "manual" || window.confirm("¿Quitar la etiqueta? El mensaje enviado sigue en el chat.")) {
+                onAction("clear");
+              }
+            }}
+            className="order-manual-btn is-soft"
+          >
+            <Spin on={running("clear")} />
+            Quitar etiqueta
+          </button>
+        </div>
+      ) : null}
+
+      {error ? <p className="order-error">{error}</p> : null}
+    </section>
+  );
+}
+
 function OrderDrawer({
   order,
   tracking,
   setTracking,
   busy,
   hekaError,
+  followError,
+  onFollowUp,
   onClose,
   onStatus,
   onHeka,
@@ -871,6 +1101,8 @@ function OrderDrawer({
   setTracking: (value: string) => void;
   busy: string;
   hekaError: string;
+  followError: string;
+  onFollowUp: (action: FollowUpAction) => void;
   onClose: () => void;
   onStatus: (status: OrderStatus) => void;
   onHeka: (action: "create" | "refresh") => void;
@@ -903,6 +1135,8 @@ function OrderDrawer({
           : "";
   const sizerGuide = Boolean(order.shipments?.sizer?.hekaGuideId);
   const ringsGuide = Boolean(ringsGuideId(order));
+  // Los anillos primero: es la guía que el cliente pregunta.
+  const guides = orderGuides(order).reverse();
   const caminoReady = enCaminoHasGuide(order) || Boolean(tracking.trim());
   const canRefreshHeka =
     (order.status === "sizer_transit" || order.status === "in_transit") &&
@@ -1077,6 +1311,24 @@ function OrderDrawer({
 
           {hekaError ? <p className="order-error">{hekaError}</p> : null}
         </section>
+
+        {guides.length > 0 ? (
+          <div className="mt-3 space-y-3">
+            {guides.map((guide) => (
+              <GuideCard key={guide.kind} guide={guide} />
+            ))}
+          </div>
+        ) : null}
+
+        {canFollowUp(order) || order.followUp ? (
+          <FollowUpCard
+            order={order}
+            busy={busy}
+            error={followError}
+            crmHref={crmHref}
+            onAction={onFollowUp}
+          />
+        ) : null}
 
         {/* Ruta del pedido: dónde va. */}
         <ol className="order-journey">

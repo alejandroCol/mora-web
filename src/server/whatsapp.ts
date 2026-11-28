@@ -23,8 +23,30 @@ function messages(conversationId: string) {
   return conversations().doc(conversationId).collection("messages");
 }
 
+/** Id de usuario de Meta (BSUID): país, punto y hasta 128 caracteres. */
+const WA_USER_ID = /^[A-Z]{2}\.[A-Za-z0-9]{1,128}$/;
+
+export function isWhatsAppUserId(value: string) {
+  return WA_USER_ID.test(value);
+}
+
+/** Chats de quien escribe con nombre de usuario sin teléfono van con su BSUID de id. */
 export function conversationIdFromPhone(phone: string) {
+  if (isWhatsAppUserId(phone)) return phone;
   return normalizePhone(phone) || phone.replace(/\D/g, "");
+}
+
+/** Destino en la Cloud API: `to` para teléfonos, `recipient` para BSUID. */
+function recipientOf(id: string) {
+  return isWhatsAppUserId(id) ? { recipient: id } : { to: id };
+}
+
+/** Chat de un aviso: por teléfono; sin teléfono, el que ya tiene ese BSUID o uno nuevo con él. */
+async function conversationIdFor(phone: string | undefined, userId: string | undefined) {
+  if (phone) return conversationIdFromPhone(phone);
+  if (!userId) return "";
+  const match = await conversations().where("waUserId", "==", userId).limit(1).get();
+  return match.docs[0]?.id ?? userId;
 }
 
 function compact<T extends Record<string, unknown>>(value: T) {
@@ -38,8 +60,20 @@ function inboundText(raw: WebhookMessage) {
   if (raw.button?.text) return raw.button.text;
   if (raw.interactive?.button_reply?.title) return raw.interactive.button_reply.title;
   if (raw.interactive?.list_reply?.title) return raw.interactive.list_reply.title;
+  if (raw.interactive?.nfm_reply?.body) return raw.interactive.nfm_reply.body;
   if (raw.image?.caption) return raw.image.caption;
+  if (raw.video?.caption) return raw.video.caption;
+  if (raw.document?.caption) return raw.document.caption;
   if (raw.document?.filename) return raw.document.filename;
+  if (raw.type === "location") {
+    return [raw.location?.name, raw.location?.address].filter(Boolean).join(" · ") || "[ubicación]";
+  }
+  if (raw.type === "contacts") {
+    return (raw.contacts ?? []).map(contactCard).map((c) => [c.name, ...c.phones].join(" ")).join("\n");
+  }
+  if (raw.type === "order") return `[pedido · ${raw.order?.product_items?.length ?? 0} productos]`;
+  if (raw.type === "system") return raw.system?.body ?? "[system]";
+  if (raw.type === "unsupported") return "[unsupported]";
   if (raw.type === "image") return "[foto]";
   if (raw.type === "audio" || raw.type === "voice") return "[audio]";
   if (raw.type === "video") return "[video]";
@@ -61,7 +95,31 @@ function inboundPreview(raw: WebhookMessage, text: string) {
   if (raw.type === "video") return raw.video?.caption ? `🎬 ${raw.video.caption}` : "🎬 Video";
   if (raw.type === "document") return `📎 ${raw.document?.filename || "Archivo"}`;
   if (raw.type === "sticker") return "Sticker";
+  if (raw.type === "location") return "📍 Ubicación";
+  if (raw.type === "contacts") return "👤 Contacto";
+  if (raw.type === "order") return "🛒 Pedido del catálogo";
+  if (raw.type === "unsupported") return "Mensaje que WhatsApp no deja ver aquí";
   return text;
+}
+
+function contactCard(raw: WebhookSharedContact) {
+  return {
+    name: raw.name?.formatted_name || raw.name?.first_name || "Contacto",
+    phones: (raw.phones ?? []).map((p) => p.phone || p.wa_id || "").filter(Boolean),
+  };
+}
+
+function inboundExtras(raw: WebhookMessage): Pick<WhatsAppMessage, "fileName" | "location" | "contacts"> {
+  const lat = Number(raw.location?.latitude);
+  const lng = Number(raw.location?.longitude);
+  return {
+    fileName: raw.document?.filename || undefined,
+    location:
+      raw.type === "location" && Number.isFinite(lat) && Number.isFinite(lng)
+        ? compact({ latitude: lat, longitude: lng, name: raw.location?.name, address: raw.location?.address })
+        : undefined,
+    contacts: raw.type === "contacts" && raw.contacts?.length ? raw.contacts.map(contactCard) : undefined,
+  };
 }
 
 function inboundMedia(raw: WebhookMessage) {
@@ -149,7 +207,7 @@ export async function sendWhatsAppText(input: {
     },
     body: JSON.stringify({
       messaging_product: "whatsapp",
-      to,
+      ...recipientOf(to),
       type: "text",
       text: { body: input.text },
     }),
@@ -275,7 +333,7 @@ export async function sendWhatsAppMedia(input: {
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
     body: JSON.stringify({
       messaging_product: "whatsapp",
-      to,
+      ...recipientOf(to),
       type: kind,
       [kind]: { id: input.mediaId, ...(caption ? { caption } : {}) },
     }),
@@ -371,7 +429,7 @@ export async function sendWhatsAppTemplate(input: {
     },
     body: JSON.stringify({
       messaging_product: "whatsapp",
-      to,
+      ...recipientOf(to),
       type: "template",
       template,
     }),
@@ -445,12 +503,15 @@ export async function fetchWhatsAppMedia(mediaId: string) {
   const file = await fetch(info.url, {
     headers: { Authorization: `Bearer ${settings.whatsappAccessToken}` },
   });
-  if (!file.ok) {
+  if (!file.ok || !file.body) {
     throw Object.assign(new Error("WhatsApp no entregó el archivo."), { status: 400 });
   }
+  // Se reenvía en streaming: un documento llega a 100 MB y Cloud Run corta
+  // las respuestas armadas en memoria a partir de 32 MB.
   return {
     contentType: info.mime_type || file.headers.get("content-type") || "application/octet-stream",
-    body: Buffer.from(await file.arrayBuffer()),
+    contentLength: file.headers.get("content-length") ?? "",
+    body: file.body,
   };
 }
 
@@ -464,8 +525,16 @@ export async function updateConversation(
 
 type MediaBlob = { id?: string; caption?: string; mime_type?: string; filename?: string };
 
+type WebhookSharedContact = {
+  name?: { formatted_name?: string; first_name?: string };
+  phones?: { phone?: string; wa_id?: string }[];
+};
+
 type WebhookMessage = {
+  /** Falta si la persona usa nombre de usuario y Meta no comparte el número. */
   from?: string;
+  /** BSUID: siempre viene. */
+  from_user_id?: string;
   id?: string;
   timestamp?: string;
   type?: string;
@@ -474,7 +543,12 @@ type WebhookMessage = {
   interactive?: {
     button_reply?: { title?: string };
     list_reply?: { title?: string };
+    nfm_reply?: { body?: string };
   };
+  location?: { latitude?: number | string; longitude?: number | string; name?: string; address?: string };
+  contacts?: WebhookSharedContact[];
+  order?: { product_items?: unknown[] };
+  system?: { body?: string };
   image?: MediaBlob;
   audio?: MediaBlob;
   video?: MediaBlob;
@@ -526,8 +600,9 @@ export function normalizeReferral(raw: WebhookReferral | undefined, at: number):
 }
 
 type WebhookContact = {
-  profile?: { name?: string };
+  profile?: { name?: string; username?: string };
   wa_id?: string;
+  user_id?: string;
 };
 
 type WebhookStatus = {
@@ -535,6 +610,7 @@ type WebhookStatus = {
   status?: string;
   timestamp?: string;
   recipient_id?: string;
+  recipient_user_id?: string;
 };
 
 export async function ingestWhatsAppWebhook(payload: unknown) {
@@ -561,18 +637,25 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
       const value = change.value;
       const contacts = value?.contacts ?? [];
       for (const status of value?.statuses ?? []) {
-        if (!status.id || !status.recipient_id) continue;
-        const phone = conversationIdFromPhone(status.recipient_id);
+        if (!status.id) continue;
+        const phone = await conversationIdFor(status.recipient_id, status.recipient_user_id);
+        if (!phone) continue;
         await messages(phone).doc(status.id).set(
           compact({ status: status.status, waId: status.id }),
           { merge: true },
         );
       }
       for (const raw of value?.messages ?? []) {
-        if (!raw.from || !raw.id) continue;
-        const phone = conversationIdFromPhone(raw.from);
-        const contact = contacts.find((item) => item.wa_id === raw.from);
-        const name = contact?.profile?.name ?? "";
+        if (!raw.id) continue;
+        const phone = await conversationIdFor(raw.from, raw.from_user_id);
+        if (!phone) continue;
+        const contact = contacts.find(
+          (item) =>
+            (raw.from && item.wa_id === raw.from) || (raw.from_user_id && item.user_id === raw.from_user_id),
+        );
+        const name = contact?.profile?.name || contact?.profile?.username || "";
+        // Sin teléfono no hay a quién atribuir el lead ni con qué cruzar en Meta.
+        const knownPhone = isWhatsAppUserId(phone) ? undefined : phone;
         const text = inboundText(raw);
         const media = inboundMedia(raw);
         const at = raw.timestamp ? Number(raw.timestamp) * 1000 : Date.now();
@@ -597,6 +680,7 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
           status: "received",
           mediaId: media.mediaId,
           mimeType: media.mimeType,
+          ...inboundExtras(raw),
           reactionTo: raw.type === "reaction" ? raw.reaction?.message_id : undefined,
           replyTo,
           quote: replyTo
@@ -637,6 +721,7 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
           compact({
             id: phone,
             phone,
+            waUserId: raw.from_user_id,
             name: name || prev?.name || phone,
             lastMessage: inboundPreview(raw, text),
             lastDirection: "in",
@@ -663,7 +748,7 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
           const lead = await upsertLead({
             source: source === "ad" ? "ad" : "whatsapp",
             name: name || prev?.name,
-            phone,
+            phone: knownPhone,
             attribution,
             lastEvent: referral ? "Lead" : "Contact",
             conversationId: phone,
@@ -680,7 +765,7 @@ export async function ingestWhatsAppWebhook(payload: unknown) {
               eventId: raw.id,
               actionSource: "chat",
               sourceUrl: referral?.sourceUrl,
-              user: { phone, firstName: name },
+              user: { phone: knownPhone, firstName: name },
               attribution,
               data: {
                 content_name: referral?.headline || "WhatsApp",

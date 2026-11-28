@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { CrmDesk, CrmSeller, WhatsAppConversation, WhatsAppMessage } from "@/growth/types";
 import { channelOf, conversationHandle, conversationTitle, instagramProfileUrl } from "@/crm/channel";
 import {
@@ -393,10 +393,17 @@ export function CrmThread({
           const media = mediaKind(message);
           const link = safeLink(message.linkUrl);
           const origin = message.direction === "out" && message.by ? OUTBOUND_ORIGIN[message.by] : "";
+          // Antes del campo `fileName`, el texto de un documento era su nombre.
+          const fileName = message.fileName ?? (message.type === "document" ? message.text : "");
           // «[foto]», «[audio]»… son relleno del webhook; con el archivo a la vista sobran.
-          // En archivos el texto es el nombre y ya va en la tarjeta.
+          // El nombre del archivo ya va en la tarjeta; ubicación y contactos tienen la suya.
           const text =
-            media && (PLACEHOLDER_RE.test(message.text) || media === "document") ? "" : message.text;
+            (media && (PLACEHOLDER_RE.test(message.text) || message.text === fileName)) ||
+            message.location ||
+            message.contacts?.length ||
+            message.type === "unsupported"
+              ? ""
+              : message.text;
           const original = message.replyTo ? messages.find((m) => m.id === message.replyTo) : undefined;
           const quoted = original
             ? { text: quoteText(original), direction: original.direction }
@@ -434,10 +441,20 @@ export function CrmThread({
                   source={mediaSource(message)}
                   stored={Boolean(message.mediaPath)}
                   mimeType={message.mimeType}
-                  fileName={message.type === "document" ? message.text : ""}
+                  fileName={fileName}
                   authorizedFetch={authorizedFetch}
                   onOpen={(src) => setLightbox({ src, caption: text })}
                 />
+              ) : null}
+              {message.location ? <LocationCard location={message.location} /> : null}
+              {message.contacts?.map((contact, index) => (
+                <ContactCard key={index} contact={contact} />
+              ))}
+              {message.type === "unsupported" ? (
+                <p className="crm-media-note">
+                  WhatsApp no deja ver este tipo de mensaje aquí (ver una vez, encuesta, evento…). Pídele que lo
+                  reenvíe como foto, video o archivo.
+                </p>
               ) : null}
               {link ? (
                 <a href={link} target="_blank" rel="noreferrer" className="crm-bubble-link">
@@ -503,7 +520,7 @@ export function CrmThread({
 
 type MediaKind = "image" | "sticker" | "video" | "audio" | "document";
 
-const PLACEHOLDER_RE = /^\[(foto|audio|video|archivo|sticker|voice|document|image)\]$/i;
+const PLACEHOLDER_RE = /^\[(foto|audio|video|archivo|sticker|voice|document|image|unsupported)\]$/i;
 
 /** Cita corta del mensaje reaccionado, para «Reaccionó ❤️ a «…»». */
 function reactionQuote(message: WhatsAppMessage) {
@@ -541,8 +558,8 @@ function mediaKind(message: WhatsAppMessage): MediaKind | null {
   if (type === "sticker") return "sticker";
   if (type === "video" || mime.startsWith("video/")) return "video";
   if (type === "audio" || type === "voice" || mime.startsWith("audio/")) return "audio";
-  if (type === "document") return "document";
-  return null;
+  // Cualquier otro archivo (PDF, ZIP, Excel…) se ofrece para descargar.
+  return "document";
 }
 
 function MediaBubble({
@@ -567,8 +584,12 @@ function MediaBubble({
   const [src, setSrc] = useState("");
   const [blob, setBlob] = useState<Blob | null>(null);
   const [failed, setFailed] = useState(false);
-  // Un video pesa hasta 16 MB y pasa por el servidor: se baja solo si lo van a ver.
-  const [wanted, setWanted] = useState(kind !== "video");
+  // Videos y documentos llegan a 100 MB y pasan por el servidor: se bajan solo si los van a abrir.
+  const [wanted, setWanted] = useState(kind !== "video" && kind !== "document");
+  // .MOV de iPhone en HEVC: Chrome no lo reproduce; queda la descarga.
+  const [unplayable, setUnplayable] = useState(false);
+  const download = useRef<HTMLAnchorElement>(null);
+  const name = fileName || (kind === "video" ? "video" : "archivo");
 
   useEffect(() => {
     if (!wanted) return;
@@ -595,6 +616,11 @@ function MediaBubble({
     };
   }, [authorizedFetch, source, wanted]);
 
+  // El vendedor ya tocó «Descargar»: no hacerle tocar otra vez cuando termina de bajar.
+  useEffect(() => {
+    if (src && kind === "document") download.current?.click();
+  }, [src, kind]);
+
   const label =
     kind === "image" ? "Foto" : kind === "sticker" ? "Sticker" : kind === "video" ? "Video" : kind === "audio" ? "Audio" : "Archivo";
 
@@ -605,14 +631,34 @@ function MediaBubble({
       </p>
     );
   }
+  const detail = mimeType?.split("/")[1]?.replace(/^quicktime$/, "mov").toUpperCase() || "Descargar";
+  const fileCard = (body: ReactNode) => (
+    <>
+      <span className="crm-media-file-icon" aria-hidden>
+        ⬇
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate">{name}</span>
+        <span className="block text-[10px] opacity-60">{body}</span>
+      </span>
+    </>
+  );
+  if (!wanted && kind === "document") {
+    return (
+      <button type="button" onClick={() => setWanted(true)} className="crm-media-file text-left">
+        {fileCard(detail)}
+      </button>
+    );
+  }
   if (!wanted) {
     return (
       <button type="button" onClick={() => setWanted(true)} className="crm-media-skeleton crm-media-play">
-        ▶ Ver video
+        ▶ Ver video{fileName ? ` · ${fileName}` : ""}
       </button>
     );
   }
   if (!src) {
+    if (kind === "document") return <div className="crm-media-file">{fileCard("Descargando…")}</div>;
     return <div className={`crm-media-skeleton ${kind === "image" || kind === "sticker" ? "is-image" : ""}`}>{label}…</div>;
   }
 
@@ -629,28 +675,55 @@ function MediaBubble({
       </button>
     );
   }
-  if (kind === "video") {
-    return <video src={src} controls autoPlay playsInline preload="metadata" className="crm-media-video" />;
+  if (kind === "video" && !unplayable) {
+    return (
+      <video
+        src={src}
+        controls
+        autoPlay
+        playsInline
+        preload="metadata"
+        className="crm-media-video"
+        onError={() => setUnplayable(true)}
+      />
+    );
   }
   if (kind === "audio" && blob) {
     return <CrmVoiceNote blob={blob} mimeType={mimeType} />;
   }
   return (
-    <a
-      href={src}
-      download={fileName || "archivo"}
-      target="_blank"
-      rel="noreferrer"
-      className="crm-media-file"
-    >
+    <a ref={download} href={src} download={name} target="_blank" rel="noreferrer" className="crm-media-file">
+      {fileCard(unplayable ? `${detail} · el navegador no lo reproduce, descárgalo` : detail)}
+    </a>
+  );
+}
+
+function LocationCard({ location }: { location: NonNullable<WhatsAppMessage["location"]> }) {
+  const href = `https://www.google.com/maps/search/?api=1&query=${location.latitude},${location.longitude}`;
+  return (
+    <a href={href} target="_blank" rel="noreferrer" className="crm-media-file">
       <span className="crm-media-file-icon" aria-hidden>
-        ⬇
+        📍
       </span>
       <span className="min-w-0">
-        <span className="block truncate">{fileName || "Archivo"}</span>
-        <span className="block text-[10px] opacity-60">{mimeType?.split("/")[1]?.toUpperCase() || "Descargar"}</span>
+        <span className="block truncate">{location.name || "Ubicación"}</span>
+        <span className="block text-[10px] opacity-60">{location.address || "Abrir en el mapa"}</span>
       </span>
     </a>
+  );
+}
+
+function ContactCard({ contact }: { contact: NonNullable<WhatsAppMessage["contacts"]>[number] }) {
+  return (
+    <div className="crm-media-file">
+      <span className="crm-media-file-icon" aria-hidden>
+        👤
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate">{contact.name}</span>
+        <span className="block text-[10px] opacity-60 select-all">{contact.phones.join(" · ") || "Sin número"}</span>
+      </span>
+    </div>
   );
 }
 

@@ -116,8 +116,13 @@ export type WhatsAppReferral = {
 export type WhatsAppConversation = {
   id: string;
   channel?: CrmChannel;
-  /** WhatsApp: siempre. Instagram: vacío hasta que el vendedor lo vincula. */
+  /**
+   * WhatsApp: el teléfono, o el id de usuario (`CO.1349…`) si escribe con nombre
+   * de usuario y Meta no da el número. Instagram: vacío hasta que el vendedor lo vincula.
+   */
   phone: string;
+  /** WhatsApp: id de usuario de Meta (BSUID); llega aunque falte el teléfono. */
+  waUserId?: string;
   /** Solo Instagram: id de la persona para esta cuenta y su usuario público. */
   igUserId?: string;
   igUsername?: string;
@@ -167,6 +172,11 @@ export type WhatsAppMessage = {
   /** Instagram: ruta del archivo en nuestro Storage (Meta solo da enlaces que caducan). */
   mediaPath?: string;
   mimeType?: string;
+  /** Nombre del archivo en documentos; `text` queda para el pie. */
+  fileName?: string;
+  location?: { latitude: number; longitude: number; name?: string; address?: string };
+  /** Tarjetas de contacto que compartió. */
+  contacts?: { name: string; phones: string[] }[];
   /** Instagram: enlace a lo que compartió (publicación, reel, historia). */
   linkUrl?: string;
   linkLabel?: string;

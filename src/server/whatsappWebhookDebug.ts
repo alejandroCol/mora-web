@@ -16,6 +16,9 @@ export type WhatsAppWebhookDebug = {
   lastUnsignedAt?: number;
   /** Último aviso rechazado por firma inválida. */
   lastRejectedAt?: number;
+  /** JSON recortado del último aviso con mensajes que no se guardaron. */
+  lastSkipped?: string;
+  lastSkippedAt?: number;
 };
 
 const EMPTY: WhatsAppWebhookDebug = {
@@ -44,8 +47,8 @@ function countInboundMessages(payload: unknown) {
     for (const change of entry.changes ?? []) {
       const msgs = change.value?.messages ?? [];
       n += msgs.length;
-      const first = msgs[0] as { from?: string } | undefined;
-      if (first?.from) from = first.from;
+      const first = msgs[0] as { from?: string; from_user_id?: string } | undefined;
+      if (first?.from || first?.from_user_id) from = first.from || first.from_user_id || "";
     }
   }
   return { count: n, from, object: root.object ?? "" };
@@ -76,12 +79,17 @@ export async function recordWhatsAppWebhookPost(
   try {
     const seen = await ingest();
     const ingested = Array.isArray(seen) ? seen.length : meta.count;
+    const skipped =
+      ingested < meta.count
+        ? { lastSkipped: JSON.stringify(payload).slice(0, 4000), lastSkippedAt: Date.now() }
+        : {};
     await debugDoc().set(
       {
         ...base,
         lastIngestAt: Date.now(),
         lastIngested: ingested,
         lastError: "",
+        ...skipped,
       },
       { merge: true },
     );

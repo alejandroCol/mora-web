@@ -12,9 +12,10 @@ export async function GET(
       return Response.json({ ok: false, error: "Archivo inválido." }, { status: 400 });
     }
     const media = await fetchWhatsAppMedia(id);
-    return new Response(new Uint8Array(media.body), {
+    return new Response(media.body, {
       headers: {
         "Content-Type": media.contentType,
+        ...(media.contentLength ? { "Content-Length": media.contentLength } : {}),
         "Cache-Control": "private, max-age=3600",
       },
     });

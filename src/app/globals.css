@@ -3183,6 +3183,10 @@ body {
   -webkit-optimize-contrast: auto;
 }
 
+.look-ambient {
+  display: none;
+}
+
 .look-rail {
   position: absolute;
   z-index: 4;
@@ -3265,21 +3269,33 @@ body {
 
   .look-card {
     padding: 0;
-    justify-content: flex-end;
-  }
-
-  .look-stage.look-below-bar .look-ring,
-  .look-stage.look-below-bar .look-card {
-    padding-top: 4.25rem;
+    align-items: center;
+    justify-content: center;
   }
 
   .look-photo {
-    width: auto;
-    height: 100%;
-    max-width: none;
-    max-height: 100%;
+    position: relative;
+    z-index: 1;
     object-fit: contain;
-    object-position: right center;
+    object-position: center;
+  }
+
+  .look-stage.look-fill .look-photo {
+    object-fit: cover;
+  }
+
+  /* La misma foto, desenfocada, llena los lados cuando la ventana es más ancha que la foto. */
+  .look-stage:not(.look-fill) .look-ambient {
+    position: absolute;
+    inset: -10%;
+    display: block;
+    width: 120%;
+    height: 120%;
+    max-width: none;
+    object-fit: cover;
+    filter: blur(56px) saturate(1.15);
+    opacity: 0.85;
+    pointer-events: none;
   }
 
   .look-rail {

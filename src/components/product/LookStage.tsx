@@ -75,9 +75,10 @@ export function LookStage({
   }
   const [desktop, setDesktop] = useState(false);
   const [railOut, setRailOut] = useState(false);
-  const [belowBar, setBelowBar] = useState(false);
+  const [fill, setFill] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const railOutRef = useRef(false);
+  const fillRef = useRef(false);
   const images = asLooks(modelId, finishId, remote, galleryReady);
 
   const items: StageItem[] = [
@@ -130,15 +131,15 @@ export function LookStage({
     if (!stage) return;
     if (!window.matchMedia("(min-width: 1024px)").matches) {
       railOutRef.current = false;
+      fillRef.current = false;
       setRailOut(false);
-      setBelowBar(false);
+      setFill(false);
       stage.style.removeProperty("--look-rail-left");
       return;
     }
 
     const media = stage.querySelector<HTMLElement>(".look-photo, .look-ring canvas");
     const box = stage.getBoundingClientRect();
-    const header = 68;
     const enter = 96;
     const leave = 72;
 
@@ -150,22 +151,19 @@ export function LookStage({
       if (drawn.height > 1) aspect = drawn.width / drawn.height;
     }
 
-    const hBar = Math.max(1, box.height - header);
-    const wBar = Math.min(box.width, hBar * aspect);
-    const gapBar = box.width - wBar;
-    const wFull = Math.min(box.width, box.height * aspect);
-    const gapFull = box.width - wFull;
-    const useBar = gapBar > 12;
-    const gap = useBar ? gapBar : gapFull;
-    const nextOut = railOutRef.current ? gap >= leave : gap >= enter;
+    // A sangre solo si el recorte deja ver casi toda la foto; si no, centrada sobre su propio desenfoque.
+    const boxAspect = box.width / Math.max(1, box.height);
+    const kept = Math.min(boxAspect / aspect, aspect / boxAspect);
+    const nextFill =
+      media instanceof HTMLImageElement && kept >= (fillRef.current ? 0.76 : 0.8);
+    fillRef.current = nextFill;
+    setFill(nextFill);
+    const side = nextFill ? 0 : (box.width - Math.min(box.width, box.height * aspect)) / 2;
+    const nextOut = railOutRef.current ? side >= leave : side >= enter;
 
     railOutRef.current = nextOut;
-    setBelowBar(useBar);
     setRailOut(nextOut);
-    stage.style.setProperty(
-      "--look-rail-left",
-      `${nextOut ? 0 : Math.max(0, box.width - (useBar ? wBar : wFull))}px`,
-    );
+    stage.style.setProperty("--look-rail-left", `${nextOut ? 0 : Math.max(0, side)}px`);
   }, []);
 
   const go = useCallback(
@@ -228,7 +226,7 @@ export function LookStage({
   return (
     <div
       ref={stageRef}
-      className={`look-stage${belowBar ? " look-below-bar" : ""}${railOut ? " rail-out" : ""}`}
+      className={`look-stage${railOut ? " rail-out" : ""}${fill ? " look-fill" : ""}`}
     >
       <div className="look-frame" {...swipe}>
         {items.length > 1 ? (
@@ -334,6 +332,8 @@ function LookSlide({
       aria-hidden={hidden || undefined}
     >
       <div className="look-card">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="look-ambient" src={src} alt="" aria-hidden decoding="async" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           className="look-photo"

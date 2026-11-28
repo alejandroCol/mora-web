@@ -268,7 +268,7 @@ export type MoraOrder = {
   };
   conversationId?: string;
   followUp?: OrderFollowUp;
-  /** Logística: pedido pagado marcado para alistar. */
+  /** Logística: pedido pagado marcado como alistado (etiqueta «Alistado»). */
   alistar?: OrderTagMark;
   createdAt: number;
   updatedAt: number;

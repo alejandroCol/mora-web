@@ -844,7 +844,7 @@ function OrderCard({
                 className="h-9 rounded-full bg-[var(--admin-field)] px-4 text-[12px] disabled:opacity-40"
               >
                 <Spin on={busy === `${order.id}:alistar`} />
-                Poner alistar
+                Marcar alistado
               </button>
             ) : null}
             {guide ? (
@@ -969,12 +969,12 @@ function FollowUpTag() {
 function LogisticsTag({ kind }: { kind: "alistar" | "guide" }) {
   return (
     <span className={`order-logistics-tag is-${kind}`}>
-      {kind === "alistar" ? "Alistar" : "Guía creada"}
+      {kind === "alistar" ? "Alistado" : "Guía creada"}
     </span>
   );
 }
 
-/** Etiquetas internas para logística. «Guía creada» sale sola; «Alistar» la pone el equipo. */
+/** Etiquetas internas para logística. «Guía creada» sale sola; «Alistado» la pone el equipo. */
 function LogisticsCard({
   order,
   busy,
@@ -998,7 +998,7 @@ function LogisticsCard({
       </div>
       {mark ? (
         <p className="order-follow-body">
-          {["Alistar", formatWhen(mark.at), mark.byName].filter(Boolean).join(" · ")}
+          {["Alistado", formatWhen(mark.at), mark.byName].filter(Boolean).join(" · ")}
         </p>
       ) : null}
       {mark || canAlistar(order) ? (
@@ -1009,7 +1009,7 @@ function LogisticsCard({
           className="order-manual-btn is-soft mt-3"
         >
           <Spin on={busy === `${order.id}:alistar`} />
-          {mark ? "Quitar alistar" : "Poner alistar"}
+          {mark ? "Quitar alistado" : "Marcar alistado"}
         </button>
       ) : null}
     </section>

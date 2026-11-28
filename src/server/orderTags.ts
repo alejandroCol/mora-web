@@ -11,7 +11,7 @@ function fail(message: string, status = 400): never {
   throw Object.assign(new Error(message), { status });
 }
 
-/** Pone la etiqueta «Alistar». Solo en pedidos pagados que aún no salen. */
+/** Pone la etiqueta «Alistado». Solo en pedidos pagados que aún no salen. */
 export async function markOrderAlistar(input: { orderId: string; actor: Actor }) {
   const order = await getOrder(input.orderId);
   if (!order) fail("Pedido no encontrado.", 404);

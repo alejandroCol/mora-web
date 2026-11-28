@@ -20,6 +20,7 @@ import {
 import { orderJourney } from "@/commerce/orderJourney";
 import { orderGuides, type LegGuide } from "@/commerce/tracking";
 import { canFollowUp, followUpPreview } from "@/commerce/followUp";
+import { canAlistar, hasGuide } from "@/commerce/orderTags";
 import { payLinkPath } from "@/commerce/manualSale";
 import { formatMoney, isModelId, products, type ModelId } from "@/lib/catalog";
 import { useAdminAuth } from "./AdminAuth";
@@ -259,6 +260,26 @@ export function VentasBoard() {
     }
   }
 
+  async function toggleAlistar(order: MoraOrder) {
+    const on = !order.alistar;
+    setBusy(`${order.id}:alistar`);
+    setHekaError("");
+    try {
+      const res = await authorizedFetch(
+        `/api/admin/orders/${order.id}/tags${on ? "" : "?tag=alistar"}`,
+        { method: on ? "POST" : "DELETE", body: on ? JSON.stringify({ tag: "alistar" }) : undefined },
+      );
+      const data = (await res.json()) as { ok: boolean; error?: string; order?: MoraOrder };
+      if (!data.ok || !data.order) throw new Error(data.error);
+      putOrder(data.order);
+      void load();
+    } catch (error) {
+      setHekaError(error instanceof Error && error.message ? error.message : "No se pudo cambiar la etiqueta.");
+    } finally {
+      setBusy("");
+    }
+  }
+
   /** Cotiza el envío y abre la elección de transportadora; la guía se crea al confirmar. */
   async function pickCarrier(order: MoraOrder) {
     setBusy(`${order.id}:heka:create`);
@@ -487,6 +508,7 @@ export function VentasBoard() {
                         }}
                         onCreate={() => void pickCarrier(order)}
                         onView={(leg) => void viewGuide(order, leg)}
+                        onAlistar={() => void toggleAlistar(order)}
                         onEnCamino={() => {
                           const target = enCaminoTarget(order);
                           if (!target) return;
@@ -519,6 +541,7 @@ export function VentasBoard() {
                 }}
                 onCreate={() => void pickCarrier(order)}
                 onView={(leg) => void viewGuide(order, leg)}
+                onAlistar={() => void toggleAlistar(order)}
                 onEnCamino={() => {
                   const target = enCaminoTarget(order);
                   if (!target) return;
@@ -549,6 +572,7 @@ export function VentasBoard() {
             void (action === "create" ? pickCarrier(selectedFresh) : runHeka(selectedFresh, action))
           }
           onView={(leg) => void viewGuide(selectedFresh, leg)}
+          onAlistar={() => void toggleAlistar(selectedFresh)}
           onEnCamino={() => {
             const target = enCaminoTarget(selectedFresh);
             if (!target) return;
@@ -751,6 +775,7 @@ function OrderCard({
   onOpen,
   onCreate,
   onView,
+  onAlistar,
   onEnCamino,
 }: {
   order: MoraOrder;
@@ -758,9 +783,11 @@ function OrderCard({
   onOpen: () => void;
   onCreate: () => void;
   onView: (leg?: "sizer" | "rings") => void;
+  onAlistar: () => void;
   onEnCamino: () => void;
 }) {
   const pendingSize = orderNeedsSize(order.items);
+  const guideTag = hasGuide(order);
   const guide = guideKindFor(order);
   // Sin guía del tramo, primero se crea; la guía a mano se escribe en el detalle.
   const camino = enCaminoHasGuide(order) ? enCaminoTarget(order) : null;
@@ -798,15 +825,28 @@ function OrderCard({
                 </>
               ) : null}
             </p>
-            {order.followUp ? (
-              <p className="mt-2">
-                <FollowUpTag />
+            {order.followUp || order.alistar || guideTag ? (
+              <p className="mt-2 flex flex-wrap gap-1.5">
+                {order.alistar ? <LogisticsTag kind="alistar" /> : null}
+                {guideTag ? <LogisticsTag kind="guide" /> : null}
+                {order.followUp ? <FollowUpTag /> : null}
               </p>
             ) : null}
         </button>
           <div className="flex flex-col items-end gap-2">
             <p className="text-[15px] font-medium">{formatMoney(order.totals.total)}</p>
             <p className="text-[11px] text-[var(--admin-muted)]">{ORDER_STATUS_LABEL[order.status]}</p>
+            {canAlistar(order) && !order.alistar ? (
+              <button
+                type="button"
+                disabled={Boolean(busy)}
+                onClick={onAlistar}
+                className="h-9 rounded-full bg-[var(--admin-field)] px-4 text-[12px] disabled:opacity-40"
+              >
+                <Spin on={busy === `${order.id}:alistar`} />
+                Poner alistar
+              </button>
+            ) : null}
             {guide ? (
               <button
                 type="button"
@@ -923,6 +963,56 @@ function FollowUpTag() {
       <CheckGlyph />
       Seguimiento
     </span>
+  );
+}
+
+function LogisticsTag({ kind }: { kind: "alistar" | "guide" }) {
+  return (
+    <span className={`order-logistics-tag is-${kind}`}>
+      {kind === "alistar" ? "Alistar" : "Guía creada"}
+    </span>
+  );
+}
+
+/** Etiquetas internas para logística. «Guía creada» sale sola; «Alistar» la pone el equipo. */
+function LogisticsCard({
+  order,
+  busy,
+  onAlistar,
+}: {
+  order: MoraOrder;
+  busy: string;
+  onAlistar: () => void;
+}) {
+  const mark = order.alistar;
+  const guideTag = hasGuide(order);
+  return (
+    <section className="order-logistics">
+      <div className="flex items-center justify-between gap-3">
+        <p className="order-follow-title">Etiquetas internas</p>
+        <div className="flex flex-wrap justify-end gap-1.5">
+          {mark ? <LogisticsTag kind="alistar" /> : null}
+          {guideTag ? <LogisticsTag kind="guide" /> : null}
+          {!mark && !guideTag ? <span className="order-follow-pending">Sin etiquetas</span> : null}
+        </div>
+      </div>
+      {mark ? (
+        <p className="order-follow-body">
+          {["Alistar", formatWhen(mark.at), mark.byName].filter(Boolean).join(" · ")}
+        </p>
+      ) : null}
+      {mark || canAlistar(order) ? (
+        <button
+          type="button"
+          disabled={Boolean(busy)}
+          onClick={onAlistar}
+          className="order-manual-btn is-soft mt-3"
+        >
+          <Spin on={busy === `${order.id}:alistar`} />
+          {mark ? "Quitar alistar" : "Poner alistar"}
+        </button>
+      ) : null}
+    </section>
   );
 }
 
@@ -1093,6 +1183,7 @@ function OrderDrawer({
   onStatus,
   onHeka,
   onView,
+  onAlistar,
   onEnCamino,
   onSize,
 }: {
@@ -1107,6 +1198,7 @@ function OrderDrawer({
   onStatus: (status: OrderStatus) => void;
   onHeka: (action: "create" | "refresh") => void;
   onView: (leg?: "sizer" | "rings") => void;
+  onAlistar: () => void;
   onEnCamino: () => void;
   onSize: (sizes: { index: number; size: number }[]) => void;
 }) {
@@ -1311,6 +1403,10 @@ function OrderDrawer({
 
           {hekaError ? <p className="order-error">{hekaError}</p> : null}
         </section>
+
+        {order.alistar || canAlistar(order) || hasGuide(order) ? (
+          <LogisticsCard order={order} busy={busy} onAlistar={onAlistar} />
+        ) : null}
 
         {guides.length > 0 ? (
           <div className="mt-3 space-y-3">

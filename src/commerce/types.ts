@@ -138,6 +138,13 @@ export type OrderFollowUp = {
   count?: number;
 };
 
+/** Etiqueta interna de logística: quién la puso y cuándo. El cliente no la ve. */
+export type OrderTagMark = {
+  at: number;
+  by: string;
+  byName?: string;
+};
+
 export type OrderTotals = {
   subtotal: number;
   shipping: number;
@@ -261,6 +268,8 @@ export type MoraOrder = {
   };
   conversationId?: string;
   followUp?: OrderFollowUp;
+  /** Logística: pedido pagado marcado para alistar. */
+  alistar?: OrderTagMark;
   createdAt: number;
   updatedAt: number;
   expiresAt?: number;

@@ -2587,6 +2587,34 @@ a.crm-ad-card.is-compact:hover {
   letter-spacing: -0.02em;
 }
 
+.order-logistics {
+  margin-top: 0.75rem;
+  border-radius: 1.1rem;
+  padding: 0.9rem 1rem 1rem;
+  background: var(--admin-field);
+  color: #1d1d1f;
+}
+
+.order-logistics-tag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.order-logistics-tag.is-alistar {
+  background: #fdf0d5;
+  color: #8a5a00;
+}
+
+.order-logistics-tag.is-guide {
+  background: #e3ecfb;
+  color: #1f4f9a;
+}
+
 .order-follow-tag {
   display: inline-flex;
   align-items: center;
